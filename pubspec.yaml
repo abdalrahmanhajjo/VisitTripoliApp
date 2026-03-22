@@ -1,0 +1,89 @@
+name: tripoli_explorer
+description: Visit Tripoli — official tourism app for Tripoli, Lebanon.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  
+  # UI & Icons
+  cupertino_icons: ^1.0.6
+  font_awesome_flutter: ^10.6.0
+  flutter_svg: ^2.0.9
+  
+  # State Management
+  provider: ^6.1.1
+  
+  # Navigation
+  go_router: ^13.0.0
+  
+  # Storage
+  shared_preferences: ^2.2.2
+  path_provider: ^2.1.1
+  
+  # Maps & Location
+  google_maps_flutter: ^2.14.2
+  latlong2: ^0.9.0
+  geolocator: ^10.1.0
+  permission_handler: ^11.3.0
+  url_launcher: ^6.2.2
+  
+  # HTTP & Data
+  http: ^1.1.2
+  http_parser: ^4.0.0
+  json_annotation: ^4.8.1
+  
+  # UI Components
+  cached_network_image: ^3.3.0
+  shimmer: ^3.0.0
+  intl: ^0.20.2
+  table_calendar: ^3.2.0
+  google_fonts: ^8.0.1
+  google_sign_in: 6.2.1
+  sign_in_with_apple: ^7.0.1
+  image_picker: ^1.2.1
+  share_plus: ^12.0.1
+  # AI runs on backend (Gemini LLM) - no client-side API key needed
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^6.0.2
+  audioplayers: ^6.1.0
+  flutter_tts: ^4.2.5
+  image: ^4.0.17
+  visibility_detector: ^0.4.0+2
+  connectivity_plus: ^7.0.0
+  flutter_cache_manager: ^3.4.1
+  showcaseview: ^5.0.1
+  video_player: ^2.11.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_driver:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  build_runner: ^2.4.7
+  json_serializable: ^6.7.1
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/app_icon.png"
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/images/places/
+    - assets/icons/
+  
+  # Localization
+  generate: true
+

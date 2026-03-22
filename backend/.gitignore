@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Environment and runtime config (never commit secrets)
+.env
+config/
+# Allow source code in src/config/ (e.g. smtpConfig.js); only ignore top-level config/ (smtp.json)
+!src/config/
+!src/config/*
+
+# Uploaded files (runtime-generated)
+uploads/
+
+# Logs
+*.log
+npm-debug.log*

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Places Admin – Upload images & edit data</title>
+  <style>
+    :root { --primary: #0F766E; --primary-light: #14b8a6; --bg: #fafaf9; --card: #fff; --border: #e7e5e4; --text: #1c1917; --muted: #57534e; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; line-height: 1.5; }
+    h1 { font-size: 1.5rem; margin: 0 0 16px; color: var(--primary); }
+    .config { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px; max-width: 560px; }
+    .config label { display: block; font-weight: 600; margin-top: 10px; margin-bottom: 4px; }
+    .config input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+    .config input:first-of-type { margin-top: 0; }
+    .btn { display: inline-block; padding: 10px 18px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; }
+    .btn:hover { background: var(--primary-light); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-secondary { background: var(--muted); }
+    .btn-secondary:hover { background: #78716c; }
+    .error { color: #dc2626; font-size: 14px; margin-top: 8px; }
+    .list { display: flex; flex-direction: column; gap: 16px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .card h2 { font-size: 1.1rem; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+    .card h2 small { font-weight: 400; color: var(--muted); font-size: 0.9rem; }
+    .images-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; align-items: flex-start; }
+    .thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); background: #f5f5f4; }
+    .thumb.loading { opacity: 0.6; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-grid label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px; }
+    .form-grid input, .form-grid textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+    .form-grid textarea { min-height: 72px; resize: vertical; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .hidden { display: none; }
+    .loading-msg { color: var(--muted); }
+    .success { color: #059669; font-size: 13px; margin-left: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Places Admin – Upload images & edit data</h1>
+  <div class="config">
+    <label for="apiBase">API base URL</label>
+    <input type="url" id="apiBase" placeholder="Auto-filled when opened from your API host">
+    <label for="adminKey">Admin key (X-Admin-Key)</label>
+    <input type="password" id="adminKey" placeholder="Or add ?key=YOUR_SECRET to the URL once to save it">
+    <details class="optional-uploads" style="margin-top: 10px;">
+      <summary style="cursor: pointer; color: var(--muted); font-size: 13px;">Optional: Uploads base URL (for CDN)</summary>
+      <input type="url" id="uploadsBase" placeholder="Leave empty to use API base" style="margin-top: 6px;">
+    </details>
+    <div style="margin-top: 12px;">
+      <button type="button" class="btn" id="btnLoad">Load places</button>
+      <span id="configError" class="error hidden"></span>
+    </div>
+  </div>
+
+  <div id="listWrap" class="hidden">
+    <p class="loading-msg" id="listStatus">Loading…</p>
+    <div id="list" class="list"></div>
+  </div>
+
+  <script>
+    (function () {
+      const STORAGE_API = 'adminPlaces_apiBase';
+      const STORAGE_KEY = 'adminPlaces_adminKey';
+      const STORAGE_UPLOADS = 'adminPlaces_uploadsBase';
+
+      const apiBaseEl = document.getElementById('apiBase');
+      const adminKeyEl = document.getElementById('adminKey');
+      const uploadsBaseEl = document.getElementById('uploadsBase');
+      const btnLoad = document.getElementById('btnLoad');
+      const configError = document.getElementById('configError');
+      const listWrap = document.getElementById('listWrap');
+      const listStatus = document.getElementById('listStatus');
+      const listEl = document.getElementById('list');
+
+      function getApiBase() {
+        const v = (apiBaseEl.value || '').trim().replace(/\/$/, '');
+        return v || (localStorage.getItem(STORAGE_API) || '').trim();
+      }
+      function getAdminKey() {
+        return (adminKeyEl.value || '').trim() || (localStorage.getItem(STORAGE_KEY) || '').trim();
+      }
+      function getUploadsBase() {
+        const v = (uploadsBaseEl.value || '').trim().replace(/\/$/, '');
+        if (v) return v;
+        return getApiBase();
+      }
+      function imageUrl(path) {
+        if (!path) return '';
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        const base = getUploadsBase();
+        if (base) return base + (path.startsWith('/') ? path : '/' + path);
+        return getApiBase() + (path.startsWith('/') ? path : '/' + path);
+      }
+
+      function showError(msg) {
+        configError.textContent = msg || '';
+        configError.classList.toggle('hidden', !msg);
+      }
+
+      btnLoad.addEventListener('click', async () => {
+        const apiBase = getApiBase();
+        const key = getAdminKey();
+        if (!apiBase) { showError('Enter API base URL'); return; }
+        if (!key) { showError('Enter admin key'); return; }
+        showError('');
+        localStorage.setItem(STORAGE_API, apiBase);
+        localStorage.setItem(STORAGE_KEY, key);
+        if (uploadsBaseEl.value.trim()) localStorage.setItem(STORAGE_UPLOADS, uploadsBaseEl.value.trim());
+
+        listWrap.classList.remove('hidden');
+        listStatus.textContent = 'Loading places…';
+        listEl.innerHTML = '';
+
+        try {
+          const res = await fetch(apiBase + '/api/admin/places', {
+            headers: { 'X-Admin-Key': key },
+          });
+          if (!res.ok) {
+            const t = await res.text();
+            throw new Error(res.status === 401 ? 'Invalid admin key' : (t || res.statusText));
+          }
+          const rows = await res.json();
+          listStatus.textContent = rows.length + ' place(s) loaded.';
+          rows.forEach((row) => renderPlace(row, apiBase, key));
+        } catch (e) {
+          listStatus.textContent = '';
+          listStatus.classList.remove('loading-msg');
+          listStatus.innerHTML = '<span class="error">' + (e.message || 'Failed to load') + '</span>';
+        }
+      });
+
+      function parseImages(images) {
+        if (Array.isArray(images)) return images.filter(Boolean);
+        if (typeof images === 'string') {
+          try { return JSON.parse(images); } catch { return []; }
+        }
+        return [];
+      }
+
+      function renderPlace(row, apiBase, key) {
+        const images = parseImages(row.images);
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML =
+          '<h2>' + escapeHtml(row.name || row.id) + ' <small>(' + row.id + ')</small></h2>' +
+          '<div class="images-row" data-place-id="' + escapeAttr(row.id) + '">' +
+          images.map(function (src, i) {
+            const url = imageUrl(src);
+            return '<img class="thumb" data-src="' + escapeAttr(url) + '" alt="" loading="lazy" data-index="' + i + '">';
+          }).join('') +
+          '</div>' +
+          '<p><label>Upload new image</label> <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" data-place-id="' + escapeAttr(row.id) + '"></p>' +
+          '<div class="form-grid">' +
+          '<div class="full"><label>Name</label><input type="text" data-field="name" value="' + escapeAttr(row.name || '') + '"></div>' +
+          '<div class="full"><label>Description</label><textarea data-field="description">' + escapeAttr(row.description || '') + '</textarea></div>' +
+          '<div><label>Location</label><input type="text" data-field="location" value="' + escapeAttr(row.location || '') + '"></div>' +
+          '<div><label>Category ID</label><input type="text" data-field="category_id" value="' + escapeAttr(row.category_id || '') + '"></div>' +
+          '<div><label>Duration</label><input type="text" data-field="duration" value="' + escapeAttr(row.duration || '') + '"></div>' +
+          '<div><label>Price</label><input type="text" data-field="price" value="' + escapeAttr(row.price || '') + '"></div>' +
+          '<div><label>Best time</label><input type="text" data-field="best_time" value="' + escapeAttr(row.best_time || '') + '"></div>' +
+          '<div><label>Latitude</label><input type="text" data-field="latitude" value="' + (row.latitude != null ? row.latitude : '') + '"></div>' +
+          '<div><label>Longitude</label><input type="text" data-field="longitude" value="' + (row.longitude != null ? row.longitude : '') + '"></div>' +
+          '</div>' +
+          '<div class="actions">' +
+          '<button type="button" class="btn btn-save" data-place-id="' + escapeAttr(row.id) + '">Save changes</button>' +
+          '<span class="success save-ok hidden" data-place-id="' + escapeAttr(row.id) + '">Saved.</span>' +
+          '</div>';
+        listEl.appendChild(card);
+
+        card.querySelectorAll('.thumb').forEach(function (img) {
+          img.src = img.getAttribute('data-src');
+          img.onerror = function () { img.style.visibility = 'hidden'; };
+        });
+
+        card.querySelector('input[type="file"]').addEventListener('change', async function (e) {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          const placeId = this.getAttribute('data-place-id');
+          const btn = this;
+          btn.disabled = true;
+          try {
+            const form = new FormData();
+            form.append('image', file);
+            const upRes = await fetch(apiBase + '/api/upload/image', {
+              method: 'POST',
+              headers: { 'X-Admin-Key': key },
+              body: form,
+            });
+            if (!upRes.ok) {
+              const err = await upRes.json().catch(() => ({}));
+              throw new Error(err.error || 'Upload failed');
+            }
+            const { url } = await upRes.json();
+            const currentImages = parseImages(row.images);
+            currentImages.push(url);
+            row.images = currentImages;
+            const putRes = await fetch(apiBase + '/api/admin/places/' + placeId, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key },
+              body: JSON.stringify({
+                name: row.name,
+                description: row.description,
+                location: row.location,
+                category: row.category,
+                category_id: row.category_id,
+                duration: row.duration,
+                price: row.price,
+                best_time: row.best_time,
+                latitude: row.latitude,
+                longitude: row.longitude,
+                rating: row.rating,
+                review_count: row.review_count,
+                tags: row.tags,
+                images: currentImages,
+              }),
+            });
+            if (!putRes.ok) throw new Error('Failed to update place');
+            const rowEl = card.querySelector('.images-row');
+            const thumb = document.createElement('img');
+            thumb.className = 'thumb';
+            thumb.alt = '';
+            thumb.loading = 'lazy';
+            thumb.src = imageUrl(url);
+            rowEl.appendChild(thumb);
+          } catch (err) {
+            alert(err.message || 'Upload failed');
+          }
+          btn.disabled = false;
+          btn.value = '';
+        });
+
+        card.querySelector('.btn-save').addEventListener('click', async function () {
+          const placeId = this.getAttribute('data-place-id');
+          const fields = card.querySelectorAll('[data-field]');
+          const payload = {
+            name: row.name,
+            description: row.description,
+            location: row.location,
+            category: row.category,
+            category_id: row.category_id,
+            duration: row.duration,
+            price: row.price,
+            best_time: row.best_time,
+            latitude: row.latitude,
+            longitude: row.longitude,
+            rating: row.rating,
+            review_count: row.review_count,
+            tags: row.tags || [],
+            images: parseImages(row.images),
+          };
+          fields.forEach(function (input) {
+            const f = input.getAttribute('data-field');
+            let val = input.value;
+            if (f === 'latitude' || f === 'longitude') val = val === '' ? null : Number(val);
+            payload[f] = val;
+          });
+          this.disabled = true;
+          const okEl = card.querySelector('.save-ok[data-place-id="' + placeId + '"]');
+          try {
+            const res = await fetch(apiBase + '/api/admin/places/' + placeId, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key },
+              body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error(await res.text());
+            Object.assign(row, payload);
+            if (okEl) { okEl.classList.remove('hidden'); setTimeout(function () { okEl.classList.add('hidden'); }, 2000); }
+          } catch (e) {
+            alert(e.message || 'Save failed');
+          }
+          this.disabled = false;
+        });
+      }
+
+      function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+      }
+      function escapeAttr(s) {
+        return escapeHtml(String(s == null ? '' : s));
+      }
+
+      // Auto-fill API base: use saved value, or current origin when page is opened from the API host
+      const origin = (window.location.origin || '').replace(/\/$/, '');
+      if (localStorage.getItem(STORAGE_API)) {
+        apiBaseEl.value = localStorage.getItem(STORAGE_API);
+      } else if (origin) {
+        apiBaseEl.value = origin;
+      }
+      if (localStorage.getItem(STORAGE_KEY)) {
+        adminKeyEl.value = localStorage.getItem(STORAGE_KEY);
+      }
+      if (localStorage.getItem(STORAGE_UPLOADS)) {
+        uploadsBaseEl.value = localStorage.getItem(STORAGE_UPLOADS);
+      }
+      // Optional: admin key in URL once (e.g. ?key=SECRET or #key=SECRET) – save and remove from URL
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        const hash = (window.location.hash || '').replace(/^#/, '');
+        const fromQuery = params.get('key');
+        const fromHash = hash ? (function () { const m = hash.match(/key=([^&]+)/); return m ? m[1] : null; })() : null;
+        const keyFromUrl = fromQuery || fromHash;
+        if (keyFromUrl) {
+          adminKeyEl.value = keyFromUrl;
+          localStorage.setItem(STORAGE_KEY, keyFromUrl);
+          params.delete('key');
+          const cleanSearch = params.toString() ? '?' + params.toString() : '';
+          const cleanHash = hash.replace(/[?&]?key=[^&]+&?/g, '').replace(/^&/, '') || '';
+          const cleanUrl = window.location.pathname + cleanSearch + (cleanHash ? '#' + cleanHash : '');
+          window.history.replaceState(null, '', cleanUrl);
+        }
+      })();
+    })();
+  </script>
+</body>
+</html>

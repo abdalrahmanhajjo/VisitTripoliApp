@@ -1,0 +1,16 @@
+# Local Postgres only — run from backend/: docker compose up -d
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tripoli
+      POSTGRES_PASSWORD: tripoli
+      POSTGRES_DB: tripoli_explorer
+    ports:
+      - "5432:5432"
+    volumes:
+      - tripoli_pg_data:/var/lib/postgresql/data
+
+volumes:
+  tripoli_pg_data:

@@ -1,0 +1,10 @@
+{
+  "name": "tripoli-explorer",
+  "private": true,
+  "description": "Root scripts; API is in backend/, app is Flutter (flutter run).",
+  "scripts": {
+    "dev": "npm run dev --prefix backend",
+    "dev:api": "npm run dev --prefix backend",
+    "dev:flutter": "flutter run"
+  }
+}
