@@ -1,5 +1,16 @@
 # If Render deploy fails (tripoli-explorer-api)
 
+## 0. Health check timeout (“internal health check” failed)
+
+Render probes **`/health`** on the **port in `PORT`** (do **not** append `:3000` to your public URL in the dashboard).
+
+- **Health Check Path** should be exactly: `/health`  
+- The app responds on **`GET /health`** and **`HEAD /health`** immediately (no database required).
+- Set **`DATABASE_URL`**, **`JWT_SECRET`** (≥32 chars), and **`NODE_ENV=production`** or the process may exit before listening.
+- For Supabase, set **`DB_ACCEPT_SELF_SIGNED=1`** (see table below).
+
+If the service still fails, open **Logs** — look for `FATAL:` from `validateEnv` or DB pool errors.
+
 ## 1. Check the logs
 
 In **Render Dashboard** → your service **tripoli-explorer-api** → **Logs**.  

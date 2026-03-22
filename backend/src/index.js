@@ -33,6 +33,17 @@ const PORT = process.env.PORT || 3000;
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
+// Render / load balancers: health checks must succeed before heavy middleware (helmet, cors, DB-heavy routes).
+// Do not require DB here — deploy timeouts happen if /health waits on pool or middleware.
+function sendLiveness(res) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).json({ status: 'ok' });
+}
+app.get('/health', (req, res) => sendLiveness(res));
+app.get('/api/health', (req, res) => sendLiveness(res));
+app.head('/health', (req, res) => res.sendStatus(200));
+app.head('/api/health', (req, res) => res.sendStatus(200));
+
 const smtpConfig = require('./config/smtpConfig');
 if (!smtpConfig.isConfigured()) {
   console.warn('SMTP not configured: password reset & verification emails will be logged to console only.');
@@ -87,10 +98,9 @@ const healthDbHandler = (req, res) => {
       });
     });
 };
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+// /health and /api/health (liveness) are registered above — before middleware.
 app.get('/health/db', healthDbHandler);
 app.get('/health/db/', healthDbHandler);
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 app.get('/api/health/db', healthDbHandler);
 app.get('/api/health/db/', healthDbHandler);
 app.get('/health/email', (req, res) => {

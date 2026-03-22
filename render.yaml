@@ -1,0 +1,21 @@
+# Render Blueprint — Web Service for the Visit Tripoli API
+# https://render.com/docs/blueprint-spec
+#
+# After connect: set DATABASE_URL and JWT_SECRET (≥32 chars) in the Dashboard
+# if not using sync: false secret files. Supabase: add DB_ACCEPT_SELF_SIGNED=1 (see below).
+
+services:
+  - type: web
+    name: tripoli-explorer-api
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_ACCEPT_SELF_SIGNED
+        value: "1"
