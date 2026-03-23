@@ -4,6 +4,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../widgets/app_image.dart';
+import '../widgets/detail_hero_image.dart';
+import '../widgets/detail_key_info_chip.dart';
 import '../models/tour.dart';
 import '../models/place.dart';
 import '../providers/tours_provider.dart';
@@ -136,7 +138,7 @@ class _TourDetailScreenState extends State<TourDetailScreen>
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
             pinned: true,
-            expandedHeight: ResponsiveUtils.heroHeight(context),
+            expandedHeight: ResponsiveUtils.detailSliverHeroHeight(context),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, size: 20),
               onPressed: () => context.pop(),
@@ -156,31 +158,8 @@ class _TourDetailScreenState extends State<TourDetailScreen>
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  AppImage(
-                    src: tour.image,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(color: Colors.grey[300]),
-                    errorWidget: (_, __, ___) =>
-                        Container(color: Colors.grey[300]),
-                  ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      height: 120,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.6),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  DetailHeroImage(imageUrl: tour.image),
+                  const DetailHeroBottomGradient(),
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 56,
                     left: ResponsiveUtils.contentPadding(context),
@@ -284,6 +263,11 @@ class _TourDetailScreenState extends State<TourDetailScreen>
               onDirections: (ctx) =>
                   _showDirectionsPicker(ctx, tour, firstPlace),
               onAddToTrip: _showAddToTripDialog,
+              onOpenItineraryTab: () {
+                if (_tabController.index != 2) {
+                  _tabController.animateTo(2);
+                }
+              },
               onViewMap: () {
                 final ids = tour.placeIds.join(',');
                 context.push('/map?tourOnly=true&placeIds=$ids');
@@ -412,6 +396,7 @@ class _TourOverviewTab extends StatelessWidget {
   final void Function(Tour) onShare;
   final void Function(BuildContext) onDirections;
   final void Function(BuildContext, Tour) onAddToTrip;
+  final VoidCallback onOpenItineraryTab;
   final VoidCallback onViewMap;
 
   const _TourOverviewTab({
@@ -420,6 +405,7 @@ class _TourOverviewTab extends StatelessWidget {
     required this.onShare,
     required this.onDirections,
     required this.onAddToTrip,
+    required this.onOpenItineraryTab,
     required this.onViewMap,
   });
 
@@ -433,6 +419,12 @@ class _TourOverviewTab extends StatelessWidget {
     final vertPad = ResponsiveUtils.detailVerticalPadding(context);
     final maxW = ResponsiveUtils.contentMaxWidth(context);
     final gap = ResponsiveUtils.sectionGap(context);
+    final rowSpacing =
+        ResponsiveUtils.isVerySmallPhone(context) ? 10.0 : (ResponsiveUtils.isSmallPhone(context) ? 12.0 : 14.0);
+    final subtitleParts = <String>[
+      if (tour.badge != null && tour.badge!.trim().isNotEmpty) tour.badge!.trim(),
+      '${tour.locations} stops',
+    ];
     return SingleChildScrollView(
       padding: EdgeInsetsDirectional.fromSTEB(
           pad, vertPad, pad, 40 + MediaQuery.of(context).padding.bottom),
@@ -442,7 +434,6 @@ class _TourOverviewTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title
               Text(
                 tour.name,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -454,77 +445,33 @@ class _TourOverviewTab extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
-              // Subtitle: duration & price
-              Row(
-                children: [
-                  const Icon(
-                    Icons.timer_outlined,
-                    size: 18,
-                    color: AppTheme.primaryColor,
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      tour.duration,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: AppTheme.textSecondary,
-                            height: 1.4,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              Text(
+                subtitleParts.join(' · '),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: AppTheme.textSecondary,
+                      height: 1.4,
                     ),
-                  ),
-                  SizedBox(width: gap * 0.66),
-                  Flexible(
-                    child: Text(
-                      tour.priceDisplay,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               SizedBox(height: gap),
-              // Quick stats pills
-              Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _TourQuickStatPill(
-                icon: Icons.star_rounded,
-                label: tour.rating.toStringAsFixed(1),
-                color: AppTheme.accentColor,
-              ),
-              _TourQuickStatPill(
-                icon: Icons.timer_outlined,
-                label: tour.duration,
-                color: AppTheme.primaryColor,
-              ),
-              _TourQuickStatPill(
-                icon: Icons.paid_outlined,
-                label: tour.priceDisplay,
-                color: AppTheme.primaryColor,
-              ),
-              _TourQuickStatPill(
-                icon: Icons.place_outlined,
-                label: '${tour.locations} stops',
-                color: AppTheme.primaryColor,
-              ),
-              _TourQuickStatPill(
-                icon: Icons.terrain_outlined,
-                label: tour.difficulty,
-                color: AppTheme.primaryColor,
-                maxWidth: 140,
-              ),
-            ],
-          ),
+              _TourKeyInfoCard(tour: tour, rowSpacing: rowSpacing),
               SizedBox(height: gap),
-              // Stats grid
-              _TourStatsGrid(tour: tour),
+              _TourPrimaryActions(
+                tour: tour,
+                isSaved: isSaved,
+                onDirections: () => onDirections(context),
+                onAddToTrip: () => onAddToTrip(context, tour),
+                onViewMap: onViewMap,
+                hasPlaces: tour.placeIds.isNotEmpty,
+              ),
+              if (tour.itinerary.isNotEmpty) ...[
+                SizedBox(height: gap * 1.16),
+                _TourItineraryPreview(
+                  tour: tour,
+                  onViewFull: onOpenItineraryTab,
+                ),
+              ],
               _TourAudioGuidesSection(tourId: tour.id),
               SizedBox(height: gap * 1.16),
               // Description
@@ -698,16 +645,6 @@ class _TourOverviewTab extends StatelessWidget {
               child: _TourTipCard(tip: tip),
             ),
           ),
-          // Primary actions
-          const SizedBox(height: 28),
-          _TourPrimaryActions(
-            tour: tour,
-            isSaved: isSaved,
-            onDirections: () => onDirections(context),
-            onAddToTrip: () => onAddToTrip(context, tour),
-            onViewMap: onViewMap,
-            hasPlaces: tour.placeIds.isNotEmpty,
-          ),
             ],
           ),
         ),
@@ -727,56 +664,268 @@ class _TourOverviewTab extends StatelessWidget {
   }
 }
 
-class _TourQuickStatPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final double? maxWidth;
+Color? _parseTourBadgeColor(String? hex) {
+  if (hex == null || hex.isEmpty) return null;
+  try {
+    final h = hex.replaceFirst('#', '');
+    return Color(int.parse('FF$h', radix: 16));
+  } catch (_) {
+    return null;
+  }
+}
 
-  const _TourQuickStatPill({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.maxWidth,
+class _TourKeyInfoCard extends StatelessWidget {
+  final Tour tour;
+  final double rowSpacing;
+
+  const _TourKeyInfoCard({
+    required this.tour,
+    required this.rowSpacing,
   });
 
   @override
   Widget build(BuildContext context) {
-    final content = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    final pad = ResponsiveUtils.cardPadding(context) + 2;
+    final isSmall = ResponsiveUtils.isSmallPhone(context);
+    final isVerySmall = ResponsiveUtils.isVerySmallPhone(context);
+    final chipPaddingH = isSmall ? 12.0 : 14.0;
+    final chipPaddingV = isSmall ? 10.0 : 12.0;
+    final iconSize = isVerySmall ? 18.0 : (isSmall ? 20.0 : 22.0);
+    final valueSize = isVerySmall ? 13.0 : (isSmall ? 14.0 : 15.0);
+    final badgeBg = _parseTourBadgeColor(tour.badgeColor) ?? AppTheme.primaryColor;
+
+    return Container(
+      padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: color,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (tour.badge != null && tour.badge!.trim().isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(
+                  horizontal: chipPaddingH, vertical: chipPaddingV),
+              decoration: BoxDecoration(
+                color: badgeBg.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: badgeBg.withValues(alpha: 0.28)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.category_rounded, color: badgeBg, size: iconSize),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      tour.badge!.trim(),
+                      style: TextStyle(
+                        fontSize: valueSize + 0.5,
+                        fontWeight: FontWeight.w700,
+                        color: badgeBg,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: rowSpacing),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: DetailKeyInfoChip(
+                  icon: Icons.timer_outlined,
+                  label: tour.duration,
+                ),
+              ),
+              SizedBox(width: isVerySmall ? 8 : 12),
+              Expanded(
+                child: DetailKeyInfoChip(
+                  icon: Icons.paid_outlined,
+                  label: tour.priceDisplay,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: rowSpacing),
+          Row(
+            children: [
+              Expanded(
+                child: DetailKeyInfoChip(
+                  icon: Icons.star_rounded,
+                  label:
+                      '${tour.rating.toStringAsFixed(1)} (${tour.reviews})',
+                  accentColor: AppTheme.warningColor,
+                ),
+              ),
+              SizedBox(width: isVerySmall ? 8 : 12),
+              Expanded(
+                child: DetailKeyInfoChip(
+                  icon: Icons.place_outlined,
+                  label: '${tour.locations} stops',
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: rowSpacing),
+          DetailKeyInfoChip(
+            icon: Icons.terrain_outlined,
+            label: tour.difficulty,
+            fullWidth: true,
+            maxLines: 2,
+          ),
+          if (tour.languages.isNotEmpty) ...[
+            SizedBox(height: rowSpacing),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: tour.languages.map((lang) {
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Text(
+                    lang,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ],
+      ),
     );
-    if (maxWidth != null) {
-      return ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth!),
-        child: content,
-      );
-    }
-    return content;
+  }
+}
+
+class _TourItineraryPreview extends StatelessWidget {
+  final Tour tour;
+  final VoidCallback onViewFull;
+
+  const _TourItineraryPreview({
+    required this.tour,
+    required this.onViewFull,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = tour.itinerary.take(3).toList();
+    if (items.isEmpty) return const SizedBox.shrink();
+    final pad = ResponsiveUtils.cardPadding(context) + 2;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _TourSectionHeader(
+          icon: Icons.route_outlined,
+          title: 'Itinerary preview',
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(pad),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.8)),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryColor.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              ...items.asMap().entries.map((e) {
+                final i = e.key;
+                final item = e.value;
+                final isLast = i == items.length - 1;
+                return Padding(
+                  padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 44,
+                        child: Text(
+                          item.time.split(' ').first,
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w700,
+                              ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.activity,
+                              style: Theme.of(context).textTheme.titleSmall,
+                            ),
+                            if (item.description.trim().isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                item.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: AppTheme.textSecondary),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: onViewFull,
+                  icon: const Icon(Icons.schedule_outlined, size: 18),
+                  label: const Text('Full itinerary'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -882,12 +1031,9 @@ class _TourAudioGuidesSectionState extends State<_TourAudioGuidesSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 18),
-        const Row(
-          children: [
-            Icon(Icons.headphones_rounded, size: 20, color: AppTheme.primaryColor),
-            SizedBox(width: 10),
-            Text('Audio Guide', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-          ],
+        const _TourSectionHeader(
+          icon: Icons.headphones_rounded,
+          title: 'Audio guide',
         ),
         const SizedBox(height: 12),
         ..._guides.map<Widget>((g) {
@@ -901,96 +1047,6 @@ class _TourAudioGuidesSectionState extends State<_TourAudioGuidesSection> {
           );
         }),
       ],
-    );
-  }
-}
-
-class _TourStatsGrid extends StatelessWidget {
-  final Tour tour;
-
-  const _TourStatsGrid({required this.tour});
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.6,
-      children: [
-        _TourStatCard(
-          icon: Icons.schedule_outlined,
-          label: 'Duration',
-          value: tour.duration,
-        ),
-        _TourStatCard(
-          icon: Icons.paid_outlined,
-          label: 'Price',
-          value: tour.priceDisplay,
-        ),
-        _TourStatCard(
-          icon: Icons.place_outlined,
-          label: 'Locations',
-          value: '${tour.locations} stops',
-        ),
-        _TourStatCard(
-          icon: Icons.terrain_outlined,
-          label: 'Difficulty',
-          value: tour.difficulty,
-        ),
-      ],
-    );
-  }
-}
-
-class _TourStatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _TourStatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final pad = ResponsiveUtils.cardPadding(context);
-    final isSmall = ResponsiveUtils.isSmallPhone(context);
-    final iconSize = isSmall ? 20.0 : 22.0;
-    final valueSize = isSmall ? 13.0 : 14.0;
-    return Container(
-      padding: EdgeInsets.all(pad),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: iconSize, color: AppTheme.primaryColor),
-          SizedBox(height: isSmall ? 6 : 8),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.textSecondary,
-                  fontSize: ResponsiveUtils.isVerySmallPhone(context) ? 11 : 12,
-                ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: valueSize),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
     );
   }
 }

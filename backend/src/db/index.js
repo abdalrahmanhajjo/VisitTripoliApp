@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const logger = require('../utils/logger');
 
 let connectionString = process.env.DATABASE_URL || '';
 const isSupabase = connectionString.includes('supabase');
@@ -36,7 +37,7 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-  console.error('Unexpected DB pool error:', err.message);
+  logger.error('Unexpected DB pool error', { message: err.message, code: err.code });
 });
 
 module.exports = { pool, query: (text, params) => pool.query(text, params) };

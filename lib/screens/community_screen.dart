@@ -92,15 +92,20 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.maxScrollExtent <= 0) return;
+    if (pos.pixels < pos.maxScrollExtent - 200) return;
+
     final provider = context.read<FeedProvider>();
     final auth = context.read<AuthProvider>();
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      if (_sortMode == CommunityFeedSort.saved && auth.isLoggedIn && !auth.isGuest) {
-        provider.loadMoreSaved(auth.authToken!);
-      } else {
-        provider.loadMore(auth.authToken);
-      }
+
+    if (_sortMode == CommunityFeedSort.saved && auth.isLoggedIn && !auth.isGuest) {
+      if (provider.loadingMoreSaved || !provider.hasMoreSaved) return;
+      provider.loadMoreSaved(auth.authToken!);
+    } else {
+      if (provider.loadingMore || !provider.hasMore) return;
+      provider.loadMore(auth.authToken);
     }
   }
 
@@ -602,7 +607,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final matchCount = interestKeywords.where((k) => k.trim().isNotEmpty).length;
     final posts = showSaved
         ? feed.savedPosts
-        : orderDiscoverFeedNewestFirst(feed.posts);
+        : rankDiscoverForYou(
+            posts: feed.posts,
+            interestKeywords: interestKeywords,
+            seenPostIds: feed.seenPostIds,
+          );
     final loadingMore = showSaved ? feed.loadingMoreSaved : feed.loadingMore;
     final hasMore = showSaved ? feed.hasMoreSaved : feed.hasMore;
     // Use raw feed lists for loading/skeleton — not ranked/display list — so we
@@ -809,6 +818,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               }
               final post = posts[index];
               return FeedPostCard(
+                key: ValueKey<String>('feed_card_${post.id}'),
                 post: post,
                 feedVideoAutoplay: _feedVideoAutoplay,
                 authToken: auth.authToken,

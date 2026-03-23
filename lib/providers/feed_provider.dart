@@ -110,6 +110,17 @@ class FeedProvider extends ChangeNotifier {
   static const int _initialLimit = 10;
   static const int _pageLimit = 15;
 
+  /// First occurrence wins (API order); prevents duplicate keys if pages overlap.
+  static List<FeedPost> _dedupeById(List<FeedPost> list) {
+    final seen = <String>{};
+    final out = <FeedPost>[];
+    for (final p in list) {
+      if (p.id.isEmpty) continue;
+      if (seen.add(p.id)) out.add(p);
+    }
+    return out;
+  }
+
   Future<void> loadFeed({
     String? authToken,
     bool refresh = false,
@@ -147,7 +158,7 @@ class FeedProvider extends ChangeNotifier {
           sort: 'trending',
           offset: 0,
         );
-        _posts = res.posts;
+        _posts = _dedupeById(res.posts);
         _nextTrendingOffset = res.nextOffset;
         _nextCursor = null;
       } else {
@@ -157,7 +168,7 @@ class FeedProvider extends ChangeNotifier {
           limit: _initialLimit,
           sort: 'recent',
         );
-        _posts = res.posts;
+        _posts = _dedupeById(res.posts);
         _nextCursor = res.nextCursor;
         _nextTrendingOffset = null;
       }
@@ -189,7 +200,7 @@ class FeedProvider extends ChangeNotifier {
           sort: 'trending',
           offset: _nextTrendingOffset,
         );
-        _posts = [..._posts, ...res.posts];
+        _posts = _dedupeById([..._posts, ...res.posts]);
         _nextTrendingOffset = res.nextOffset;
       } else {
         res = await _service.getFeed(
@@ -198,7 +209,7 @@ class FeedProvider extends ChangeNotifier {
           limit: _pageLimit,
           sort: 'recent',
         );
-        _posts = [..._posts, ...res.posts];
+        _posts = _dedupeById([..._posts, ...res.posts]);
         _nextCursor = res.nextCursor;
       }
     } catch (_) {

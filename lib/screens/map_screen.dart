@@ -1026,6 +1026,31 @@ class _MapScreenState extends State<MapScreen> {
                 ),
               ),
             ),
+          if (tourOnly || tripOnly)
+            _TourMapBar(
+              places: places,
+              currentIndex: _tourStepIndex,
+              mapProvider: mapProvider,
+              placesProvider: placesProvider,
+              onStepChanged: (i) async {
+                setState(() => _tourStepIndex = i);
+                if (places[i].latitude != null && places[i].longitude != null) {
+                  final ctrl = await _mapController.future;
+                  await ctrl.animateCamera(
+                    CameraUpdate.newLatLngZoom(
+                      LatLng(places[i].latitude!, places[i].longitude!),
+                      16,
+                    ),
+                  );
+                }
+              },
+              onDirections: () => _showTourDirectionsPicker(
+                context,
+                places,
+                mapProvider,
+                placesProvider,
+              ),
+            ),
           if (_activeRoute != null) ...[
             if (!_isNavigating) ...[
               _DirectionsHeader(
@@ -1182,31 +1207,6 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ],
           ],
-          if (tourOnly || tripOnly)
-            _TourMapBar(
-              places: places,
-              currentIndex: _tourStepIndex,
-              mapProvider: mapProvider,
-              placesProvider: placesProvider,
-              onStepChanged: (i) async {
-                setState(() => _tourStepIndex = i);
-                if (places[i].latitude != null && places[i].longitude != null) {
-                  final ctrl = await _mapController.future;
-                  await ctrl.animateCamera(
-                    CameraUpdate.newLatLngZoom(
-                      LatLng(places[i].latitude!, places[i].longitude!),
-                      16,
-                    ),
-                  );
-                }
-              },
-              onDirections: () => _showTourDirectionsPicker(
-                context,
-                places,
-                mapProvider,
-                placesProvider,
-              ),
-            ),
           if (mapProvider.lastLocationError != null && showSearchAndFilters)
             Positioned(
               left: 16,

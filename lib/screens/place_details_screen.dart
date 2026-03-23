@@ -65,13 +65,6 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
     super.dispose();
   }
 
-  /// Hero height so the main image is visible in full without cropping (no click needed).
-  static double _placeDetailHeroHeight(BuildContext context) {
-    final h = MediaQuery.sizeOf(context).height;
-    final w = MediaQuery.sizeOf(context).width;
-    return (h * 0.55).clamp(280.0, w > 400 ? 520.0 : 420.0);
-  }
-
   /// Fullscreen gallery: all images at full/4K resolution when user taps the fullscreen icon.
   void _openFullscreenGallery(BuildContext context, Place place) {
     if (place.images.isEmpty) return;
@@ -176,7 +169,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
           // Back Header - collapses with image
           SliverAppBar(
             pinned: true,
-            expandedHeight: _placeDetailHeroHeight(context),
+            expandedHeight: ResponsiveUtils.detailSliverHeroHeight(context),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, size: 20),
               onPressed: () => context.pop(),

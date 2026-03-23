@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../widgets/app_image.dart';
+import '../widgets/detail_hero_image.dart';
+import '../widgets/detail_key_info_chip.dart';
 import '../models/event.dart';
 import '../models/place.dart';
 import '../providers/events_provider.dart';
@@ -18,6 +20,19 @@ import '../widgets/route_origin_picker.dart';
 import '../map/embedded_maps.dart';
 import '../map/place_coordinates.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+String _eventDetailDatePill(DateTime start, DateTime end) {
+  if (start.year == end.year &&
+      start.month == end.month &&
+      start.day == end.day) {
+    return DateFormat('MMM d, y').format(start);
+  }
+  return '${DateFormat('MMM d').format(start)} – ${DateFormat('MMM d, y').format(end)}';
+}
+
+String _eventDetailTimePill(DateTime start, DateTime end) {
+  return '${DateFormat('jm').format(start)} – ${DateFormat('jm').format(end)}';
+}
 
 class EventDetailScreen extends StatefulWidget {
   final String eventId;
@@ -121,7 +136,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
         headerSliverBuilder: (context, innerBoxIsScrolled) => [
           SliverAppBar(
             pinned: true,
-            expandedHeight: ResponsiveUtils.heroHeight(context),
+            expandedHeight: ResponsiveUtils.detailSliverHeroHeight(context),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, size: 20),
               onPressed: () => context.pop(),
@@ -141,37 +156,11 @@ class _EventDetailScreenState extends State<EventDetailScreen>
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  event.image != null
-                      ? AppImage(
-                          src: event.image!,
-                          fit: BoxFit.cover,
-                          placeholder: (_, __) =>
-                              Container(color: Colors.grey[300]),
-                          errorWidget: (_, __, ___) =>
-                              Container(color: Colors.grey[300]),
-                        )
-                      : Container(
-                          color: Colors.grey[300],
-                          child: const Icon(Icons.event, size: 80),
-                        ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      height: 120,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.6),
-                          ],
-                        ),
-                      ),
-                    ),
+                  DetailHeroImage(
+                    imageUrl: event.image,
+                    fallback: const DetailHeroEventFallback(),
                   ),
+                  const DetailHeroBottomGradient(),
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 56,
                     left: ResponsiveUtils.contentPadding(context),
@@ -374,19 +363,6 @@ class _EventOverviewTab extends StatelessWidget {
     required this.hasPlace,
   });
 
-  String _formatDateForPill(DateTime start, DateTime end) {
-    if (start.year == end.year &&
-        start.month == end.month &&
-        start.day == end.day) {
-      return DateFormat('MMM d, y').format(start);
-    }
-    return '${DateFormat('MMM d').format(start)} – ${DateFormat('MMM d, y').format(end)}';
-  }
-
-  String _formatTimeForPill(DateTime start, DateTime end) {
-    return '${DateFormat('jm').format(start)} – ${DateFormat('jm').format(end)}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final eventsProvider = Provider.of<EventsProvider>(context);
@@ -403,6 +379,8 @@ class _EventOverviewTab extends StatelessWidget {
     final vertPad = ResponsiveUtils.detailVerticalPadding(context);
     final maxW = ResponsiveUtils.contentMaxWidth(context);
     final gap = ResponsiveUtils.sectionGap(context);
+    final rowSpacing =
+        ResponsiveUtils.isVerySmallPhone(context) ? 10.0 : (ResponsiveUtils.isSmallPhone(context) ? 12.0 : 14.0);
     return SingleChildScrollView(
       padding: EdgeInsetsDirectional.fromSTEB(
           pad, vertPad, pad, 40 + MediaQuery.of(context).padding.bottom),
@@ -456,41 +434,15 @@ class _EventOverviewTab extends StatelessWidget {
                 ],
               ),
               SizedBox(height: gap),
-              // Quick stats pills
-              Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _EventQuickStatPill(
-                icon: Icons.calendar_today_outlined,
-                label: _formatDateForPill(event.startDate, event.endDate),
-                color: AppTheme.primaryColor,
-                maxWidth: 180,
-              ),
-              _EventQuickStatPill(
-                icon: Icons.access_time_outlined,
-                label: _formatTimeForPill(event.startDate, event.endDate),
-                color: AppTheme.primaryColor,
-              ),
-              _EventQuickStatPill(
-                icon: Icons.paid_outlined,
-                label: event.priceDisplay ?? 'Free',
-                color:
-                    (event.priceDisplay == null || event.priceDisplay == 'Free')
-                        ? AppTheme.successColor
-                        : AppTheme.primaryColor,
-              ),
-              _EventQuickStatPill(
-                icon: Icons.category_outlined,
-                label: event.category,
-                color: AppTheme.primaryColor,
-                maxWidth: 160,
-              ),
-            ],
-          ),
+              _EventKeyInfoCard(event: event, rowSpacing: rowSpacing),
               SizedBox(height: gap),
-              // Stats grid
-              _EventStatsGrid(event: event),
+              _EventPrimaryActions(
+                event: event,
+                isSaved: isSaved,
+                onDirections: () => onDirections(context),
+                onAddToTrip: () => onAddToTrip(context, event),
+                hasPlace: hasPlace,
+              ),
               SizedBox(height: gap * 1.16),
               // Description
               const _EventSectionHeader(
@@ -566,15 +518,6 @@ class _EventOverviewTab extends StatelessWidget {
               child: _EventTipCard(tip: tip),
             ),
           ),
-          // Primary actions
-          const SizedBox(height: 28),
-          _EventPrimaryActions(
-            event: event,
-            isSaved: isSaved,
-            onDirections: () => onDirections(context),
-            onAddToTrip: () => onAddToTrip(context, event),
-            hasPlace: hasPlace,
-          ),
             ],
           ),
         ),
@@ -597,62 +540,86 @@ class _EventOverviewTab extends StatelessWidget {
   }
 }
 
-class _EventQuickStatPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final double? maxWidth;
+class _EventKeyInfoCard extends StatelessWidget {
+  final Event event;
+  final double rowSpacing;
 
-  const _EventQuickStatPill({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.maxWidth,
+  const _EventKeyInfoCard({
+    required this.event,
+    required this.rowSpacing,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isSmall = ResponsiveUtils.isSmallPhone(context);
+    final pad = ResponsiveUtils.cardPadding(context) + 2;
     final isVerySmall = ResponsiveUtils.isVerySmallPhone(context);
-    final iconSize = isVerySmall ? 14.0 : (isSmall ? 15.0 : 16.0);
-    final fontSize = isVerySmall ? 11.0 : (isSmall ? 12.0 : 13.0);
-    final hPad = isSmall ? 10.0 : 12.0;
-    final vPad = isSmall ? 6.0 : 8.0;
-    final content = Container(
-      padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
+    final priceFree =
+        event.priceDisplay == null || event.priceDisplay == 'Free';
+
+    return Container(
+      padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(icon, size: iconSize, color: color),
-          SizedBox(width: isSmall ? 5 : 6),
-          Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w700,
-                color: color,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: DetailKeyInfoChip(
+                  icon: Icons.calendar_today_outlined,
+                  label: _eventDetailDatePill(event.startDate, event.endDate),
+                  maxLines: 2,
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
+              SizedBox(width: isVerySmall ? 8 : 12),
+              Expanded(
+                child: DetailKeyInfoChip(
+                  icon: Icons.access_time_outlined,
+                  label: _eventDetailTimePill(event.startDate, event.endDate),
+                  maxLines: 2,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: rowSpacing),
+          Row(
+            children: [
+              Expanded(
+                child: DetailKeyInfoChip(
+                  icon: Icons.paid_outlined,
+                  label: event.priceDisplay ?? 'Free',
+                  isFree: priceFree,
+                ),
+              ),
+              SizedBox(width: isVerySmall ? 8 : 12),
+              Expanded(
+                child: DetailKeyInfoChip(
+                  icon: Icons.category_outlined,
+                  label: event.category,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
-    if (maxWidth != null) {
-      return ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth!),
-        child: content,
-      );
-    }
-    return content;
   }
 }
 
@@ -723,109 +690,6 @@ class _EventTipCard extends StatelessWidget {
                     height: 1.5,
                   ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EventStatsGrid extends StatelessWidget {
-  final Event event;
-
-  const _EventStatsGrid({required this.event});
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.6,
-      children: [
-        _StatCard(
-          icon: Icons.calendar_today_outlined,
-          label: 'Date',
-          value: _formatDateRange(event.startDate, event.endDate),
-        ),
-        _StatCard(
-          icon: Icons.access_time_outlined,
-          label: 'Time',
-          value: _formatTimeRange(event.startDate, event.endDate),
-        ),
-        _StatCard(
-          icon: Icons.paid_outlined,
-          label: 'Price',
-          value: event.priceDisplay ?? 'Free',
-        ),
-        _StatCard(
-          icon: Icons.category_outlined,
-          label: 'Category',
-          value: event.category,
-        ),
-      ],
-    );
-  }
-
-  String _formatDateRange(DateTime start, DateTime end) {
-    if (start.year == end.year &&
-        start.month == end.month &&
-        start.day == end.day) {
-      return DateFormat('MMM d, y').format(start);
-    }
-    return '${DateFormat('MMM d').format(start)} – ${DateFormat('MMM d, y').format(end)}';
-  }
-
-  String _formatTimeRange(DateTime start, DateTime end) {
-    return '${DateFormat('jm').format(start)} – ${DateFormat('jm').format(end)}';
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final pad = ResponsiveUtils.cardPadding(context);
-    final isSmall = ResponsiveUtils.isSmallPhone(context);
-    final iconSize = isSmall ? 20.0 : 22.0;
-    final valueSize = isSmall ? 13.0 : 14.0;
-    return Container(
-      padding: EdgeInsets.all(pad),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: iconSize, color: AppTheme.primaryColor),
-          SizedBox(height: isSmall ? 6 : 8),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.textSecondary,
-                  fontSize: ResponsiveUtils.isVerySmallPhone(context) ? 11 : 12,
-                ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: valueSize),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

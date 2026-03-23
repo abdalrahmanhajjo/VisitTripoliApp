@@ -78,6 +78,13 @@ class ResponsiveUtils {
     return base;
   }
 
+  /// Tall sliver hero for place/tour/event details — matches [PlaceDetailsScreen].
+  static double detailSliverHeroHeight(BuildContext context) {
+    final h = MediaQuery.sizeOf(context).height;
+    final w = MediaQuery.sizeOf(context).width;
+    return (h * 0.55).clamp(280.0, w > 400 ? 520.0 : 420.0);
+  }
+
   /// Map container height.
   static double mapHeight(BuildContext context, {double base = 220}) {
     final w = width(context);

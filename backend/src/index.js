@@ -5,11 +5,13 @@ require('./config/loadEnv').loadEnv();
 const isProd = process.env.NODE_ENV === 'production';
 require('./config/validateEnv').validateEnv();
 
+const logger = require('./utils/logger');
+
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error('Unhandled Rejection', { reason: String(reason), promise: String(promise) });
 });
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
+  logger.error('Uncaught Exception', { message: err?.message, stack: err?.stack });
   process.exit(1);
 });
 
@@ -46,10 +48,11 @@ app.head('/api/health', (req, res) => res.sendStatus(200));
 
 const smtpConfig = require('./config/smtpConfig');
 if (!smtpConfig.isConfigured()) {
-  console.warn('SMTP not configured: password reset & verification emails will be logged to console only.');
+  logger.warn('SMTP not configured: password reset & verification emails will be logged to console only');
 }
 
 const { blockSuspiciousInput } = require('./middleware/security');
+const { requestContext } = require('./middleware/requestContext');
 const helmetOptions = {
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
@@ -62,6 +65,7 @@ const helmetOptions = {
 };
 app.use(helmet(helmetOptions));
 app.use(compression());
+app.use(requestContext);
 
 const allowedOriginsRaw = (process.env.CORS_ORIGIN || '').trim();
 const allowedOrigins = allowedOriginsRaw
@@ -78,7 +82,7 @@ app.use(cors({
   credentials: true,
   maxAge: 86400,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Key'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Key', 'X-Request-Id'],
   optionsSuccessStatus: 204,
 }));
 
@@ -87,13 +91,20 @@ app.use(blockSuspiciousInput);
 
 const healthDbHandler = (req, res) => {
   query('SELECT 1')
-    .then(() => res.json({ status: 'ok', db: 'connected' }))
+    .then(() =>
+      res.json({
+        status: 'ok',
+        db: 'connected',
+        ...(req.requestId ? { requestId: req.requestId } : {}),
+      })
+    )
     .catch((err) => {
-      console.error('Health DB check failed:', err.message);
+      logger.error('Health DB check failed', { message: err.message, requestId: req.requestId });
       res.status(503).json({
         status: 'error',
         db: 'failed',
         error: 'Database unavailable',
+        ...(req.requestId ? { requestId: req.requestId } : {}),
         ...(isProd ? {} : { detail: err.message }),
       });
     });
@@ -178,57 +189,75 @@ app.use((req, res, next) => {
 app.use(express.static(publicDir, { index: false }));
 
 app.use((err, req, res, next) => {
+  const requestId = req.requestId;
   if (err instanceof AppError) {
-    return res.status(err.statusCode).json({ error: err.message });
+    const body = { error: err.message };
+    if (err.code) body.code = err.code;
+    if (requestId) body.requestId = requestId;
+    return res.status(err.statusCode).json(body);
   }
-  if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'File too large' });
-  if (err.message?.includes('Invalid file type')) return res.status(400).json({ error: err.message });
-  if (isProd) {
-    console.error(err.message || err);
-  } else {
-    console.error(err);
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      error: 'File too large',
+      ...(requestId ? { requestId } : {}),
+    });
   }
-  res.status(500).json({ error: isProd ? 'An error occurred' : (err.message || 'An error occurred') });
+  if (err.message?.includes('Invalid file type')) {
+    return res.status(400).json({
+      error: err.message,
+      ...(requestId ? { requestId } : {}),
+    });
+  }
+  logger.error('Request failed', {
+    requestId,
+    method: req.method,
+    path: req.originalUrl,
+    message: err.message || String(err),
+    ...(isProd ? {} : { stack: err.stack }),
+  });
+  res.status(500).json({
+    error: isProd ? 'An error occurred' : (err.message || 'An error occurred'),
+    ...(requestId ? { requestId } : {}),
+  });
 });
 
 const HOST = process.env.HOST || '0.0.0.0';
 const server = app.listen(PORT, HOST, () => {
-  console.log(`Visit Tripoli API running on http://${HOST}:${PORT}`);
+  logger.info(`Visit Tripoli API listening`, { host: HOST, port: PORT, env: process.env.NODE_ENV || 'development' });
   query('SELECT 1')
-    .then(() => console.log('DB connected.'))
+    .then(() => logger.info('Database pool reachable'))
     .catch((err) => {
       const detail = err?.message || err?.code || String(err);
-      console.error(
-        'DB check failed:',
+      logger.error('Startup DB check failed', {
         detail,
-        '- Set DATABASE_URL in backend/.env (local Postgres or Supabase). Then: npm run db:migrate && npm run db:seed-all. See backend/RENDER-500-PLACES.md'
-      );
+        hint: 'Set DATABASE_URL in backend/.env; run npm run db:migrate && npm run db:seed-all',
+      });
     });
 });
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(
-      `Port ${PORT} is already in use. Stop the other process, or set PORT in backend/.env to a free port.`
-    );
-    console.error(`Windows: netstat -ano | findstr :${PORT}  then  taskkill /PID <pid> /F`);
+    logger.error(`Port ${PORT} in use`, {
+      hint: 'Stop the other process or set PORT in backend/.env',
+      windows: `netstat -ano | findstr :${PORT} then taskkill /PID <pid> /F`,
+    });
   } else {
-    console.error(err);
+    logger.error('HTTP server error', { message: err.message, code: err.code });
   }
   process.exit(1);
 });
 
 function gracefulShutdown(signal) {
-  console.log(`${signal}: closing HTTP server…`);
+  logger.info(`${signal}: closing HTTP server`);
   server.close((closeErr) => {
-    if (closeErr) console.error(closeErr);
+    if (closeErr) logger.error('Server close error', { message: closeErr.message });
     pool.end(() => {
-      console.log('Database pool closed.');
+      logger.info('Database pool closed');
       process.exit(closeErr ? 1 : 0);
     });
   });
   setTimeout(() => {
-    console.error('Forced exit after shutdown timeout');
+    logger.error('Forced exit after shutdown timeout');
     process.exit(1);
   }, 10000).unref();
 }

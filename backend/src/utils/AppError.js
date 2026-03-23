@@ -12,6 +12,8 @@ class AppError extends Error {
     this.name = 'AppError';
     this.statusCode = statusCode;
     this.isOperational = true;
+    /** @type {string | null} Optional stable machine-readable code for clients (e.g. VALIDATION_ERROR). */
+    this.code = opts.code != null ? String(opts.code) : null;
     if (opts.cause) this.cause = opts.cause;
     Error.captureStackTrace?.(this, this.constructor);
   }

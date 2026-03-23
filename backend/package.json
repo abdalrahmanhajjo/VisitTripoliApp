@@ -2,6 +2,9 @@
   "name": "tripoli-explorer-api",
   "version": "1.0.0",
   "description": "Node.js + PostgreSQL backend for the Visit Tripoli Flutter app",
+  "engines": {
+    "node": ">=18"
+  },
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
