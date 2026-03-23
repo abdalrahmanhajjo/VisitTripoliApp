@@ -79,6 +79,26 @@ class FeedProvider extends ChangeNotifier {
 
   List<FeedPost> get reels => List.unmodifiable(_reels);
   bool get loadingReels => _loadingReels;
+
+  /// Latest in-memory copy of a post (any list), for UI that opened with a snapshot.
+  FeedPost? postById(String postId) {
+    for (final p in _posts) {
+      if (p.id == postId) return p;
+    }
+    for (final p in _savedPosts) {
+      if (p.id == postId) return p;
+    }
+    for (final p in _likedPosts) {
+      if (p.id == postId) return p;
+    }
+    for (final p in _reels) {
+      if (p.id == postId) return p;
+    }
+    for (final p in _placePosts) {
+      if (p.id == postId) return p;
+    }
+    return null;
+  }
   bool get loadingMoreReels => _loadingMoreReels;
   bool get hasMoreReels => _reelsNextCursor != null;
 

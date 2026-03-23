@@ -30,34 +30,47 @@ class PlaceCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
+            // Image (fill slot; decode size matches card to avoid stretch/blur)
             Expanded(
               flex: 3,
-              child: Stack(
-                children: [
-                  place.images.isNotEmpty
-                      ? AppImage(
-                          src: place.images.first,
-                          fit: BoxFit.cover,
-                          cacheWidth: 400,
-                          cacheHeight: 300,
-                          placeholder: (_, __) => Container(
-                            color: AppTheme.surfaceVariant,
-                            child: const Center(
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                          errorWidget: (_, __, e) => Container(
-                            color: AppTheme.surfaceVariant,
-                            child: const Icon(Icons.image_not_supported,
-                                color: AppTheme.textTertiary),
-                          ),
-                        )
-                      : Container(
-                          color: AppTheme.surfaceVariant,
-                          child: const Icon(Icons.image_outlined,
-                              size: 48, color: AppTheme.textTertiary),
-                        ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final dpr = MediaQuery.devicePixelRatioOf(context)
+                      .clamp(1.0, 3.0);
+                  final cw =
+                      (constraints.maxWidth * dpr).round().clamp(120, 2400);
+                  final ch =
+                      (constraints.maxHeight * dpr).round().clamp(120, 2400);
+                  return Stack(
+                    fit: StackFit.expand,
+                    clipBehavior: Clip.hardEdge,
+                    children: [
+                      Positioned.fill(
+                        child: place.images.isNotEmpty
+                            ? AppImage(
+                                src: place.images.first,
+                                fit: BoxFit.cover,
+                                cacheWidth: cw,
+                                cacheHeight: ch,
+                                placeholder: (_, __) => Container(
+                                  color: AppTheme.surfaceVariant,
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  ),
+                                ),
+                                errorWidget: (_, __, e) => Container(
+                                  color: AppTheme.surfaceVariant,
+                                  child: const Icon(Icons.image_not_supported,
+                                      color: AppTheme.textTertiary),
+                                ),
+                              )
+                            : Container(
+                                color: AppTheme.surfaceVariant,
+                                child: const Icon(Icons.image_outlined,
+                                    size: 48, color: AppTheme.textTertiary),
+                              ),
+                      ),
                   // Save button
                   Positioned(
                     top: 8,
@@ -94,7 +107,9 @@ class PlaceCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
             // Content

@@ -73,3 +73,14 @@ npm-debug.log*
 
 # Large local assets (do not commit)
 /Places/
+
+# Local analysis and build error files
+analyze_*.txt
+analyze_current.txt
+analyze_utf8.txt
+build_error.txt
+final_*.txt
+analyze_output*.txt
+*.txt
+*.tar
+*.zip

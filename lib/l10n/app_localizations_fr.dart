@@ -249,7 +249,35 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navAiPlanner => 'Planif.';
 
   @override
+  String get plannerTripSetupTitle => 'Paramètres du voyage';
+
+  @override
+  String get plannerTripSetupSubtitle =>
+      'Durée, rythme et date de début — l’IA s’en sert pour chaque plan. Touchez pour modifier.';
+
+  @override
+  String get plannerSetupDurationLabel => 'Durée';
+
+  @override
+  String get plannerSetupPaceLabel => 'Rythme';
+
+  @override
+  String get plannerSetupStartLabel => 'Début';
+
+  @override
+  String plannerPacePerDayValue(int count) {
+    return '$count / jour';
+  }
+
+  @override
   String get navCommunity => 'Découvrir';
+
+  @override
+  String get discoverPullToRefreshHint =>
+      'Tirez vers le bas pour actualiser les publications.';
+
+  @override
+  String get discoverRefreshNow => 'Actualiser';
 
   @override
   String get navTrips => 'Voyages';
@@ -709,6 +737,57 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get clearDayFilter => 'Effacer le filtre du jour';
+
+  @override
+  String get tripsSortSmart => 'Intelligent';
+
+  @override
+  String get tripsSortStartDate => 'Date de début';
+
+  @override
+  String get tripsSortRecent => 'Récent';
+
+  @override
+  String get tripsSortName => 'A–Z';
+
+  @override
+  String get tripStatusUpcoming => 'À venir';
+
+  @override
+  String get tripStatusOngoing => 'En cours';
+
+  @override
+  String get tripStatusPast => 'Passé';
+
+  @override
+  String get tripsClearListFilters => 'Effacer les filtres';
+
+  @override
+  String get tripsShowPastTrips => 'Afficher les voyages passés';
+
+  @override
+  String get tripsPastTripsHiddenHint =>
+      'Les voyages passés sont masqués. Activez « Afficher les voyages passés » pour les voir.';
+
+  @override
+  String get tripArrangeManual => 'Manuel';
+
+  @override
+  String get tripArrangeAiPlanner => 'IA';
+
+  @override
+  String get tripArrangeManualHint =>
+      'Glissez pour réorganiser. Touchez l’horloge pour définir les heures.';
+
+  @override
+  String get tripArrangeAiHint =>
+      'Ouvrez le planificateur IA pour un ordre d’itinéraire et des horaires suggérés. Vous pouvez enregistrer le voyage ici, puis l’affiner dans le planificateur.';
+
+  @override
+  String get tripOpenAiPlanner => 'Ouvrir le planificateur IA';
+
+  @override
+  String get tripAiTimesInPlanner => 'Horaires dans le planificateur';
 
   @override
   String get placesLinked => 'Lieux liés';

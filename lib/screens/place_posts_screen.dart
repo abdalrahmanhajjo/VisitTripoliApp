@@ -855,9 +855,6 @@ class _FullPostDialogState extends State<_FullPostDialog> {
       builder: (ctx) => CommentsSheet(
         post: current,
         authToken: auth.authToken!,
-        onCommentAdded: () {
-          widget.feed.incrementCommentCount(current.id);
-        },
       ),
     );
   }

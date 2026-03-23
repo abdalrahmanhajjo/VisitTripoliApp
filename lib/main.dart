@@ -22,8 +22,9 @@ import 'config/api_config.dart';
 import 'routes/app_router.dart';
 import 'services/api_service.dart';
 import 'theme/app_theme.dart';
-import 'cache/app_cache_manager.dart';
 import 'package:showcaseview/showcaseview.dart';
+import 'utils/feed_media_precache.dart';
+import 'utils/places_image_precache.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -140,16 +141,17 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
           builder: (context, child) {
             final body = child ?? const SizedBox.shrink();
             final offline = connectivity.isOffline;
-            return ShowCaseWidget(
-              builder: (context) => Semantics(
-                container: true,
-                label:
-                    'Visit Tripoli - Explore places, tours and plan your trip',
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    body,
-                    if (offline)
+            return _FeedWarmup(
+              child: ShowCaseWidget(
+                builder: (context) => Semantics(
+                  container: true,
+                  label:
+                      'Visit Tripoli - Explore places, tours and plan your trip',
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      body,
+                      if (offline)
                       const Positioned(
                         top: 0,
                         left: 0,
@@ -189,7 +191,8 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
                           ),
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );
@@ -197,5 +200,67 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
         );
       },
     );
+  }
+}
+
+/// Starts Discover feed fetch on app launch and precaches first images so the feed feels instant.
+class _FeedWarmup extends StatefulWidget {
+  const _FeedWarmup({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_FeedWarmup> createState() => _FeedWarmupState();
+}
+
+class _FeedWarmupState extends State<_FeedWarmup> {
+  bool _kickScheduled = false;
+  bool _precachedFirstPage = false;
+  bool _precachedPlacesImages = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _kickFeedPrefetch();
+    });
+  }
+
+  void _kickFeedPrefetch() {
+    if (_kickScheduled) return;
+    final feed = context.read<FeedProvider>();
+    final auth = context.read<AuthProvider>();
+    if (feed.posts.isNotEmpty || feed.loading) return;
+    _kickScheduled = true;
+    feed.loadFeed(authToken: auth.authToken, refresh: false, sort: 'recent');
+    if (auth.isLoggedIn && !auth.isGuest && auth.authToken != null) {
+      feed.loadCanPost(auth.authToken!);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final feed = context.watch<FeedProvider>();
+    final places = context.watch<PlacesProvider>();
+    if (!_precachedFirstPage &&
+        feed.posts.isNotEmpty &&
+        !feed.loading) {
+      _precachedFirstPage = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        scheduleFeedMediaPrecache(context, feed.posts);
+      });
+    }
+    if (!_precachedPlacesImages &&
+        places.places.isNotEmpty &&
+        !places.isLoading) {
+      _precachedPlacesImages = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        schedulePlacesImagePrecache(context, places.places);
+      });
+    }
+    return widget.child;
   }
 }

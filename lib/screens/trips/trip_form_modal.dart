@@ -14,6 +14,8 @@ import '../../providers/trips_provider.dart';
 import '../../theme/app_theme.dart';
 import 'trips_ui.dart';
 
+enum _TripArrangeMode { manual, ai }
+
 class TripFormModal extends StatefulWidget {
   final Trip? trip;
   final DateTime? selectedDate;
@@ -40,6 +42,7 @@ class TripFormModalState extends State<TripFormModal> {
   final Map<String, String?> _startTimes = {};
   final Map<String, String?> _endTimes = {};
   String _nameError = '';
+  _TripArrangeMode _arrangeMode = _TripArrangeMode.manual;
 
   @override
   void initState() {
@@ -481,6 +484,135 @@ class TripFormModalState extends State<TripFormModal> {
     });
   }
 
+  Widget _buildManualPlaceRow(int i, PlacesProvider placesProvider) {
+    final placeId = _orderedPlaceIds[i];
+    final l10n = AppLocalizations.of(context)!;
+    final p = placesProvider.getPlaceById(placeId);
+    if (p == null) {
+      return ReorderableDragStartListener(
+        key: ValueKey('manual_$placeId'),
+        index: i,
+        child: const SizedBox(height: 0, width: 0),
+      );
+    }
+    final start = _startTimes[placeId];
+    final end = _endTimes[placeId];
+    final timeStr = (start != null && end != null)
+        ? '$start – $end'
+        : (start != null)
+            ? 'From $start'
+            : (end != null)
+                ? 'Until $end'
+                : l10n.tapClockToSetTime;
+    return ReorderableDragStartListener(
+      key: ValueKey('manual_$placeId'),
+      index: i,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.borderColor),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Icon(Icons.drag_handle,
+                  size: 20, color: AppTheme.textTertiary),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '${i + 1}',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    p.name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  InkWell(
+                    onTap: () => _pickTime(context, placeId, true),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(FontAwesomeIcons.clock,
+                              size: 11, color: AppTheme.primaryColor),
+                          const SizedBox(width: 6),
+                          Text(
+                            timeStr,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.primaryColor,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: () => _pickTime(context, placeId, true),
+              icon: const Icon(Icons.access_time, size: 18),
+              tooltip: l10n.setStartTime,
+              style: IconButton.styleFrom(
+                minimumSize: const Size(32, 32),
+                padding: EdgeInsets.zero,
+              ),
+            ),
+            IconButton(
+              onPressed: () => _pickTime(context, placeId, false),
+              icon: const Icon(Icons.schedule, size: 18),
+              tooltip: l10n.setEndTime,
+              style: IconButton.styleFrom(
+                minimumSize: const Size(32, 32),
+                padding: EdgeInsets.zero,
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _orderedPlaceIds.remove(placeId);
+                  _startTimes.remove(placeId);
+                  _endTimes.remove(placeId);
+                });
+              },
+              icon: const Icon(Icons.remove_circle_outline,
+                  size: 20, color: AppTheme.textSecondary),
+              tooltip: l10n.remove,
+              style: IconButton.styleFrom(
+                minimumSize: const Size(32, 32),
+                padding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildPlacesSection(
       List<Place> allPlaces, List<Place> filteredPlaces, String search) {
     final placesProvider = Provider.of<PlacesProvider>(context);
@@ -491,8 +623,96 @@ class TripFormModalState extends State<TripFormModal> {
           : AppLocalizations.of(context)!
               .placesCountSubtitle(_orderedPlaceIds.length),
       [
+        const SizedBox(height: 4),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SegmentedButton<_TripArrangeMode>(
+            segments: [
+              ButtonSegment(
+                value: _TripArrangeMode.manual,
+                label: Text(AppLocalizations.of(context)!.tripArrangeManual),
+                icon: const Icon(Icons.edit_outlined, size: 18),
+              ),
+              ButtonSegment(
+                value: _TripArrangeMode.ai,
+                label: Text(AppLocalizations.of(context)!.tripArrangeAiPlanner),
+                icon: const Icon(Icons.auto_awesome, size: 17),
+              ),
+            ],
+            selected: {_arrangeMode},
+            onSelectionChanged: (Set<_TripArrangeMode> next) {
+              setState(() => _arrangeMode = next.first);
+            },
+          ),
+        ),
+        if (_arrangeMode == _TripArrangeMode.ai) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppTheme.primaryColor.withValues(alpha: 0.22),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.auto_awesome,
+                        size: 20, color: AppTheme.primaryColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        AppLocalizations.of(context)!.tripArrangeAiHint,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          height: 1.35,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    context.go('/ai-planner');
+                  },
+                  icon: const Icon(Icons.map_outlined, size: 18),
+                  label: Text(AppLocalizations.of(context)!.tripOpenAiPlanner),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (_arrangeMode == _TripArrangeMode.manual &&
+            _orderedPlaceIds.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 12, bottom: 4),
+            child: Text(
+              AppLocalizations.of(context)!.tripArrangeManualHint,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ),
+        if (_arrangeMode == _TripArrangeMode.ai) const SizedBox(height: 8),
         if (_orderedPlaceIds.isNotEmpty) ...[
-          if (_orderedPlaceIds.length >= 2)
+          if (_arrangeMode == _TripArrangeMode.manual &&
+              _orderedPlaceIds.length >= 2)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Row(
@@ -524,111 +744,86 @@ class TripFormModalState extends State<TripFormModal> {
                 ],
               ),
             ),
-          ..._orderedPlaceIds.asMap().entries.map((e) {
-            final i = e.key;
-            final placeId = e.value;
-            final p = placesProvider.getPlaceById(placeId);
-            if (p == null) return const SizedBox.shrink();
-            final start = _startTimes[placeId];
-            final end = _endTimes[placeId];
-            final timeStr = (start != null && end != null)
-                ? '$start â€“ $end'
-                : (start != null)
-                    ? 'From $start'
-                    : (end != null)
-                        ? 'Until $end'
-                        : AppLocalizations.of(context)!.tapClockToSetTime;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.borderColor),
-              ),
-              child: Row(
-                children: [
-                  Text(
-                    '${i + 1}',
-                    style: const TextStyle(
+          if (_arrangeMode == _TripArrangeMode.manual)
+            ReorderableListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              onReorder: (oldIndex, newIndex) {
+                setState(() {
+                  if (newIndex > oldIndex) newIndex -= 1;
+                  final id = _orderedPlaceIds.removeAt(oldIndex);
+                  _orderedPlaceIds.insert(newIndex, id);
+                });
+              },
+              children: [
+                for (var i = 0; i < _orderedPlaceIds.length; i++)
+                  _buildManualPlaceRow(i, placesProvider),
+              ],
+            ),
+          if (_arrangeMode == _TripArrangeMode.ai)
+            ..._orderedPlaceIds.asMap().entries.map((e) {
+              final i = e.key;
+              final placeId = e.value;
+              final p = placesProvider.getPlaceById(placeId);
+              if (p == null) return const SizedBox.shrink();
+              return Container(
+                key: ValueKey('ai_$placeId'),
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.borderColor),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      '${i + 1}',
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.textSecondary),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          p.name,
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textPrimary),
-                        ),
-                        const SizedBox(height: 4),
-                        InkWell(
-                          onTap: () => _pickTime(context, placeId, true),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(FontAwesomeIcons.clock,
-                                    size: 11, color: AppTheme.primaryColor),
-                                const SizedBox(width: 6),
-                                Text(
-                                  timeStr,
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.primaryColor,
-                                      decoration: TextDecoration.underline),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                        color: AppTheme.textSecondary,
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    onPressed: () => _pickTime(context, placeId, true),
-                    icon: const Icon(Icons.access_time, size: 18),
-                    tooltip: AppLocalizations.of(context)!.setStartTime,
-                    style: IconButton.styleFrom(
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        p.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      AppLocalizations.of(context)!.tripAiTimesInPlanner,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textTertiary,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _orderedPlaceIds.remove(placeId);
+                          _startTimes.remove(placeId);
+                          _endTimes.remove(placeId);
+                        });
+                      },
+                      icon: const Icon(Icons.remove_circle_outline,
+                          size: 20, color: AppTheme.textSecondary),
+                      tooltip: AppLocalizations.of(context)!.remove,
+                      style: IconButton.styleFrom(
                         minimumSize: const Size(32, 32),
-                        padding: EdgeInsets.zero),
-                  ),
-                  IconButton(
-                    onPressed: () => _pickTime(context, placeId, false),
-                    icon: const Icon(Icons.schedule, size: 18),
-                    tooltip: AppLocalizations.of(context)!.setEndTime,
-                    style: IconButton.styleFrom(
-                        minimumSize: const Size(32, 32),
-                        padding: EdgeInsets.zero),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _orderedPlaceIds.remove(placeId);
-                        _startTimes.remove(placeId);
-                        _endTimes.remove(placeId);
-                      });
-                    },
-                    icon: const Icon(Icons.remove_circle_outline,
-                        size: 20, color: AppTheme.textSecondary),
-                    tooltip: AppLocalizations.of(context)!.remove,
-                    style: IconButton.styleFrom(
-                        minimumSize: const Size(32, 32),
-                        padding: EdgeInsets.zero),
-                  ),
-                ],
-              ),
-            );
-          }),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
           const SizedBox(height: 16),
           Text(
             AppLocalizations.of(context)!.addMorePlaces,

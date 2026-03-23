@@ -244,7 +244,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navAiPlanner => 'Planner';
 
   @override
+  String get plannerTripSetupTitle => 'Trip setup';
+
+  @override
+  String get plannerTripSetupSubtitle =>
+      'Duration, pace, and start date — the AI uses these for every plan. Tap to change.';
+
+  @override
+  String get plannerSetupDurationLabel => 'Duration';
+
+  @override
+  String get plannerSetupPaceLabel => 'Pace';
+
+  @override
+  String get plannerSetupStartLabel => 'Start date';
+
+  @override
+  String plannerPacePerDayValue(int count) {
+    return '$count / day';
+  }
+
+  @override
   String get navCommunity => 'Discover';
+
+  @override
+  String get discoverPullToRefreshHint =>
+      'Pull down to refresh for the latest posts.';
+
+  @override
+  String get discoverRefreshNow => 'Refresh now';
 
   @override
   String get navTrips => 'Trips';
@@ -699,6 +727,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clearDayFilter => 'Clear day filter';
+
+  @override
+  String get tripsSortSmart => 'Smart';
+
+  @override
+  String get tripsSortStartDate => 'Start date';
+
+  @override
+  String get tripsSortRecent => 'Newest';
+
+  @override
+  String get tripsSortName => 'A–Z';
+
+  @override
+  String get tripStatusUpcoming => 'Upcoming';
+
+  @override
+  String get tripStatusOngoing => 'Now';
+
+  @override
+  String get tripStatusPast => 'Past';
+
+  @override
+  String get tripsClearListFilters => 'Clear filters';
+
+  @override
+  String get tripsShowPastTrips => 'Show past trips';
+
+  @override
+  String get tripsPastTripsHiddenHint =>
+      'Past trips are hidden. Turn on “Show past trips” to see them.';
+
+  @override
+  String get tripArrangeManual => 'Manual';
+
+  @override
+  String get tripArrangeAiPlanner => 'AI Planner';
+
+  @override
+  String get tripArrangeManualHint =>
+      'Drag stops to reorder. Tap the clock to set visit times.';
+
+  @override
+  String get tripArrangeAiHint =>
+      'Open the AI Planner to get a suggested route order and visit times. You can save your trip here first, then refine it in the Planner.';
+
+  @override
+  String get tripOpenAiPlanner => 'Open AI Planner';
+
+  @override
+  String get tripAiTimesInPlanner => 'Times in Planner';
 
   @override
   String get placesLinked => 'Places linked';

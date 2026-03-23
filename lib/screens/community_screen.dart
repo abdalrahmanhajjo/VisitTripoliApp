@@ -67,20 +67,27 @@ class _CommunityScreenState extends State<CommunityScreen> {
       _initialLoadDone = true;
       final auth = context.read<AuthProvider>();
       final feed = context.read<FeedProvider>();
-      // Performance/UX: if we already have cached posts in memory, show them instantly
-      // and refresh in the background to avoid a visible "loading feed" state.
-      final hasCachedPosts = feed.posts.isNotEmpty;
-      if (!hasCachedPosts) {
+      // Ensure the feed is shown on first open: fetch the first page when empty.
+      // When posts are already cached, do not auto-refresh — user pulls down or taps Refresh.
+      if (feed.posts.isEmpty) {
         feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'recent');
-      } else {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-          feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'recent');
-        });
       }
       if (auth.isLoggedIn && !auth.isGuest) {
         feed.loadCanPost(auth.authToken!);
       }
+    }
+  }
+
+  Future<void> _refreshFeedForCurrentTab() async {
+    final auth = context.read<AuthProvider>();
+    final feed = context.read<FeedProvider>();
+    if (_sortMode == CommunityFeedSort.saved && auth.isLoggedIn && !auth.isGuest) {
+      await feed.loadSavedFeed(authToken: auth.authToken!, refresh: true);
+    } else {
+      await feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'recent');
+    }
+    if (auth.isLoggedIn && !auth.isGuest) {
+      await feed.loadCanPost(auth.authToken!);
     }
   }
 
@@ -142,18 +149,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         backgroundColor: Colors.white,
         displacement: 48,
         strokeWidth: 2.5,
-        onRefresh: () async {
-          if (_sortMode == CommunityFeedSort.saved && auth.isLoggedIn && !auth.isGuest) {
-            await feed.loadSavedFeed(authToken: auth.authToken!, refresh: true);
-          } else if (_sortMode == CommunityFeedSort.popular) {
-            await feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'trending');
-          } else {
-            await feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'recent');
-          }
-          if (auth.isLoggedIn && !auth.isGuest) {
-            await feed.loadCanPost(auth.authToken!);
-          }
-        },
+        onRefresh: _refreshFeedForCurrentTab,
         child: _buildFeedBody(auth, feed),
       ),
       floatingActionButton: auth.isLoggedIn &&
@@ -573,8 +569,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
     feed.clearError();
     if (_sortMode == CommunityFeedSort.saved && auth.isLoggedIn && !auth.isGuest) {
       await feed.loadSavedFeed(authToken: auth.authToken!, refresh: true);
-    } else if (_sortMode == CommunityFeedSort.popular) {
-      await feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'trending');
     } else {
       await feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'recent');
     }
@@ -587,10 +581,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
     setState(() => _sortMode = m);
     if (m == CommunityFeedSort.saved && auth.isLoggedIn && !auth.isGuest) {
       feed.loadSavedFeed(authToken: auth.authToken!, refresh: true);
-    } else if (m == CommunityFeedSort.popular) {
-      feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'trending');
-    } else {
-      feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'recent');
+    } else if (m == CommunityFeedSort.newest) {
+      if (feed.posts.isEmpty) {
+        feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'recent');
+      }
     }
   }
 
@@ -608,19 +602,19 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final matchCount = interestKeywords.where((k) => k.trim().isNotEmpty).length;
     final posts = showSaved
         ? feed.savedPosts
-        : (_sortMode == CommunityFeedSort.popular
-            ? feed.posts
-            : rankForYouFeed(
-                posts: feed.posts,
-                interestKeywords: interestKeywords,
-                seenPostIds: feed.seenPostIds,
-              ));
-    final loading = showSaved ? feed.loadingSaved : feed.loading;
+        : orderDiscoverFeedNewestFirst(feed.posts);
     final loadingMore = showSaved ? feed.loadingMoreSaved : feed.loadingMore;
     final hasMore = showSaved ? feed.hasMoreSaved : feed.hasMore;
+    // Use raw feed lists for loading/skeleton — not ranked/display list — so we
+    // never show a blank state while the first page is still fetching.
+    final mainPostsEmpty = showSaved ? feed.savedPosts.isEmpty : feed.posts.isEmpty;
+    final mainLoading = showSaved ? feed.loadingSaved : feed.loading;
 
     if (isSaved && !auth.isLoggedIn) {
       return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
         slivers: [
           SliverToBoxAdapter(
             child: CommunityFeedHeader(
@@ -661,10 +655,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
       );
     }
 
-    // Show feed immediately: treat "not yet loaded" as loading so we never show blank.
-    final showLoading = (loading && posts.isEmpty) || (!_initialLoadDone && posts.isEmpty);
+    final showLoading = mainLoading && mainPostsEmpty;
     if (showLoading) {
       return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
         slivers: [
           SliverToBoxAdapter(
             child: CommunityFeedHeader(
@@ -675,6 +671,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
               onReels: () => context.push('/community/reels'),
             ),
           ),
+          if (!showSaved)
+            SliverToBoxAdapter(
+              child: CommunityPullToRefreshHint(
+                onRefreshTap: () => unawaited(_refreshFeedForCurrentTab()),
+              ),
+            ),
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.only(top: 12, bottom: 8),
@@ -689,6 +691,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
     if (posts.isEmpty) {
       return CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
         slivers: [
           if (feed.error != null)
             CommunityFeedErrorBanner(
@@ -704,6 +709,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
               onReels: () => context.push('/community/reels'),
             ),
           ),
+          if (!showSaved)
+            SliverToBoxAdapter(
+              child: CommunityPullToRefreshHint(
+                onRefreshTap: () => unawaited(_refreshFeedForCurrentTab()),
+              ),
+            ),
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.only(top: 12, bottom: 8),
@@ -743,6 +754,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
     return CustomScrollView(
       controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
       // Smaller than default: fewer off-screen feed cells + platform views to build.
       cacheExtent: 380,
       slivers: [
@@ -760,6 +774,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
             onReels: () => context.push('/community/reels'),
           ),
         ),
+        if (!showSaved)
+          SliverToBoxAdapter(
+            child: CommunityPullToRefreshHint(
+              onRefreshTap: () => unawaited(_refreshFeedForCurrentTab()),
+            ),
+          ),
         const SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.only(top: 12, bottom: 8),
@@ -897,16 +917,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
       builder: (ctx) => CommentsSheet(
         post: post,
         authToken: authToken,
-        onCommentAdded: () {
-          final feed = context.read<FeedProvider>();
-          if (_sortMode == CommunityFeedSort.saved) {
-            feed.loadSavedFeed(authToken: authToken, refresh: true);
-          } else if (_sortMode == CommunityFeedSort.popular) {
-            feed.loadFeed(authToken: authToken, refresh: true, sort: 'trending');
-          } else {
-            feed.loadFeed(authToken: authToken, refresh: true, sort: 'recent');
-          }
-        },
       ),
     );
   }

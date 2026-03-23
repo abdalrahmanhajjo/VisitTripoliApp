@@ -544,11 +544,59 @@ abstract class AppLocalizations {
   /// **'Planner'**
   String get navAiPlanner;
 
+  /// No description provided for @plannerTripSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip setup'**
+  String get plannerTripSetupTitle;
+
+  /// No description provided for @plannerTripSetupSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration, pace, and start date — the AI uses these for every plan. Tap to change.'**
+  String get plannerTripSetupSubtitle;
+
+  /// No description provided for @plannerSetupDurationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get plannerSetupDurationLabel;
+
+  /// No description provided for @plannerSetupPaceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pace'**
+  String get plannerSetupPaceLabel;
+
+  /// No description provided for @plannerSetupStartLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date'**
+  String get plannerSetupStartLabel;
+
+  /// No description provided for @plannerPacePerDayValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} / day'**
+  String plannerPacePerDayValue(int count);
+
   /// No description provided for @navCommunity.
   ///
   /// In en, this message translates to:
   /// **'Discover'**
   String get navCommunity;
+
+  /// No description provided for @discoverPullToRefreshHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull down to refresh for the latest posts.'**
+  String get discoverPullToRefreshHint;
+
+  /// No description provided for @discoverRefreshNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh now'**
+  String get discoverRefreshNow;
 
   /// No description provided for @navTrips.
   ///
@@ -1407,6 +1455,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear day filter'**
   String get clearDayFilter;
+
+  /// No description provided for @tripsSortSmart.
+  ///
+  /// In en, this message translates to:
+  /// **'Smart'**
+  String get tripsSortSmart;
+
+  /// No description provided for @tripsSortStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date'**
+  String get tripsSortStartDate;
+
+  /// No description provided for @tripsSortRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest'**
+  String get tripsSortRecent;
+
+  /// No description provided for @tripsSortName.
+  ///
+  /// In en, this message translates to:
+  /// **'A–Z'**
+  String get tripsSortName;
+
+  /// No description provided for @tripStatusUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get tripStatusUpcoming;
+
+  /// No description provided for @tripStatusOngoing.
+  ///
+  /// In en, this message translates to:
+  /// **'Now'**
+  String get tripStatusOngoing;
+
+  /// No description provided for @tripStatusPast.
+  ///
+  /// In en, this message translates to:
+  /// **'Past'**
+  String get tripStatusPast;
+
+  /// No description provided for @tripsClearListFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get tripsClearListFilters;
+
+  /// No description provided for @tripsShowPastTrips.
+  ///
+  /// In en, this message translates to:
+  /// **'Show past trips'**
+  String get tripsShowPastTrips;
+
+  /// No description provided for @tripsPastTripsHiddenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Past trips are hidden. Turn on “Show past trips” to see them.'**
+  String get tripsPastTripsHiddenHint;
+
+  /// No description provided for @tripArrangeManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get tripArrangeManual;
+
+  /// No description provided for @tripArrangeAiPlanner.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Planner'**
+  String get tripArrangeAiPlanner;
+
+  /// No description provided for @tripArrangeManualHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag stops to reorder. Tap the clock to set visit times.'**
+  String get tripArrangeManualHint;
+
+  /// No description provided for @tripArrangeAiHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the AI Planner to get a suggested route order and visit times. You can save your trip here first, then refine it in the Planner.'**
+  String get tripArrangeAiHint;
+
+  /// No description provided for @tripOpenAiPlanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Open AI Planner'**
+  String get tripOpenAiPlanner;
+
+  /// No description provided for @tripAiTimesInPlanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Times in Planner'**
+  String get tripAiTimesInPlanner;
 
   /// No description provided for @placesLinked.
   ///

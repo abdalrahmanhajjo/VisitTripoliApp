@@ -241,7 +241,34 @@ class AppLocalizationsAr extends AppLocalizations {
   String get navAiPlanner => 'مخطط';
 
   @override
+  String get plannerTripSetupTitle => 'إعداد الرحلة';
+
+  @override
+  String get plannerTripSetupSubtitle =>
+      'المدة، الوتيرة، وتاريخ البدء — يستخدمها الذكاء الاصطناعي في كل خطة. اضغط للتعديل.';
+
+  @override
+  String get plannerSetupDurationLabel => 'المدة';
+
+  @override
+  String get plannerSetupPaceLabel => 'الوتيرة';
+
+  @override
+  String get plannerSetupStartLabel => 'تاريخ البدء';
+
+  @override
+  String plannerPacePerDayValue(int count) {
+    return '$count / يوم';
+  }
+
+  @override
   String get navCommunity => 'اكتشف';
+
+  @override
+  String get discoverPullToRefreshHint => 'اسحب للأسفل لتحديث المنشورات.';
+
+  @override
+  String get discoverRefreshNow => 'تحديث الآن';
 
   @override
   String get navTrips => 'رحلاتي';
@@ -695,6 +722,57 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get clearDayFilter => 'مسح فلتر اليوم';
+
+  @override
+  String get tripsSortSmart => 'ذكي';
+
+  @override
+  String get tripsSortStartDate => 'تاريخ البدء';
+
+  @override
+  String get tripsSortRecent => 'الأحدث';
+
+  @override
+  String get tripsSortName => 'أ–ي';
+
+  @override
+  String get tripStatusUpcoming => 'قادمة';
+
+  @override
+  String get tripStatusOngoing => 'الآن';
+
+  @override
+  String get tripStatusPast => 'منتهية';
+
+  @override
+  String get tripsClearListFilters => 'مسح عوامل التصفية';
+
+  @override
+  String get tripsShowPastTrips => 'إظهار الرحلات الماضية';
+
+  @override
+  String get tripsPastTripsHiddenHint =>
+      'الرحلات الماضية مخفية. فعّل «إظهار الرحلات الماضية» لعرضها.';
+
+  @override
+  String get tripArrangeManual => 'يدوي';
+
+  @override
+  String get tripArrangeAiPlanner => 'مخطط ذكي';
+
+  @override
+  String get tripArrangeManualHint =>
+      'اسحب لإعادة ترتيب المحطات. اضغط الساعة لتحديد أوقات الزيارة.';
+
+  @override
+  String get tripArrangeAiHint =>
+      'افتح المخطط الذكي للحصول على ترتيب مقترح للمسار وأوقات الزيارة. يمكنك حفظ الرحلة هنا أولاً ثم ضبطها في المخطط.';
+
+  @override
+  String get tripOpenAiPlanner => 'فتح المخطط الذكي';
+
+  @override
+  String get tripAiTimesInPlanner => 'الأوقات في المخطط';
 
   @override
   String get placesLinked => 'أماكن مرتبطة';

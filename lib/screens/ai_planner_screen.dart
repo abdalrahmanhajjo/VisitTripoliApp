@@ -27,14 +27,6 @@ const _keyPlannerDays = 'planner_days';
 const _keyPlannerPlacesPerDay = 'planner_places_per_day';
 const _keyPlannerPrefsSet = 'planner_prefs_set';
 
-/// Returns "Good Morning", "Good Afternoon", or "Good Evening" by hour.
-String _greetingForTime() {
-  final h = DateTime.now().hour;
-  if (h < 12) return 'Good Morning';
-  if (h < 17) return 'Good Afternoon';
-  return 'Good Evening';
-}
-
 /// One message in the chat (user or assistant; assistant may include a plan).
 class _ChatMessage {
   final bool isUser;
@@ -80,6 +72,14 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
   /// Last plan (from AI or after user edits) so "do the plan again with X" uses it.
   List<AIPlannerSlot>? _lastPlanSlots;
   List<Place>? _lastPlanPlaces;
+
+  String _greetingL10n(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final h = DateTime.now().hour;
+    if (h < 12) return l10n.goodMorning;
+    if (h < 17) return l10n.goodAfternoon;
+    return l10n.goodEvening;
+  }
 
   static const _moodCards = [
     (
@@ -722,7 +722,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
         scrolledUnderElevation: 0.5,
         titleSpacing: 0,
         title: _PlannerHeader(
-          greeting: _greetingForTime(),
+          greeting: _greetingL10n(context),
           userName: Provider.of<AuthProvider>(context).userName,
           onProfileTap: () {
             final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -753,10 +753,12 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
       ),
       body: Column(
         children: [
-          _PlannerTripStrip(
+          _PlannerTripSetupCard(
             duration: _duration,
             placesPerDay: _placesPerDay,
             selectedDate: _selectedDate,
+            onDurationTap: () => _showDurationPicker(context),
+            onPlacesTap: () => _showPlacesPerDayPicker(context),
             onDateTap: _pickDate,
           ),
           Expanded(
@@ -895,12 +897,12 @@ class _PlannerHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  greeting.toUpperCase(),
+                  greeting,
                   style: TextStyle(
                     fontSize: 11,
                     color: AppTheme.textSecondary.withValues(alpha: 0.95),
                     fontWeight: FontWeight.w600,
-                    letterSpacing: 0.8,
+                    letterSpacing: 0.2,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -937,132 +939,211 @@ class _PlannerHeader extends StatelessWidget {
   }
 }
 
-class _PlannerTripStrip extends StatelessWidget {
+/// Primary trip parameters for the AI — always visible, tappable, clearly labeled.
+class _PlannerTripSetupCard extends StatelessWidget {
   final int duration;
   final int placesPerDay;
   final DateTime? selectedDate;
+  final VoidCallback onDurationTap;
+  final VoidCallback onPlacesTap;
   final VoidCallback onDateTap;
 
-  const _PlannerTripStrip({
+  const _PlannerTripSetupCard({
     required this.duration,
     required this.placesPerDay,
     required this.selectedDate,
+    required this.onDurationTap,
+    required this.onPlacesTap,
     required this.onDateTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.8)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
+    final l10n = AppLocalizations.of(context)!;
+    final durationValue =
+        '$duration ${duration == 1 ? l10n.day : l10n.days}';
+    final dateValue = selectedDate != null
+        ? DateFormat('MMM d').format(selectedDate!)
+        : l10n.pickDate;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: AppTheme.primaryColor.withValues(alpha: 0.2),
           ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _TripChip(
-                    icon: Icons.date_range_rounded,
-                    label: '$duration ${duration == 1 ? 'day' : 'days'}',
-                    primary: true,
-                  ),
-                  const SizedBox(width: 8),
-                  _TripChip(
-                    icon: Icons.place_rounded,
-                    label: '$placesPerDay places/day',
-                    primary: false,
-                  ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: onDateTap,
-                    child: _TripChip(
-                      icon: Icons.event_rounded,
-                      label: selectedDate != null
-                          ? DateFormat('MMM d').format(selectedDate!)
-                          : (AppLocalizations.of(context)!.date),
-                      primary: false,
-                      trailing: Icons.edit_calendar_rounded,
-                    ),
-                  ),
-                ],
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryColor.withValues(alpha: 0.08),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
             ),
-          ),
-        ],
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.route_rounded,
+                    color: AppTheme.primaryColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.plannerTripSetupTitle,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.35,
+                          color: AppTheme.textPrimary,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.plannerTripSetupSubtitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.35,
+                          color: AppTheme.textSecondary.withValues(alpha: 0.95),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _PlannerSetupTile(
+                    label: l10n.plannerSetupDurationLabel,
+                    value: durationValue,
+                    icon: Icons.calendar_view_week_rounded,
+                    onTap: onDurationTap,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _PlannerSetupTile(
+                    label: l10n.plannerSetupPaceLabel,
+                    value: l10n.plannerPacePerDayValue(placesPerDay),
+                    icon: Icons.directions_walk_rounded,
+                    onTap: onPlacesTap,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _PlannerSetupTile(
+                    label: l10n.plannerSetupStartLabel,
+                    value: dateValue,
+                    icon: Icons.event_available_rounded,
+                    onTap: onDateTap,
+                    trailingIcon: Icons.edit_calendar_rounded,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _TripChip extends StatelessWidget {
-  final IconData icon;
+class _PlannerSetupTile extends StatelessWidget {
   final String label;
-  final bool primary;
-  final IconData? trailing;
+  final String value;
+  final IconData icon;
+  final VoidCallback onTap;
+  final IconData? trailingIcon;
 
-  const _TripChip({
-    required this.icon,
+  const _PlannerSetupTile({
     required this.label,
-    required this.primary,
-    this.trailing,
+    required this.value,
+    required this.icon,
+    required this.onTap,
+    this.trailingIcon,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: primary
-            ? AppTheme.primaryColor.withValues(alpha: 0.12)
-            : AppTheme.surfaceVariant.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(12),
-        border: primary
-            ? Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.25))
-            : null,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 16,
-            color: primary ? AppTheme.primaryColor : AppTheme.textSecondary,
+    return Material(
+      color: AppTheme.surfaceVariant.withValues(alpha: 0.65),
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
+                  color: AppTheme.textTertiary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(icon, size: 16, color: AppTheme.primaryColor),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      value,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                  if (trailingIcon != null)
+                    Icon(
+                      trailingIcon,
+                      size: 15,
+                      color: AppTheme.textTertiary,
+                    ),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: primary ? FontWeight.w700 : FontWeight.w600,
-              color: primary ? AppTheme.primaryColor : AppTheme.textSecondary,
-            ),
-          ),
-          if (trailing != null) ...[
-            const SizedBox(width: 6),
-            Icon(trailing, size: 14, color: AppTheme.textTertiary),
-          ],
-        ],
+        ),
       ),
     );
   }

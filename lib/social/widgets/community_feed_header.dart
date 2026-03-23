@@ -42,13 +42,6 @@ class CommunityFeedHeader extends StatelessWidget {
               ),
               Expanded(
                 child: _TikTokFeedTab(
-                  label: 'Trending',
-                  isSelected: selectedMode == CommunityFeedSort.popular,
-                  onTap: () => onSelectedMode(CommunityFeedSort.popular),
-                ),
-              ),
-              Expanded(
-                child: _TikTokFeedTab(
                   label: 'Saved',
                   isSelected: selectedMode == CommunityFeedSort.saved,
                   isDisabled: !isSavedAvailable,

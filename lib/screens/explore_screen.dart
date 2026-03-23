@@ -5021,61 +5021,79 @@ class _ExplorePlaceCard extends StatelessWidget {
         isFree ? AppLocalizations.of(context)!.free : '\$${place.price}';
     final duration = place.duration ?? '1-2 hours';
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: _Responsive.cardWidth(context, base: 268),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(_radius),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.textPrimary.withValues(alpha: 0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            ),
-            BoxShadow(
-              color: AppTheme.textPrimary.withValues(alpha: 0.03),
-              blurRadius: 40,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(_radius),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Full-bleed image
-              imageUrl != null
-                  ? AppImage(
-                      src: imageUrl,
-                      fit: BoxFit.cover,
-                      cacheWidth: 400,
-                      cacheHeight: 300,
-                    )
-                  : Container(
-                      color: AppTheme.surfaceVariant,
-                      child: const Icon(
-                        Icons.image_outlined,
-                        size: 48,
-                        color: AppTheme.textTertiary,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardW = _Responsive.cardWidth(context, base: 268);
+        final cardH = constraints.maxHeight.isFinite && constraints.maxHeight > 0
+            ? constraints.maxHeight
+            : _ExploreLayout.horizontalListHeight(context);
+        final dpr = MediaQuery.devicePixelRatioOf(context).clamp(1.0, 3.0);
+        final cacheW = (cardW * dpr).round().clamp(120, 2400);
+        final cacheH = (cardH * dpr).round().clamp(120, 2400);
+        return GestureDetector(
+          onTap: onTap,
+          child: SizedBox(
+            width: cardW,
+            height: cardH,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(_radius),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.textPrimary.withValues(alpha: 0.06),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                  BoxShadow(
+                    color: AppTheme.textPrimary.withValues(alpha: 0.03),
+                    blurRadius: 40,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(_radius),
+                child: Stack(
+                  fit: StackFit.expand,
+                  clipBehavior: Clip.hardEdge,
+                  children: [
+                    // Full-bleed image (fills card; decode matches slot aspect)
+                    Positioned.fill(
+                      child: imageUrl != null
+                          ? AppImage(
+                              src: imageUrl,
+                              fit: BoxFit.cover,
+                              cacheWidth: cacheW,
+                              cacheHeight: cacheH,
+                            )
+                          : Container(
+                              color: AppTheme.surfaceVariant,
+                              child: const Icon(
+                                Icons.image_outlined,
+                                size: 48,
+                                color: AppTheme.textTertiary,
+                              ),
+                            ),
+                    ),
+                    // Gradient overlay (fills card so layout stays stable)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.15),
+                                Colors.transparent,
+                                Colors.black.withValues(alpha: 0.85),
+                              ],
+                              stops: const [0.0, 0.35, 0.75],
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-              // Gradient overlay
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.15),
-                      Colors.transparent,
-                      Colors.black.withValues(alpha: 0.85),
-                    ],
-                    stops: const [0.0, 0.35, 0.75],
-                  ),
-                ),
-              ),
               // Top overlays
               Positioned(
                 top: 10,
@@ -5336,6 +5354,9 @@ class _ExplorePlaceCard extends StatelessWidget {
           ),
         ),
       ),
+    ),
+    );
+      },
     );
   }
 

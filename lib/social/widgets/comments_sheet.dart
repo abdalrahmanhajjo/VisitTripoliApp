@@ -13,12 +13,13 @@ import '../../providers/feed_provider.dart';
 class CommentsSheet extends StatefulWidget {
   final FeedPost post;
   final String authToken;
-  final VoidCallback onCommentAdded;
+  /// Optional; use when the parent needs a side effect. Count updates are applied in [FeedProvider] automatically.
+  final VoidCallback? onCommentAdded;
 
   const CommentsSheet({super.key, 
     required this.post,
     required this.authToken,
-    required this.onCommentAdded,
+    this.onCommentAdded,
   });
 
   @override
@@ -127,7 +128,7 @@ class CommentsSheetState extends State<CommentsSheet> {
       if (!mounted) return;
       setState(() => _replyTo = null);
       context.read<FeedProvider>().incrementCommentCount(widget.post.id);
-      widget.onCommentAdded();
+      widget.onCommentAdded?.call();
       await _loadComments();
     } catch (e) {
       final unauthorized = await _handleMaybeUnauthorized(e);
@@ -172,7 +173,7 @@ class CommentsSheetState extends State<CommentsSheet> {
       if (context.mounted) {
         context.read<FeedProvider>().decrementCommentCount(widget.post.id);
       }
-      widget.onCommentAdded();
+      widget.onCommentAdded?.call();
       await _loadComments();
     } catch (e) {
       final unauthorized = await _handleMaybeUnauthorized(e);
@@ -225,7 +226,7 @@ class CommentsSheetState extends State<CommentsSheet> {
       );
       if (!mounted) return;
       AppSnackBars.showSuccess(context, 'Comment updated');
-      widget.onCommentAdded();
+      widget.onCommentAdded?.call();
       await _loadComments();
     } catch (e) {
       final unauthorized = await _handleMaybeUnauthorized(e);
@@ -255,7 +256,9 @@ class CommentsSheetState extends State<CommentsSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final isPostOwner = widget.post.authorId != null && auth.userId != null && widget.post.authorId == auth.userId;
+    final feed = context.watch<FeedProvider>();
+    final post = feed.postById(widget.post.id) ?? widget.post;
+    final isPostOwner = post.authorId != null && auth.userId != null && post.authorId == auth.userId;
     return DraggableScrollableSheet(
       initialChildSize: 0.65,
       minChildSize: 0.35,
@@ -304,7 +307,7 @@ class CommentsSheetState extends State<CommentsSheet> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        '${widget.post.commentCount}',
+                        '${post.commentCount}',
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
@@ -591,7 +594,7 @@ class CommentsSheetState extends State<CommentsSheet> {
                       ),
                     ),
               ),
-              if (widget.post.commentsDisabled)
+              if (post.commentsDisabled)
                 Container(
                   padding: EdgeInsets.fromLTRB(20, 12, 20, MediaQuery.of(context).padding.bottom + 16),
                   decoration: const BoxDecoration(

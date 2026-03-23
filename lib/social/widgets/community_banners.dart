@@ -7,6 +7,65 @@ import '../../providers/places_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_image.dart';
 
+/// Shown on Discover (For You): reminds users to pull down for latest posts.
+class CommunityPullToRefreshHint extends StatelessWidget {
+  const CommunityPullToRefreshHint({
+    super.key,
+    required this.onRefreshTap,
+  });
+
+  final VoidCallback onRefreshTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.18)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.swipe_vertical_rounded, size: 22, color: AppTheme.primaryColor.withValues(alpha: 0.9)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  l10n.discoverPullToRefreshHint,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    height: 1.3,
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: onRefreshTap,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.primaryColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  l10n.discoverRefreshNow,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class CommunityDealsBanner extends StatelessWidget {
   const CommunityDealsBanner({super.key});
 
