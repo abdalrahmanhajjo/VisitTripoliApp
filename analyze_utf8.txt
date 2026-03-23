@@ -1,0 +1,18 @@
+Analyzing Figma1...                                             
+
+   info - 'ShowCaseWidget' is deprecated and shouldn't be used. This will be removed in v6.0.0. Please use `ShowcaseView.register()` instead - lib\main.dart:145:22 - deprecated_member_use
+warning - Unused import: 'package:flutter/foundation.dart' - lib\map\embedded_maps.dart:1:8 - unused_import
+   info - The local variable '_apply' starts with an underscore - lib\providers\feed_provider.dart:453:10 - no_leading_underscores_for_local_identifiers
+   info - The local variable '_upd' starts with an underscore - lib\providers\feed_provider.dart:543:10 - no_leading_underscores_for_local_identifiers
+   info - The local variable '_inc' starts with an underscore - lib\providers\feed_provider.dart:577:10 - no_leading_underscores_for_local_identifiers
+   info - The local variable '_dec' starts with an underscore - lib\providers\feed_provider.dart:594:10 - no_leading_underscores_for_local_identifiers
+   info - 'of' is deprecated and shouldn't be used. This will be removed in v6.0.0. please use `ShowcaseView.get()` instead - lib\screens\explore_screen.dart:845:22 - deprecated_member_use
+   info - 'startShowCase' is deprecated and shouldn't be used. This will be removed in v6.0.0. please use `ShowcaseView.get().startShowCase` instead - lib\screens\explore_screen.dart:845:34 - deprecated_member_use
+warning - A value for optional parameter 'key' isn't ever given - lib\screens\map_screen.dart:1821:11 - unused_element_parameter
+   info - Use 'const' with the constructor to improve performance - lib\screens\trips\trip_form_modal.dart:521:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\trips\trip_form_modal.dart:523:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\trips\trip_form_modal.dart:666:21 - prefer_const_constructors
+   info - The import of 'package:flutter/services.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\social\widgets\feed_post_card.dart:6:8 - unnecessary_import
+   info - 'value' is deprecated and shouldn't be used. Use component accessors like .r or .g, or toARGB32 for an explicit conversion - lib\social\widgets\feed_post_card.dart:752:60 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\widgets\reel_video_web.dart:232:27 - prefer_const_constructors
+
