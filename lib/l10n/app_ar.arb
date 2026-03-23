@@ -520,6 +520,7 @@
   "signUpWithGoogle": "التسجيل باستخدام Google",
   "signUpWithApple": "التسجيل باستخدام Apple",
   "sectionVisitorTips": "نصائح للزوار",
+  "reviewAuthorGuest": "زائر",
   "communityGoToPost": "الانتقال إلى المنشور",
   "errorWithDetails": "خطأ: {details}",
   "@errorWithDetails": {

@@ -1,6 +1,7 @@
 const express = require('express');
 const { authMiddleware } = require('../middleware/auth');
 const { query } = require('../db');
+const { getRequestLang } = require('../utils/requestLang');
 
 const router = express.Router();
 
@@ -18,6 +19,7 @@ router.get('/', async (req, res) => {
 // GET /api/badges/me - user's badges and check-ins
 router.get('/me', authMiddleware, async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const userId = req.user.userId;
     const [badges, checkIns] = await Promise.all([
       query(
@@ -29,13 +31,14 @@ router.get('/me', authMiddleware, async (req, res) => {
         [userId]
       ),
       query(
-        `SELECT c.place_id, c.checked_at, p.name AS place_name
+        `SELECT c.place_id, c.checked_at, COALESCE(pt.name, p.name) AS place_name
          FROM check_ins c
          JOIN places p ON p.id = c.place_id
+         LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $2
          WHERE c.user_id = $1
          ORDER BY c.checked_at DESC
          LIMIT 50`,
-        [userId]
+        [userId, lang]
       ),
     ]);
     const placeCount = (await query('SELECT COUNT(DISTINCT place_id)::int AS c FROM check_ins WHERE user_id = $1', [userId])).rows[0].c;
@@ -49,11 +52,17 @@ router.get('/me', authMiddleware, async (req, res) => {
 // POST /api/badges/check-in - check in at a place
 router.post('/check-in', authMiddleware, async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const userId = req.user.userId;
     const { placeId } = req.body || {};
     if (!placeId) return res.status(400).json({ error: 'placeId required' });
 
-    const place = (await query('SELECT id, name FROM places WHERE id = $1', [placeId])).rows[0];
+    const place = (await query(
+      `SELECT p.id, COALESCE(pt.name, p.name) AS name FROM places p
+       LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $2
+       WHERE p.id = $1`,
+      [placeId, lang]
+    )).rows[0];
     if (!place) return res.status(404).json({ error: 'Place not found' });
 
     await query('INSERT INTO check_ins (user_id, place_id) VALUES ($1, $2)', [userId, placeId]);

@@ -1,30 +1,37 @@
 const express = require('express');
 const { query } = require('../db');
+const { getRequestLang } = require('../utils/requestLang');
 
 const router = express.Router();
+
+const SELECT_GUIDES = `
+  SELECT ag.id, ag.place_id, ag.tour_id, ag.language, ag.audio_url, ag.duration_seconds,
+         COALESCE(agt.title, ag.title) AS title
+  FROM audio_guides ag
+  LEFT JOIN audio_guide_translations agt ON agt.audio_guide_id = ag.id AND agt.lang = $1
+`;
 
 // GET /api/audio-guides - List by place or tour
 router.get('/', async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const { placeId, tourId } = req.query;
     if (!placeId && !tourId) return res.status(400).json({ error: 'placeId or tourId required' });
 
     let result;
     if (placeId) {
       result = await query(
-        `SELECT id, place_id, tour_id, language, audio_url, duration_seconds, title
-         FROM audio_guides
-         WHERE place_id = $1
-         ORDER BY language`,
-        [placeId]
+        `${SELECT_GUIDES}
+         WHERE ag.place_id = $2
+         ORDER BY ag.language`,
+        [lang, placeId]
       );
     } else {
       result = await query(
-        `SELECT id, place_id, tour_id, language, audio_url, duration_seconds, title
-         FROM audio_guides
-         WHERE tour_id = $1
-         ORDER BY language`,
-        [tourId]
+        `${SELECT_GUIDES}
+         WHERE ag.tour_id = $2
+         ORDER BY ag.language`,
+        [lang, tourId]
       );
     }
 
@@ -38,10 +45,11 @@ router.get('/', async (req, res) => {
 // GET /api/audio-guides/:id - Single audio guide
 router.get('/:id', async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const result = await query(
-      `SELECT id, place_id, tour_id, language, audio_url, duration_seconds, title
-       FROM audio_guides WHERE id = $1`,
-      [req.params.id]
+      `${SELECT_GUIDES}
+       WHERE ag.id = $2`,
+      [lang, req.params.id]
     );
     const row = result.rows[0];
     if (!row) return res.status(404).json({ error: 'Not found' });

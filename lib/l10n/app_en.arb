@@ -519,6 +519,7 @@
   "signUpWithGoogle": "Sign up with Google",
   "signUpWithApple": "Sign up with Apple",
   "sectionVisitorTips": "Visitor Tips",
+  "reviewAuthorGuest": "Visitor",
   "communityGoToPost": "Go to post",
   "errorWithDetails": "Error: {details}",
   "@errorWithDetails": {

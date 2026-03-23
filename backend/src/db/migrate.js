@@ -28,6 +28,7 @@ const MIGRATIONS_ORDER = [
   'add_offer_proposals_restaurant_response',
   'add_bookings_and_badges',
   'add_trip_shares_and_audio',
+  'add_audio_and_offer_translations',
 ];
 
 async function migrate() {

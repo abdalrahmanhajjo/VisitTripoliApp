@@ -58,6 +58,9 @@ class ApiService {
   /// Current app language code (en, ar, fr). When set, API requests send Accept-Language and ?lang= for translation.
   String? _locale;
 
+  /// Exposed so [FeedService] and other helpers can align read requests with the same locale as [ApiService].
+  String? get currentLocale => _locale;
+
   final Map<String, _CacheEntry<List<dynamic>>> _listCache = {};
   void _invalidateListCache() {
     _listCache.clear();
@@ -559,7 +562,7 @@ class ApiService {
   /// GET /api/coupons - List coupons (pass authToken for used_by_me)
   Future<Map<String, dynamic>> getCoupons({String? authToken}) async {
     final response = await _requestWithRetry(() => _client.get(
-          Uri.parse('$_baseUrl/api/coupons'),
+          Uri.parse('$_baseUrl${_urlWithLang('/api/coupons')}'),
           headers: _headers(authToken: authToken),
         ));
     if (response.statusCode != 200) throw ApiException(response.statusCode, _parseError(response.body));
@@ -595,7 +598,7 @@ class ApiService {
   /// GET /api/offers - List place offers
   Future<Map<String, dynamic>> getOffers() async {
     final response = await _requestWithRetry(() => _client.get(
-          Uri.parse('$_baseUrl/api/offers'),
+          Uri.parse('$_baseUrl${_urlWithLang('/api/offers')}'),
           headers: _headers(),
         ));
     if (response.statusCode != 200) throw ApiException(response.statusCode, _parseError(response.body));
@@ -622,7 +625,7 @@ class ApiService {
   /// GET /api/offers/place-proposals - Proposals for places owned by business owner
   Future<Map<String, dynamic>> getPlaceProposals(String authToken) async {
     final response = await _requestWithRetry(() => _client.get(
-          Uri.parse('$_baseUrl/api/offers/place-proposals'),
+          Uri.parse('$_baseUrl${_urlWithLang('/api/offers/place-proposals')}'),
           headers: _headers(authToken: authToken),
         ));
     if (response.statusCode != 200) throw ApiException(response.statusCode, _parseError(response.body));
@@ -642,7 +645,7 @@ class ApiService {
   /// GET /api/offers/my-proposals - User's proposals with restaurant responses
   Future<Map<String, dynamic>> getMyProposals(String authToken) async {
     final response = await _requestWithRetry(() => _client.get(
-          Uri.parse('$_baseUrl/api/offers/my-proposals'),
+          Uri.parse('$_baseUrl${_urlWithLang('/api/offers/my-proposals')}'),
           headers: _headers(authToken: authToken),
         ));
     if (response.statusCode != 200) throw ApiException(response.statusCode, _parseError(response.body));
@@ -652,7 +655,7 @@ class ApiService {
   /// GET /api/offers/place/:id
   Future<Map<String, dynamic>> getOffersForPlace(String placeId) async {
     final response = await _requestWithRetry(() => _client.get(
-          Uri.parse('$_baseUrl/api/offers/place/$placeId'),
+          Uri.parse('$_baseUrl${_urlWithLang('/api/offers/place/$placeId')}'),
           headers: _headers(),
         ));
     if (response.statusCode != 200) throw ApiException(response.statusCode, _parseError(response.body));
@@ -662,7 +665,7 @@ class ApiService {
   /// GET /api/bookings - User bookings
   Future<List<dynamic>> getBookings(String authToken) async {
     final response = await _requestWithRetry(() => _client.get(
-          Uri.parse('$_baseUrl/api/bookings'),
+          Uri.parse('$_baseUrl${_urlWithLang('/api/bookings')}'),
           headers: _headers(authToken: authToken),
         ));
     if (response.statusCode != 200) return [];
@@ -696,7 +699,10 @@ class ApiService {
   /// GET /api/reviews?placeId=... - Place reviews (public)
   Future<List<dynamic>> getPlaceReviews(String placeId) async {
     if (placeId.isEmpty) return [];
-    final uri = Uri.parse('$_baseUrl/api/reviews').replace(queryParameters: {'placeId': placeId});
+    final qp = <String, String>{'placeId': placeId};
+    final loc = _locale;
+    if (loc != null && loc.isNotEmpty) qp['lang'] = loc;
+    final uri = Uri.parse('$_baseUrl/api/reviews').replace(queryParameters: qp);
     final response = await _requestWithRetry(() => _client.get(uri, headers: _headers()));
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, _parseError(response.body));
@@ -746,7 +752,7 @@ class ApiService {
   /// GET /api/badges/me
   Future<Map<String, dynamic>> getMyBadges(String authToken) async {
     final response = await _requestWithRetry(() => _client.get(
-          Uri.parse('$_baseUrl/api/badges/me'),
+          Uri.parse('$_baseUrl${_urlWithLang('/api/badges/me')}'),
           headers: _headers(authToken: authToken),
         ));
     if (response.statusCode != 200) return {};
@@ -770,8 +776,9 @@ class ApiService {
   Future<List<dynamic>> getAudioGuides({String? placeId, String? tourId}) async {
     if (placeId == null && tourId == null) return [];
     final q = placeId != null ? 'placeId=$placeId' : 'tourId=$tourId';
+    final path = _urlWithLang('/api/audio-guides?$q');
     final response = await _requestWithRetry(() => _client.get(
-          Uri.parse('$_baseUrl/api/audio-guides?$q'),
+          Uri.parse('$_baseUrl$path'),
           headers: _headers(),
         ));
     if (response.statusCode != 200) return [];

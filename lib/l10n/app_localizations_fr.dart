@@ -1626,6 +1626,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sectionVisitorTips => 'Conseils aux visiteurs';
 
   @override
+  String get reviewAuthorGuest => 'Visiteur';
+
+  @override
   String get communityGoToPost => 'Aller à la publication';
 
   @override

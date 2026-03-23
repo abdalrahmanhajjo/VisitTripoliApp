@@ -7,6 +7,7 @@ const multer = require('multer');
 const { responseCache, invalidateByPrefix } = require('../middleware/responseCache');
 const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
 const { query } = require('../db');
+const { getRequestLang } = require('../utils/requestLang');
 const { sanitizeFeedBody, isValidPlaceId } = require('../middleware/security');
 const { imageFileFilter, videoFileFilter, MAX_IMAGE_SIZE, MAX_VIDEO_SIZE } = require('../middleware/secureUpload');
 const { uploadFeedImage, uploadFeedVideo, isConfigured: supabaseStorageConfigured } = require('../lib/supabaseStorage');
@@ -104,9 +105,15 @@ router.get('/can-post', authMiddleware, async (req, res) => {
     if (user.is_admin) return res.json({ ...payload, canPost: true, isAdmin: true });
     if (!user.is_business_owner) return res.json(payload);
     try {
+      const lang = getRequestLang(req);
       const placesRow = await query(
-        'SELECT po.place_id, p.name FROM place_owners po JOIN places p ON p.id = po.place_id WHERE po.user_id = $1',
-        [userId]
+        `SELECT po.place_id,
+                COALESCE(pt.name, p.name) AS name
+         FROM place_owners po
+         JOIN places p ON p.id = po.place_id
+         LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $2
+         WHERE po.user_id = $1`,
+        [userId, lang]
       );
       const ownedPlaces = placesRow.rows.map(r => ({ id: r.place_id, name: r.name }));
       return res.json({ ...payload, canPost: ownedPlaces.length > 0, isBusinessOwner: true, ownedPlaces });
@@ -126,13 +133,16 @@ const FEED_LIMIT_DEFAULT = 20;
 const FEED_LIMIT_MAX = 50;
 const FEED_TRENDING_MAX_OFFSET = 800;
 
-const FEED_POST_SELECT = `p.id, p.user_id, p.author_name, p.place_id, pl.name AS place_name, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled`;
+/** $1 = lang (en|ar|fr) — resolves place display name from place_translations when present. */
+const FEED_PLACE_NAME = 'COALESCE((SELECT name FROM place_translations WHERE place_id = pl.id AND lang = $1 LIMIT 1), pl.name) AS place_name';
+const FEED_POST_SELECT = `p.id, p.user_id, p.author_name, p.place_id, ${FEED_PLACE_NAME}, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled`;
 
 router.get('/', optionalAuthMiddleware, responseCache(30 * 1000, {
-  key: (req) => `feed:${req.user?.userId || 'anon'}:${req.query.sort || 'recent'}:${req.query.limit || FEED_LIMIT_DEFAULT}:${req.query.before || ''}:${req.query.offset || '0'}`,
+  key: (req) => `feed:${getRequestLang(req)}:${req.user?.userId || 'anon'}:${req.query.sort || 'recent'}:${req.query.limit || FEED_LIMIT_DEFAULT}:${req.query.before || ''}:${req.query.offset || '0'}`,
   getTtlMs: (req) => (req.user?.userId ? 0 : 30 * 1000),
 }), async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const limit = Math.min(parseInt(req.query.limit, 10) || FEED_LIMIT_DEFAULT, FEED_LIMIT_MAX);
     const before = (req.query.before || '').toString().trim();
     const sort = ((req.query.sort || 'recent').toString().toLowerCase() === 'trending') ? 'trending' : 'recent';
@@ -154,20 +164,20 @@ router.get('/', optionalAuthMiddleware, responseCache(30 * 1000, {
          LEFT JOIN places pl ON pl.id = p.place_id
          WHERE ${baseWhere}
          ORDER BY engagement_score DESC, p.created_at DESC, p.id DESC
-         LIMIT $1 OFFSET $2`,
-        [limit, offset]
+         LIMIT $2 OFFSET $3`,
+        [lang, limit, offset]
       );
     } else if (before) {
       result = await query(
         `SELECT ${FEED_POST_SELECT}
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
-         CROSS JOIN (SELECT created_at AS ref_created_at, id AS ref_id FROM feed_posts WHERE id = $1 LIMIT 1) ref
+         CROSS JOIN (SELECT created_at AS ref_created_at, id AS ref_id FROM feed_posts WHERE id = $2 LIMIT 1) ref
          WHERE ${baseWhere}
            AND (p.created_at, p.id) < (ref.ref_created_at, ref.ref_id)
          ORDER BY p.created_at DESC, p.id DESC
-         LIMIT $2`,
-        [before, limit]
+         LIMIT $3`,
+        [lang, before, limit]
       );
     } else {
       result = await query(
@@ -176,8 +186,8 @@ router.get('/', optionalAuthMiddleware, responseCache(30 * 1000, {
          LEFT JOIN places pl ON pl.id = p.place_id
          WHERE ${baseWhere}
          ORDER BY p.created_at DESC
-         LIMIT $1`,
-        [limit]
+         LIMIT $2`,
+        [lang, limit]
       );
     }
 
@@ -232,17 +242,18 @@ router.get('/', optionalAuthMiddleware, responseCache(30 * 1000, {
 // GET /api/feed/reels - Paginated feed strictly for videos
 router.get('/reels', optionalAuthMiddleware, async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const { before, limit = '20' } = req.query;
     const limitNum = Math.min(parseInt(limit, 10) || 20, 50);
     const userId = req.user?.userId || null;
 
-    let queryStr = `SELECT p.id, p.user_id, p.author_name, p.place_id, pl.name AS place_name, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled
+    let queryStr = `SELECT p.id, p.user_id, p.author_name, p.place_id, ${FEED_PLACE_NAME}, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled
                     FROM feed_posts p
                     LEFT JOIN places pl ON pl.id = p.place_id
                     WHERE p.type = 'video'`;
-    let params = [];
+    const params = [lang];
     if (before) {
-      queryStr += ` AND p.created_at < $1`;
+      queryStr += ` AND p.created_at < $2`;
       params.push(before);
     }
     queryStr += ` ORDER BY p.created_at DESC LIMIT $${params.length + 1}`;
@@ -287,6 +298,7 @@ router.get('/reels', optionalAuthMiddleware, async (req, res) => {
 // GET /api/feed/saved - Auth required. Returns posts the user has saved, paginated (newest first).
 router.get('/saved', authMiddleware, async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const limit = Math.min(parseInt(req.query.limit, 10) || FEED_LIMIT_DEFAULT, FEED_LIMIT_MAX);
@@ -296,25 +308,25 @@ router.get('/saved', authMiddleware, async (req, res) => {
     let result;
     if (before) {
       result = await query(
-        `SELECT p.id, p.user_id, p.author_name, p.place_id, pl.name AS place_name, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled
+        `SELECT ${FEED_POST_SELECT}
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
-         INNER JOIN feed_saves s ON s.post_id = p.id AND s.user_id = $1
-         CROSS JOIN (SELECT created_at AS ref_created_at, id AS ref_id FROM feed_posts WHERE id = $2 LIMIT 1) ref
+         INNER JOIN feed_saves s ON s.post_id = p.id AND s.user_id = $2
+         CROSS JOIN (SELECT created_at AS ref_created_at, id AS ref_id FROM feed_posts WHERE id = $3 LIMIT 1) ref
          WHERE (p.created_at, p.id) < (ref.ref_created_at, ref.ref_id)
          ORDER BY p.created_at DESC, p.id DESC
-         LIMIT $3`,
-        [userId, before, limit]
+         LIMIT $4`,
+        [lang, userId, before, limit]
       );
     } else {
       result = await query(
-        `SELECT p.id, p.user_id, p.author_name, p.place_id, pl.name AS place_name, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled
+        `SELECT ${FEED_POST_SELECT}
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
-         INNER JOIN feed_saves s ON s.post_id = p.id AND s.user_id = $1
+         INNER JOIN feed_saves s ON s.post_id = p.id AND s.user_id = $2
          ORDER BY p.created_at DESC, p.id DESC
-         LIMIT $2`,
-        [userId, limit]
+         LIMIT $3`,
+        [lang, userId, limit]
       );
     }
 
@@ -350,6 +362,7 @@ router.get('/saved', authMiddleware, async (req, res) => {
 // GET /api/feed/liked - Paginated liked feed. Auth required.
 router.get('/liked', authMiddleware, async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const limit = Math.min(parseInt(req.query.limit, 10) || FEED_LIMIT_DEFAULT, FEED_LIMIT_MAX);
@@ -359,25 +372,25 @@ router.get('/liked', authMiddleware, async (req, res) => {
     let result;
     if (before) {
       result = await query(
-        `SELECT p.id, p.user_id, p.author_name, p.place_id, pl.name AS place_name, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled
+        `SELECT ${FEED_POST_SELECT}
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
-         INNER JOIN feed_likes l ON l.post_id = p.id AND l.user_id = $1
-         CROSS JOIN (SELECT created_at AS ref_created_at, id AS ref_id FROM feed_posts WHERE id = $2 LIMIT 1) ref
+         INNER JOIN feed_likes l ON l.post_id = p.id AND l.user_id = $2
+         CROSS JOIN (SELECT created_at AS ref_created_at, id AS ref_id FROM feed_posts WHERE id = $3 LIMIT 1) ref
          WHERE (p.created_at, p.id) < (ref.ref_created_at, ref.ref_id)
          ORDER BY p.created_at DESC, p.id DESC
-         LIMIT $3`,
-        [userId, before, limit]
+         LIMIT $4`,
+        [lang, userId, before, limit]
       );
     } else {
       result = await query(
-        `SELECT p.id, p.user_id, p.author_name, p.place_id, pl.name AS place_name, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled
+        `SELECT ${FEED_POST_SELECT}
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
-         INNER JOIN feed_likes l ON l.post_id = p.id AND l.user_id = $1
+         INNER JOIN feed_likes l ON l.post_id = p.id AND l.user_id = $2
          ORDER BY p.created_at DESC, p.id DESC
-         LIMIT $2`,
-        [userId, limit]
+         LIMIT $3`,
+        [lang, userId, limit]
       );
     }
 
@@ -412,10 +425,11 @@ router.get('/liked', authMiddleware, async (req, res) => {
 
 // GET /api/feed/place/:placeId — Posts for one place (grid / “stories”). Public; optional auth for likedByMe.
 router.get('/place/:placeId', optionalAuthMiddleware, responseCache(30 * 1000, {
-  key: (req) => `feed:${req.user?.userId || 'anon'}:place:${req.params.placeId}:${req.query.limit || FEED_LIMIT_DEFAULT}:${req.query.before || ''}`,
+  key: (req) => `feed:${getRequestLang(req)}:${req.user?.userId || 'anon'}:place:${req.params.placeId}:${req.query.limit || FEED_LIMIT_DEFAULT}:${req.query.before || ''}`,
   getTtlMs: (req) => (req.user?.userId ? 0 : 30 * 1000),
 }), async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const placeId = req.params.placeId;
     if (!isValidPlaceId(placeId)) {
       return res.status(400).json({ error: 'Invalid place id' });
@@ -425,7 +439,13 @@ router.get('/place/:placeId', optionalAuthMiddleware, responseCache(30 * 1000, {
     const baseUrl = getBaseUrl(req);
     const userId = req.user?.userId || null;
 
-    const placeRow = (await query('SELECT name, images FROM places WHERE id = $1', [placeId])).rows[0];
+    const placeRow = (await query(
+      `SELECT COALESCE(pt.name, p.name) AS name, p.images
+       FROM places p
+       LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $2
+       WHERE p.id = $1`,
+      [placeId, lang]
+    )).rows[0];
     const placePayload = placeRow
       ? { name: placeRow.name || 'Place', image: getFirstPlaceImage(placeRow.images, baseUrl) }
       : { name: 'Place', image: null };
@@ -433,27 +453,27 @@ router.get('/place/:placeId', optionalAuthMiddleware, responseCache(30 * 1000, {
     let result;
     if (before) {
       result = await query(
-        `SELECT p.id, p.user_id, p.author_name, p.place_id, pl.name AS place_name, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled
+        `SELECT ${FEED_POST_SELECT}
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
-         CROSS JOIN (SELECT created_at AS ref_created_at, id AS ref_id FROM feed_posts WHERE id = $1 LIMIT 1) ref
-         WHERE p.place_id = $2
+         CROSS JOIN (SELECT created_at AS ref_created_at, id AS ref_id FROM feed_posts WHERE id = $2 LIMIT 1) ref
+         WHERE p.place_id = $3
            AND (p.author_role IN ('admin', 'business_owner') OR (p.author_role IS NULL AND p.place_id IS NOT NULL))
            AND (p.created_at, p.id) < (ref.ref_created_at, ref.ref_id)
          ORDER BY p.created_at DESC, p.id DESC
-         LIMIT $3`,
-        [before, placeId, limit]
+         LIMIT $4`,
+        [lang, before, placeId, limit]
       );
     } else {
       result = await query(
-        `SELECT p.id, p.user_id, p.author_name, p.place_id, pl.name AS place_name, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled
+        `SELECT ${FEED_POST_SELECT}
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
-         WHERE p.place_id = $1
+         WHERE p.place_id = $2
            AND (p.author_role IN ('admin', 'business_owner') OR (p.author_role IS NULL AND p.place_id IS NOT NULL))
          ORDER BY p.created_at DESC, p.id DESC
-         LIMIT $2`,
-        [placeId, limit]
+         LIMIT $3`,
+        [lang, placeId, limit]
       );
     }
 
@@ -492,6 +512,7 @@ const postLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, message: { error: 
 // POST /api/feed - Auth required. Only admins and business owners can post.
 router.post('/', postLimiter, authMiddleware, sanitizeFeedBody, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const userId = req.user?.userId;
     const placeId = req.body?.placeId && isValidPlaceId(req.body.placeId) ? req.body.placeId : null;
 
@@ -547,7 +568,13 @@ router.post('/', postLimiter, authMiddleware, sanitizeFeedBody, upload.fields([{
     );
     let row = result.rows[0];
     if (placeId) {
-      const placeRow = (await query('SELECT name, images FROM places WHERE id = $1', [placeId])).rows[0];
+      const placeRow = (await query(
+        `SELECT COALESCE(pt.name, p.name) AS name, p.images
+         FROM places p
+         LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $2
+         WHERE p.id = $1`,
+        [placeId, lang]
+      )).rows[0];
       if (placeRow) {
         row = { ...row, place_name: placeRow.name, place_images: placeRow.images };
       }
@@ -791,8 +818,9 @@ router.put('/:id', authMiddleware, optionalUploadImage, async (req, res) => {
     }
 
     await query('UPDATE feed_posts SET caption = $1, image_url = $2, type = $3 WHERE id = $4', [caption || null, imageUrl, type, postId]);
+    const lang = getRequestLang(req);
     const [updated, likeCounts, commentCounts, likedByUser, savedByUser] = await Promise.all([
-      query('SELECT p.id, p.user_id, p.author_name, p.place_id, pl.name AS place_name, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled FROM feed_posts p LEFT JOIN places pl ON pl.id = p.place_id WHERE p.id = $1', [postId]),
+      query(`SELECT ${FEED_POST_SELECT} FROM feed_posts p LEFT JOIN places pl ON pl.id = p.place_id WHERE p.id = $2`, [lang, postId]),
       query('SELECT post_id, COUNT(*)::int AS c FROM feed_likes WHERE post_id = $1 GROUP BY post_id', [postId]),
       query('SELECT post_id, COUNT(*)::int AS c FROM feed_comments WHERE post_id = $1 GROUP BY post_id', [postId]),
       userId ? query('SELECT post_id FROM feed_likes WHERE user_id = $1 AND post_id = $2', [userId, postId]) : Promise.resolve({ rows: [] }),
@@ -838,8 +866,9 @@ router.patch('/:id/options', authMiddleware, async (req, res) => {
     queryParams.push(postId);
     await query(`UPDATE feed_posts SET ${setClauses.join(', ')} WHERE id = $${idx}`, queryParams);
     invalidateByPrefix('feed:');
+    const lang = getRequestLang(req);
     const [updated, likeCounts, commentCounts, likedByUser, savedByUser] = await Promise.all([
-      query('SELECT p.id, p.user_id, p.author_name, p.place_id, pl.name AS place_name, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled FROM feed_posts p LEFT JOIN places pl ON pl.id = p.place_id WHERE p.id = $1', [postId]),
+      query(`SELECT ${FEED_POST_SELECT} FROM feed_posts p LEFT JOIN places pl ON pl.id = p.place_id WHERE p.id = $2`, [lang, postId]),
       query('SELECT post_id, COUNT(*)::int AS c FROM feed_likes WHERE post_id = $1 GROUP BY post_id', [postId]),
       query('SELECT post_id, COUNT(*)::int AS c FROM feed_comments WHERE post_id = $1 GROUP BY post_id', [postId]),
       query('SELECT post_id FROM feed_likes WHERE user_id = $1 AND post_id = $2', [userId, postId]),

@@ -1,6 +1,7 @@
 const express = require('express');
 const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
 const { query } = require('../db');
+const { getRequestLang } = require('../utils/requestLang');
 
 const router = express.Router();
 
@@ -51,14 +52,22 @@ function mapOffer(row) {
 // GET /api/offers - List active offers from restaurants only (category_id = 'food')
 router.get('/', optionalAuthMiddleware, async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const result = await query(
-      `SELECT o.id, o.place_id, o.title, o.description, o.discount_type, o.discount_value,
-              o.start_time, o.end_time, o.expires_at, p.name AS place_name, p.images AS place_images
+      `SELECT o.id, o.place_id,
+              COALESCE(pot.title, o.title) AS title,
+              COALESCE(pot.description, o.description) AS description,
+              o.discount_type, o.discount_value,
+              o.start_time, o.end_time, o.expires_at,
+              COALESCE(pt.name, p.name) AS place_name, p.images AS place_images
        FROM place_offers o
        JOIN places p ON p.id = o.place_id AND p.category_id = 'food'
+       LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $1
+       LEFT JOIN place_offer_translations pot ON pot.offer_id = o.id AND pot.lang = $1
        WHERE o.expires_at > NOW()
        ORDER BY o.expires_at ASC
-       LIMIT 50`
+       LIMIT 50`,
+      [lang]
     );
     res.json({ offers: result.rows.map(mapOffer) });
   } catch (err) {
@@ -70,17 +79,19 @@ router.get('/', optionalAuthMiddleware, async (req, res) => {
 // GET /api/offers/my-proposals - User's proposals with restaurant responses (auth required)
 router.get('/my-proposals', authMiddleware, async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const userId = req.user.userId;
     const result = await query(
       `SELECT op.id, op.place_id, op.message, op.phone, op.status, op.created_at,
               op.restaurant_response, op.restaurant_responded_at,
-              p.name AS place_name
+              COALESCE(pt.name, p.name) AS place_name
        FROM offer_proposals op
        JOIN places p ON p.id = op.place_id
-       WHERE op.user_id = $1
+       LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $1
+       WHERE op.user_id = $2
        ORDER BY op.created_at DESC
        LIMIT 50`,
-      [userId]
+      [lang, userId]
     );
     res.json({
       proposals: result.rows.map(r => ({
@@ -104,19 +115,21 @@ router.get('/my-proposals', authMiddleware, async (req, res) => {
 // GET /api/offers/place-proposals - Proposals for places owned by current user (business owner)
 router.get('/place-proposals', authMiddleware, async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const userId = req.user.userId;
     const result = await query(
       `SELECT op.id, op.place_id, op.user_id, op.message, op.phone, op.status, op.created_at,
               op.restaurant_response, op.restaurant_responded_at,
-              p.name AS place_name,
+              COALESCE(pt.name, p.name) AS place_name,
               u.name AS user_name
        FROM offer_proposals op
-       JOIN place_owners po ON po.place_id = op.place_id AND po.user_id = $1
+       JOIN place_owners po ON po.place_id = op.place_id AND po.user_id = $2
        JOIN places p ON p.id = op.place_id
+       LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $1
        LEFT JOIN users u ON u.id = op.user_id
        ORDER BY op.created_at DESC
        LIMIT 100`,
-      [userId]
+      [lang, userId]
     );
     res.json({
       proposals: result.rows.map(r => ({
@@ -166,14 +179,19 @@ router.put('/proposals/:id/respond', authMiddleware, async (req, res) => {
 // GET /api/offers/place/:placeId - Offers for a place
 router.get('/place/:placeId', async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const { placeId } = req.params;
     const result = await query(
-      `SELECT id, place_id, title, description, discount_type, discount_value,
-              start_time, end_time, expires_at
-       FROM place_offers
-       WHERE place_id = $1 AND expires_at > NOW()
-       ORDER BY expires_at ASC`,
-      [placeId]
+      `SELECT o.id, o.place_id,
+              COALESCE(pot.title, o.title) AS title,
+              COALESCE(pot.description, o.description) AS description,
+              o.discount_type, o.discount_value,
+              o.start_time, o.end_time, o.expires_at
+       FROM place_offers o
+       LEFT JOIN place_offer_translations pot ON pot.offer_id = o.id AND pot.lang = $2
+       WHERE o.place_id = $1 AND o.expires_at > NOW()
+       ORDER BY o.expires_at ASC`,
+      [placeId, lang]
     );
     res.json({ offers: result.rows.map(mapOffer) });
   } catch (err) {

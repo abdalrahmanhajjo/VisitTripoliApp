@@ -1597,6 +1597,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionVisitorTips => 'Visitor Tips';
 
   @override
+  String get reviewAuthorGuest => 'Visitor';
+
+  @override
   String get communityGoToPost => 'Go to post';
 
   @override

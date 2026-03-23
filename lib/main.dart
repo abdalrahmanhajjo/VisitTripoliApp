@@ -103,6 +103,7 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
             try {
+              final auth = context.read<AuthProvider>();
               context
                   .read<PlacesProvider>()
                   .loadPlaces(forceRefresh: true, locale: code);
@@ -118,6 +119,15 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
               context
                   .read<InterestsProvider>()
                   .loadInterests(forceRefresh: true, locale: code);
+              // Feed/reels: place names come from DB translations; reload so UI matches language.
+              context.read<FeedProvider>().loadFeed(
+                    authToken: auth.authToken,
+                    refresh: true,
+                  );
+              context.read<FeedProvider>().loadReels(
+                    authToken: auth.authToken,
+                    refresh: true,
+                  );
             } catch (_) {}
           });
         }

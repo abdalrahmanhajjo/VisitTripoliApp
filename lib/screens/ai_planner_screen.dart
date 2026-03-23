@@ -616,6 +616,70 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
 
   void _scheduleAutoRun() {} // No-op for chat mode (inputs menu still updates state)
 
+  /// Parses [AIPlannerSlot.suggestedTime] (e.g. `9:00`, `14:30`) to minutes since midnight for sorting.
+  int _tripSlotTimeMinutes(AIPlannerSlot s) {
+    final t = s.suggestedTime.trim();
+    final match = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(t);
+    if (match != null) {
+      final h = int.tryParse(match.group(1) ?? '') ?? 0;
+      final m = int.tryParse(match.group(2) ?? '') ?? 0;
+      return h * 60 + m;
+    }
+    return 0;
+  }
+
+  /// Reassigns slots to exactly [dayCount] days (0-based indices), in stable day/time order, with fresh times per day.
+  List<AIPlannerSlot> _normalizeSlotsForTripLength(
+    List<AIPlannerSlot> slots,
+    int dayCount,
+  ) {
+    if (slots.isEmpty || dayCount < 1) return [];
+    final sorted = List<AIPlannerSlot>.from(slots)
+      ..sort((a, b) {
+        final d0 = a.dayIndex ?? 0;
+        final d1 = b.dayIndex ?? 0;
+        if (d0 != d1) return d0.compareTo(d1);
+        return _tripSlotTimeMinutes(a).compareTo(_tripSlotTimeMinutes(b));
+      });
+
+    if (dayCount == 1) {
+      return List.generate(
+        sorted.length,
+        (i) => AIPlannerSlot(
+          placeId: sorted[i].placeId,
+          suggestedTime: '${9 + i}:00',
+          reason: sorted[i].reason,
+          dayIndex: 0,
+        ),
+      );
+    }
+
+    final n = sorted.length;
+    final result = <AIPlannerSlot>[];
+    var base = n ~/ dayCount;
+    var rem = n % dayCount;
+    var idx = 0;
+    for (var d = 0; d < dayCount; d++) {
+      final chunk = base + (rem > 0 ? 1 : 0);
+      if (rem > 0) rem--;
+      final endIdx = idx + chunk;
+      final safeEnd = endIdx > n ? n : endIdx;
+      for (var j = idx; j < safeEnd; j++) {
+        final slotInDay = j - idx;
+        result.add(
+          AIPlannerSlot(
+            placeId: sorted[j].placeId,
+            suggestedTime: '${9 + slotInDay}:00',
+            reason: sorted[j].reason,
+            dayIndex: d,
+          ),
+        );
+      }
+      idx = safeEnd;
+    }
+    return result;
+  }
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -643,12 +707,20 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
   void _saveAsTrip(List<Place> places, List<AIPlannerSlot> slots) {
     if (places.isEmpty || slots.isEmpty || _selectedDate == null) return;
 
-    // Use actual number of days from slots so we save all days, not just first
-    final maxDayIndex = slots.fold<int>(0, (m, s) {
-      final d = s.dayIndex ?? 0;
-      return d > m ? d : m;
-    });
-    final dayCount = maxDayIndex + 1;
+    // Match the trip length chosen in the planner (days × places per day), not ad-hoc max(dayIndex).
+    final dayCount = _duration;
+    final normalized = _normalizeSlotsForTripLength(slots, dayCount);
+    final idToPlace = {for (final p in places) p.id: p};
+    for (final s in normalized) {
+      if (idToPlace[s.placeId] == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not resolve all places in the plan.'),
+          ),
+        );
+        return;
+      }
+    }
 
     final tripsProvider = Provider.of<TripsProvider>(context, listen: false);
     final endDate = _selectedDate!.add(Duration(days: dayCount - 1));
@@ -661,7 +733,6 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
       return;
     }
 
-    final hasMultiDay = dayCount > 1;
     final trip = Trip(
       id: 'trip_${DateTime.now().millisecondsSinceEpoch}',
       name: dayCount > 1
@@ -672,32 +743,20 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
       days: List.generate(dayCount, (dayIndex) {
         final dayDate = _selectedDate!.add(Duration(days: dayIndex));
         final dateStr = DateFormat('yyyy-MM-dd').format(dayDate);
-        List<Place> placesForDay;
-        List<AIPlannerSlot> slotsForDay;
-        if (hasMultiDay) {
-          final indices = <int>[];
-          for (var i = 0; i < slots.length; i++) {
-            if ((slots[i].dayIndex ?? 0) == dayIndex) indices.add(i);
-          }
-          placesForDay = indices.map((i) => places[i]).toList();
-          slotsForDay = indices.map((i) => slots[i]).toList();
-        } else {
-          placesForDay = places;
-          slotsForDay = slots;
-        }
+        final forDay = normalized
+            .where((s) => (s.dayIndex ?? 0) == dayIndex)
+            .toList();
         return TripDay(
           date: dateStr,
-          slots: placesForDay
-              .asMap()
-              .entries
-              .map((e) => TripSlot(
-                    placeId: e.value.id,
-                    startTime: e.key < slotsForDay.length
-                        ? slotsForDay[e.key].suggestedTime
-                        : '${9 + e.key}:00',
-                    endTime: null,
-                    notes: e.key < slotsForDay.length ? slotsForDay[e.key].reason : null,
-                  ))
+          slots: forDay
+              .map(
+                (s) => TripSlot(
+                  placeId: s.placeId,
+                  startTime: s.suggestedTime,
+                  endTime: null,
+                  notes: s.reason,
+                ),
+              )
               .toList(),
         );
       }),

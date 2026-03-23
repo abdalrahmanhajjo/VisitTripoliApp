@@ -1,23 +1,28 @@
 const express = require('express');
 const { authMiddleware } = require('../middleware/auth');
 const { query } = require('../db');
+const { getRequestLang } = require('../utils/requestLang');
 
 const isProd = process.env.NODE_ENV === 'production';
 const router = express.Router();
 
 router.get('/', authMiddleware, async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const userId = req.user.userId;
     const result = await query(
       `SELECT b.id, b.place_id, b.tour_id, b.booking_type, b.booking_date, b.time_slot,
               b.party_size, b.status, b.notes, b.created_at,
-              p.name AS place_name, t.name AS tour_name
+              COALESCE(pt.name, p.name) AS place_name,
+              COALESCE(tt.name, t.name) AS tour_name
        FROM bookings b
        LEFT JOIN places p ON p.id = b.place_id
+       LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $1
        LEFT JOIN tours t ON t.id = b.tour_id
-       WHERE b.user_id = $1 AND b.status != 'cancelled'
+       LEFT JOIN tour_translations tt ON tt.tour_id = t.id AND tt.lang = $1
+       WHERE b.user_id = $2 AND b.status != 'cancelled'
        ORDER BY b.booking_date DESC LIMIT 50`,
-      [userId]
+      [lang, userId]
     );
     res.json({ bookings: result.rows });
   } catch (err) {

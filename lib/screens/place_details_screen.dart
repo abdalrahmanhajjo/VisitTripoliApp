@@ -29,6 +29,7 @@ import '../widgets/route_origin_picker.dart';
 import '../map/embedded_maps.dart';
 import '../map/place_coordinates.dart';
 import 'checkin_scan_screen.dart';
+import 'package:tripoli_explorer/l10n/app_localizations.dart';
 
 // Legacy keys kept for backwards compatibility with older app versions.
 // New versions load reviews from the backend instead of local storage.
@@ -931,8 +932,9 @@ class _OverviewTab extends StatelessWidget {
           ],
               // Visitor tips
               SizedBox(height: gap * 1.16),
-              const _SectionHeader(
-                  icon: Icons.lightbulb_outline_rounded, title: 'Visitor Tips'),
+              _SectionHeader(
+                  icon: Icons.lightbulb_outline_rounded,
+                  title: AppLocalizations.of(context)!.sectionVisitorTips),
               const SizedBox(height: 12),
               ..._visitorTips(place).asMap().entries.map(
                     (e) => Padding(
@@ -1882,7 +1884,7 @@ class _ReviewsTabState extends State<_ReviewsTab> {
           'stars': m['stars'] ?? m['rating'],
           'title': m['title']?.toString() ?? '',
           'text': m['text']?.toString() ?? m['review']?.toString() ?? '',
-          'author': m['author']?.toString() ?? 'Visitor',
+          'author': m['author']?.toString() ?? '',
           'date': m['date']?.toString() ?? '',
         };
       }).toList();
@@ -2517,7 +2519,10 @@ class _ReviewCard extends StatelessWidget {
         : (int.tryParse(rawStars?.toString() ?? '') ?? 0).clamp(1, 5);
     final title = review['title']?.toString() ?? '';
     final text = review['text']?.toString() ?? review['review']?.toString() ?? '';
-    final author = review['author']?.toString() ?? 'Visitor';
+    final authorRaw = review['author']?.toString() ?? '';
+    final author = authorRaw.isEmpty || authorRaw == 'Visitor'
+        ? AppLocalizations.of(context)!.reviewAuthorGuest
+        : authorRaw;
     final date = review['date']?.toString() ?? '';
     final reviewUserId = review['user_id']?.toString();
     final isOwnReview = currentUserId != null &&

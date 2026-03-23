@@ -1584,6 +1584,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get sectionVisitorTips => 'نصائح للزوار';
 
   @override
+  String get reviewAuthorGuest => 'زائر';
+
+  @override
   String get communityGoToPost => 'الانتقال إلى المنشور';
 
   @override

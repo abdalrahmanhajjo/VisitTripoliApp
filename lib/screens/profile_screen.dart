@@ -91,6 +91,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoadingProfile = false;
   bool _isUploadingAvatar = false;
   bool _formFilledFromProfile = false;
+  /// Bumps so badges/bookings sections remount and refetch after pull-to-refresh.
+  int _sectionsRefreshKey = 0;
   late TextEditingController _nameController;
   late TextEditingController _usernameController;
   late TextEditingController _emailController;
@@ -168,45 +170,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final tripCount = trips.trips.length;
 
     final hp = _ProfileResponsive.horizontalPadding(context);
+    final bottomPad = _ProfileResponsive.isSmallPhone(context) ? 20.0 : 28.0;
+    final cardLift = _ProfileResponsive.isSmallPhone(context) ? -22.0 : -32.0;
+
+    Future<void> onPullRefresh() async {
+      final token = auth.authToken;
+      if (token != null && !auth.isGuest) {
+        await profile.loadFromApi(token);
+        if (mounted) {
+          _fillFormFromProfile(profile);
+          setState(() => _sectionsRefreshKey++);
+        }
+      } else if (mounted) {
+        setState(() => _sectionsRefreshKey++);
+      }
+    }
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       body: SafeArea(
         top: false,
         bottom: true,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ProfileHeader(
-                isEditing: _isEditing,
-                onBack: () => context.pop(),
-                onEditToggle: () {
-                  setState(() {
-                    _isEditing = !_isEditing;
-                    if (_isEditing) {
-                      _fillFormFromProfile(profile);
-                    }
-                  });
-                },
-              ),
-              Padding(
-                padding: EdgeInsets.fromLTRB(hp, 0, hp, 28),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Transform.translate(
-                      offset: const Offset(0, -36),
-                      child: _isLoadingProfile
-                          ? _buildProfileLoadingCard()
-                          : _ProfileUserCard(
-                              profile: profile,
-                              canChangeAvatar: auth.isLoggedIn && !auth.isGuest,
-                              isUploadingAvatar: _isUploadingAvatar,
-                              onAvatarTap: () => _pickAndUploadAvatar(context, auth, profile),
-                            ),
-                    ),
+        child: RefreshIndicator(
+          color: AppTheme.primaryColor,
+          onRefresh: onPullRefresh,
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ProfileHeader(
+                  isEditing: _isEditing,
+                  onBack: () => context.pop(),
+                  onEditToggle: () {
+                    setState(() {
+                      _isEditing = !_isEditing;
+                      if (_isEditing) {
+                        _fillFormFromProfile(profile);
+                      }
+                    });
+                  },
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(hp, 0, hp, bottomPad),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Transform.translate(
+                        offset: Offset(0, cardLift),
+                        child: _isLoadingProfile
+                            ? _buildProfileLoadingCard()
+                            : _ProfileUserCard(
+                                profile: profile,
+                                canChangeAvatar: auth.isLoggedIn && !auth.isGuest,
+                                isUploadingAvatar: _isUploadingAvatar,
+                                onAvatarTap: () => _pickAndUploadAvatar(context, auth, profile),
+                              ),
+                      ),
                   SizedBox(height: _ProfileResponsive.sectionGap(context)),
                   _ProfileStats(
                     trips: tripCount,
@@ -216,9 +236,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   if (auth.isLoggedIn && !auth.isGuest) ...[
                     SizedBox(height: _ProfileResponsive.sectionGap(context)),
-                    _ProfileBadgesSection(authToken: auth.authToken!),
+                    _ProfileBadgesSection(key: ValueKey('badges_$_sectionsRefreshKey'), authToken: auth.authToken!),
                     SizedBox(height: _ProfileResponsive.sectionGap(context)),
-                    _ProfileBookingsSection(authToken: auth.authToken!),
+                    _ProfileBookingsSection(key: ValueKey('bookings_$_sectionsRefreshKey'), authToken: auth.authToken!),
                   ],
                   SizedBox(height: _ProfileResponsive.sectionGap(context)),
                   _ProfileAccountDetails(
@@ -270,7 +290,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   SizedBox(height: _ProfileResponsive.sectionGap(context)),
                     _ProfileSessionCard(
-                      onClear: () => _showClearProfileDialog(context, profile),
                       onLogout: () async {
                         await Provider.of<AuthProvider>(context, listen: false)
                             .logout();
@@ -282,6 +301,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -493,36 +513,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _showClearProfileDialog(BuildContext context, ProfileProvider profile) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.clearProfileTitle),
-        content: Text(AppLocalizations.of(context)!.clearProfileMessage),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(AppLocalizations.of(context)!.cancel),
-          ),
-          TextButton(
-            onPressed: () async {
-              final avatarPath = profile.avatarLocalPath;
-              await profile.clearProfile();
-              clearProfileAvatarFromDevice(avatarPath.isNotEmpty ? avatarPath : null);
-              if (context.mounted) {
-                Navigator.pop(ctx);
-                _showToast(
-                    context, AppLocalizations.of(context)!.localProfileReset);
-              }
-            },
-            child: Text(AppLocalizations.of(context)!.clear,
-                style: const TextStyle(color: AppTheme.errorColor)),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showSavedPlacesModal(BuildContext context) {
     final placesProvider = Provider.of<PlacesProvider>(context, listen: false);
     final saved = placesProvider.savedPlaces;
@@ -637,9 +627,13 @@ class _ProfileHeader extends StatelessWidget {
     final hp = _ProfileResponsive.horizontalPadding(context);
     final topInset = MediaQuery.paddingOf(context).top;
     final l10n = AppLocalizations.of(context)!;
+    final small = _ProfileResponsive.isSmallPhone(context);
+    final compact = _ProfileResponsive.isCompact(context);
+    final titleSize = small ? 21.0 : 26.0;
+    final subtitleSize = small ? 12.0 : 13.0;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(4, topInset + 8, hp, 44),
+      padding: EdgeInsets.fromLTRB(4, topInset + 8, hp, small ? 36 : 44),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -680,23 +674,23 @@ class _ProfileHeader extends StatelessWidget {
                   Text(
                     l10n.profile,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 26,
+                      fontSize: titleSize,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
                       letterSpacing: -0.6,
                       height: 1.15,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: small ? 4 : 6),
                   Text(
                     l10n.profileScreenSubtitle,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: subtitleSize,
                       height: 1.35,
                       color: Colors.white.withValues(alpha: 0.88),
                       fontWeight: FontWeight.w500,
                     ),
-                    maxLines: 2,
+                    maxLines: small ? 3 : 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -712,27 +706,39 @@ class _ProfileHeader extends StatelessWidget {
               onTap: onEditToggle,
               borderRadius: BorderRadius.circular(999),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isEditing ? Icons.check_rounded : Icons.edit_rounded,
-                      size: 18,
-                      color: AppTheme.primaryColor,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      isEditing ? l10n.done : l10n.edit,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.primaryColor,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ],
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 10 : 16,
+                  vertical: compact ? 10 : 12,
                 ),
+                child: compact
+                    ? Tooltip(
+                        message: isEditing ? l10n.done : l10n.edit,
+                        child: Icon(
+                          isEditing ? Icons.check_rounded : Icons.edit_rounded,
+                          size: 20,
+                          color: AppTheme.primaryColor,
+                        ),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isEditing ? Icons.check_rounded : Icons.edit_rounded,
+                            size: 18,
+                            color: AppTheme.primaryColor,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isEditing ? l10n.done : l10n.edit,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primaryColor,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ),
           ),
@@ -757,8 +763,12 @@ class _ProfileUserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final stackVertical = _ProfileResponsive.isCompact(context);
+    final avatarSize = stackVertical ? 76.0 : 88.0;
+    final hp = _ProfileResponsive.horizontalPadding(context);
+    final padH = stackVertical ? (hp < 14 ? 14.0 : hp) : 20.0;
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+      padding: EdgeInsets.fromLTRB(padH, stackVertical ? 18 : 22, padH, stackVertical ? 18 : 20),
       decoration: BoxDecoration(
         color: AppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(16),
@@ -774,62 +784,116 @@ class _ProfileUserCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _profileAvatar(context, profile, 88),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      profile.name.isEmpty
-                          ? AppLocalizations.of(context)!.profileIdentity
-                          : profile.name,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+          if (stackVertical) ...[
+            Center(child: _profileAvatar(context, profile, avatarSize)),
+            const SizedBox(height: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  profile.name.isEmpty
+                      ? AppLocalizations.of(context)!.profileIdentity
+                      : profile.name,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: stackVertical ? 18 : 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (profile.username.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    profile.username,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.textSecondary,
                     ),
-                    if (profile.username.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        profile.username,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.textSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 12),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (profile.city.isNotEmpty)
+                      _ProfileBadge(
+                        icon: FontAwesomeIcons.locationDot,
+                        label: profile.city,
                       ),
-                    ],
-                    const SizedBox(height: 14),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        if (profile.city.isNotEmpty)
-                          _ProfileBadge(
-                            icon: FontAwesomeIcons.locationDot,
-                            label: profile.city,
-                          ),
-                        _ProfileBadge(
-                          icon: FontAwesomeIcons.compass,
-                          label: AppLocalizations.of(context)!.explorer,
-                          subtle: true,
-                        ),
-                      ],
+                    _ProfileBadge(
+                      icon: FontAwesomeIcons.compass,
+                      label: AppLocalizations.of(context)!.explorer,
+                      subtle: true,
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
+              ],
+            ),
+          ] else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _profileAvatar(context, profile, avatarSize),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile.name.isEmpty
+                            ? AppLocalizations.of(context)!.profileIdentity
+                            : profile.name,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (profile.username.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          profile.username,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          if (profile.city.isNotEmpty)
+                            _ProfileBadge(
+                              icon: FontAwesomeIcons.locationDot,
+                              label: profile.city,
+                            ),
+                          _ProfileBadge(
+                            icon: FontAwesomeIcons.compass,
+                            label: AppLocalizations.of(context)!.explorer,
+                            subtle: true,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+          SizedBox(height: stackVertical ? 14 : 18),
           Container(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             decoration: BoxDecoration(
@@ -975,7 +1039,7 @@ class _ProfileUserCard extends StatelessWidget {
 class _ProfileBadgesSection extends StatefulWidget {
   final String authToken;
 
-  const _ProfileBadgesSection({required this.authToken});
+  const _ProfileBadgesSection({super.key, required this.authToken});
 
   @override
   State<_ProfileBadgesSection> createState() => _ProfileBadgesSectionState();
@@ -1074,7 +1138,7 @@ class _ProfileBadgesSectionState extends State<_ProfileBadgesSection> {
 class _ProfileBookingsSection extends StatefulWidget {
   final String authToken;
 
-  const _ProfileBookingsSection({required this.authToken});
+  const _ProfileBookingsSection({super.key, required this.authToken});
 
   @override
   State<_ProfileBookingsSection> createState() => _ProfileBookingsSectionState();
@@ -1263,9 +1327,10 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final compact = _ProfileResponsive.isCompact(context);
+    final small = _ProfileResponsive.isSmallPhone(context);
     final child = Container(
-      constraints: const BoxConstraints(minHeight: 92),
-      padding: EdgeInsets.all(compact ? 14 : 16),
+      constraints: BoxConstraints(minHeight: small ? 78 : (compact ? 84 : 92)),
+      padding: EdgeInsets.all(compact ? 12 : 16),
       decoration: BoxDecoration(
         color: AppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(16),
@@ -1288,8 +1353,8 @@ class _StatCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
-                    fontSize: 12,
+                  style: TextStyle(
+                    fontSize: small ? 11 : 12,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.textSecondary,
                     letterSpacing: 0.2,
@@ -1298,14 +1363,14 @@ class _StatCard extends StatelessWidget {
               ),
               if (onTap != null)
                 Icon(Icons.arrow_forward_ios_rounded,
-                    size: 12, color: AppTheme.textTertiary.withValues(alpha: 0.8)),
+                    size: small ? 11 : 12, color: AppTheme.textTertiary.withValues(alpha: 0.8)),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 22,
+            style: TextStyle(
+              fontSize: small ? 20 : 22,
               fontWeight: FontWeight.w800,
               color: AppTheme.textPrimary,
               letterSpacing: -0.4,
@@ -1316,8 +1381,12 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             meta,
-            style: const TextStyle(fontSize: 11, color: AppTheme.textTertiary, height: 1.25),
-            maxLines: 2,
+            style: TextStyle(
+              fontSize: small ? 10 : 11,
+              color: AppTheme.textTertiary,
+              height: 1.25,
+            ),
+            maxLines: small ? 3 : 2,
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -1946,14 +2015,16 @@ class _ProfileNavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final h = _ProfileResponsive.isCompact(context) ? 12.0 : 16.0;
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Icon(icon, color: AppTheme.primaryColor),
+      contentPadding: EdgeInsets.symmetric(horizontal: h, vertical: 4),
+      minVerticalPadding: _ProfileResponsive.isCompact(context) ? 8 : 12,
+      leading: Icon(icon, color: AppTheme.primaryColor, size: _ProfileResponsive.isCompact(context) ? 22 : 24),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.w600,
-          fontSize: 15,
+          fontSize: _ProfileResponsive.isCompact(context) ? 14 : 15,
           color: AppTheme.textPrimary,
         ),
       ),
@@ -2128,98 +2199,61 @@ class _ProfileRateCard extends StatelessWidget {
 }
 
 class _ProfileSessionCard extends StatelessWidget {
-  final VoidCallback onClear;
   final VoidCallback onLogout;
 
-  const _ProfileSessionCard({required this.onClear, required this.onLogout});
+  const _ProfileSessionCard({required this.onLogout});
 
   @override
   Widget build(BuildContext context) {
-    final narrow = _ProfileResponsive.width(context) < 380;
+    final l10n = AppLocalizations.of(context)!;
+    final narrow = _ProfileResponsive.width(context) < 400;
+    final pad = _ProfileResponsive.isCompact(context) ? 14.0 : 18.0;
     return Container(
-      padding: EdgeInsets.all(_ProfileResponsive.isCompact(context) ? 14 : 18),
+      padding: EdgeInsets.all(pad),
       decoration: _profileCardDecoration(),
-      child: narrow
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(AppLocalizations.of(context)!.session,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimary)),
-                const SizedBox(height: 4),
-                Text(AppLocalizations.of(context)!.profileStoredLocally,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppTheme.textSecondary)),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    _clearButton(context),
-                    const SizedBox(width: 8),
-                    _logoutButton(context),
-                  ],
-                ),
-              ],
-            )
-          : Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(AppLocalizations.of(context)!.session,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textPrimary)),
-                      const SizedBox(height: 4),
-                      Text(
-                        AppLocalizations.of(context)!.profileStoredLocally,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppTheme.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-                _clearButton(context),
-                const SizedBox(width: 8),
-                _logoutButton(context),
-              ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.session,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
             ),
-    );
-  }
-
-  Widget _clearButton(BuildContext context) {
-    return TextButton.icon(
-      onPressed: onClear,
-      icon: const Icon(FontAwesomeIcons.trash,
-          size: 14, color: AppTheme.errorColor),
-      label: Text(AppLocalizations.of(context)!.clearLocalProfile,
-          style: const TextStyle(fontSize: 12, color: AppTheme.errorColor)),
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(999),
-          side: BorderSide(color: AppTheme.errorColor.withValues(alpha: 0.5)),
-        ),
-      ),
-    );
-  }
-
-  Widget _logoutButton(BuildContext context) {
-    return TextButton.icon(
-      onPressed: onLogout,
-      icon: const Icon(FontAwesomeIcons.rightFromBracket,
-          size: 14, color: AppTheme.textPrimary),
-      label: Text(AppLocalizations.of(context)!.logout,
-          style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary)),
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(999),
-          side: const BorderSide(color: AppTheme.borderColor),
-        ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            l10n.profileStoredLocally,
+            style: TextStyle(
+              fontSize: narrow ? 12 : 13,
+              height: 1.35,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          SizedBox(height: narrow ? 14 : 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: onLogout,
+              icon: const Icon(FontAwesomeIcons.rightFromBracket, size: 16),
+              label: Text(l10n.logout),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.surfaceColor,
+                foregroundColor: AppTheme.textPrimary,
+                elevation: 0,
+                padding: EdgeInsets.symmetric(
+                  horizontal: narrow ? 16 : 20,
+                  vertical: narrow ? 12 : 14,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: AppTheme.borderColor, width: 1),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

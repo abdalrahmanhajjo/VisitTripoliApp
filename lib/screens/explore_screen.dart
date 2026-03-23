@@ -2143,8 +2143,8 @@ class _ExploreScreenState extends State<ExploreScreen>
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final w = MediaQuery.sizeOf(context).width;
     final cardHeight = _Responsive.isVerySmallPhone(context)
-        ? 100.0
-        : (w < 320 ? 108.0 : 120.0);
+        ? 112.0
+        : (w < 320 ? 120.0 : 132.0);
     final horizontalPad = _Responsive.horizontalPadding(context);
     final cardWidth = w - horizontalPad * 2 - _ExploreLayout.cardGap(context);
 
@@ -3428,7 +3428,7 @@ class _EventsErrorState extends StatelessWidget {
   }
 }
 
-/// Event card - ticket layout for phones: stub strip + clear details, notched edge.
+/// Event card — boarding-pass style: accent rail, image stub with date, perforated edge, main panel.
 class _EventCard extends StatelessWidget {
   final Event event;
   final VoidCallback onTap;
@@ -3446,13 +3446,15 @@ class _EventCard extends StatelessWidget {
     required this.height,
   });
 
-  static const _radius = 16.0;
-  static const _stubWidth = 82.0;
-  static const _notchRadius = 6.0;
+  static const _radius = 18.0;
+  static const _accentWidth = 4.0;
+  static const _stubWidth = 74.0;
+  static const _notchRadius = 5.0;
 
-  static String _formatDate(DateTime date) =>
-      DateFormat('EEE, MMM d').format(date);
-  static String _formatTime(DateTime date) => DateFormat.jm().format(date);
+  static String _formatDateLine(DateTime date, String locale) =>
+      DateFormat('EEE, MMM d', locale).format(date);
+  static String _formatTime(DateTime date, String locale) =>
+      DateFormat('jm', locale).format(date);
 
   static Color _categoryColor(String category) {
     final c = category.toLowerCase();
@@ -3470,260 +3472,356 @@ class _EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toString();
     final imageUrl = event.image;
     final categoryColor = _categoryColor(event.category);
     final isFree = event.price == null || event.price == 0;
-    final priceText = event.priceDisplay ??
-        (isFree ? AppLocalizations.of(context)!.free : '\$${event.price}');
+    final priceText =
+        event.priceDisplay ?? (isFree ? l10n.free : '\$${event.price}');
+    final tight = height < 120;
+    final titleSize = tight ? 13.0 : 14.0;
+    final metaSize = tight ? 11.0 : 12.0;
+    final dayNum = '${event.startDate.day}';
+    final monthShort = DateFormat('MMM', locale).format(event.startDate);
+    final weekdayShort = DateFormat('EEE', locale).format(event.startDate);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceColor,
-          borderRadius: BorderRadius.circular(_radius),
-          border: Border.all(
-            color: AppTheme.borderColor.withValues(alpha: 0.6),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.textPrimary.withValues(alpha: 0.06),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
+    return Material(
+      color: AppTheme.surfaceColor,
+      elevation: 1.5,
+      shadowColor: AppTheme.textPrimary.withValues(alpha: 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(_radius),
+        side: BorderSide(
+          color: AppTheme.borderColor.withValues(alpha: 0.55),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(_radius),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(_radius),
+        child: SizedBox(
+          width: width,
+          height: height,
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Left "stub" strip (image or gradient) with notched right edge
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.horizontal(
-                      left: Radius.circular(_radius),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Brand accent rail
+                Container(
+                  width: _accentWidth,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        categoryColor,
+                        categoryColor.withValues(alpha: 0.55),
+                      ],
                     ),
-                    child: SizedBox(
-                      width: _stubWidth,
-                      child: imageUrl != null && imageUrl.isNotEmpty
-                          ? AppImage(
-                              src: imageUrl,
-                              fit: BoxFit.cover,
-                              cacheWidth: 200,
-                              cacheHeight: 200,
-                            )
-                          : Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    categoryColor,
-                                    categoryColor.withValues(alpha: 0.75),
+                  ),
+                ),
+                // Stub: cover image + date block + perforations
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(0),
+                        bottomLeft: Radius.circular(0),
+                      ),
+                      child: SizedBox(
+                        width: _stubWidth,
+                        height: height,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Positioned.fill(
+                              child: imageUrl != null && imageUrl.isNotEmpty
+                                  ? AppImage(
+                                      src: imageUrl,
+                                      fit: BoxFit.cover,
+                                      cacheWidth: 220,
+                                      cacheHeight: 280,
+                                    )
+                                  : Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            categoryColor,
+                                            categoryColor.withValues(alpha: 0.65),
+                                          ],
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.confirmation_number_rounded,
+                                          size: tight ? 26 : 30,
+                                          color: Colors.white
+                                              .withValues(alpha: 0.92),
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: EdgeInsets.fromLTRB(
+                                  6,
+                                  tight ? 18 : 22,
+                                  6,
+                                  tight ? 6 : 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.black.withValues(alpha: 0.78),
+                                    ],
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      dayNum,
+                                      style: TextStyle(
+                                        fontSize: tight ? 20 : 24,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                        height: 1,
+                                        letterSpacing: -0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      monthShort.toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: tight ? 9 : 10,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1.2,
+                                        color: Colors.white
+                                            .withValues(alpha: 0.92),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                              child: Icon(
-                                Icons.confirmation_number_rounded,
-                                size: 28,
-                                color: Colors.white.withValues(alpha: 0.9),
-                              ),
                             ),
-                    ),
-                  ),
-                  // Notches (perforation circles) on the right edge of stub
-                  ...List.generate(3, (i) {
-                    final frac = (i + 1) / 4;
-                    final top = (height * frac - _notchRadius)
-                        .clamp(4.0, height - 4 - _notchRadius * 2);
-                    return Positioned(
-                      left: _stubWidth - _notchRadius,
-                      top: top,
-                      child: Container(
-                        width: _notchRadius * 2,
-                        height: _notchRadius * 2,
-                        decoration: const BoxDecoration(
-                          color: AppTheme.surfaceColor,
-                          shape: BoxShape.circle,
+                          ],
                         ),
                       ),
-                    );
-                  }),
-                ],
-              ),
-              // Right: ticket content
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              event.name,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textPrimary,
-                                letterSpacing: -0.2,
-                                height: 1.2,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                    ),
+                    ...List.generate(4, (i) {
+                      final frac = (i + 1) / 5;
+                      final top = (height * frac - _notchRadius).clamp(
+                        6.0,
+                        height - 6 - _notchRadius * 2,
+                      );
+                      return Positioned(
+                        left: _stubWidth - _notchRadius,
+                        top: top,
+                        child: Container(
+                          width: _notchRadius * 2,
+                          height: _notchRadius * 2,
+                          decoration: const BoxDecoration(
+                            color: AppTheme.surfaceColor,
+                            shape: BoxShape.circle,
                           ),
-                          const SizedBox(width: 4),
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: onToggleSave,
-                              child: Padding(
-                                padding: const EdgeInsets.all(4),
-                                child: Icon(
-                                  isSaved
-                                      ? Icons.bookmark_rounded
-                                      : Icons.bookmark_border_rounded,
-                                  size: 20,
-                                  color: isSaved
-                                      ? AppTheme.primaryColor
-                                      : AppTheme.textSecondary,
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+                // Main panel
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      tight ? 8 : 10,
+                      tight ? 6 : 8,
+                      6,
+                      tight ? 6 : 8,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    weekdayShort,
+                                    style: TextStyle(
+                                      fontSize: tight ? 10 : 11,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.6,
+                                      color: categoryColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    event.name,
+                                    style: TextStyle(
+                                      fontSize: titleSize,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.textPrimary,
+                                      letterSpacing: -0.25,
+                                      height: 1.2,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(20),
+                                onTap: onToggleSave,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(2),
+                                  child: Icon(
+                                    isSaved
+                                        ? Icons.bookmark_rounded
+                                        : Icons.bookmark_border_rounded,
+                                    size: tight ? 19 : 21,
+                                    color: isSaved
+                                        ? AppTheme.primaryColor
+                                        : AppTheme.textSecondary,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      // Date & time row
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today_rounded,
-                            size: 13,
-                            color: AppTheme.primaryColor.withValues(alpha: 0.9),
-                          ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              _formatDate(event.startDate),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.textPrimary,
+                          ],
+                        ),
+                        SizedBox(height: tight ? 4 : 5),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.event_rounded,
+                              size: tight ? 12 : 13,
+                              color: AppTheme.primaryColor,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '${_formatDateLine(event.startDate, locale)} · ${_formatTime(event.startDate, locale)}',
+                                style: TextStyle(
+                                  fontSize: metaSize,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Icon(
-                            Icons.schedule_rounded,
-                            size: 13,
-                            color: AppTheme.textSecondary,
-                          ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              _formatTime(event.startDate),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondary,
+                          ],
+                        ),
+                        SizedBox(height: tight ? 3 : 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.place_outlined,
+                              size: tight ? 12 : 13,
+                              color: AppTheme.textTertiary,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                event.location,
+                                style: TextStyle(
+                                  fontSize: tight ? 10.5 : 11.5,
+                                  color: AppTheme.textSecondary,
+                                  height: 1.2,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
-                      ),
-                      // Location
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size: 13,
-                            color: AppTheme.textTertiary,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              event.location,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondary,
+                          ],
+                        ),
+                        SizedBox(height: tight ? 4 : 8),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: tight ? 6 : 8,
+                                  vertical: tight ? 3 : 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surfaceVariant
+                                      .withValues(alpha: 0.88),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: AppTheme.borderColor
+                                        .withValues(alpha: 0.65),
+                                  ),
+                                ),
+                                child: Text(
+                                  event.category,
+                                  style: TextStyle(
+                                    fontSize: tight ? 10.5 : 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
-                      ),
-                      // Bottom row: category + price
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: categoryColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              event.category,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: categoryColor,
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: tight ? 8 : 10,
+                                vertical: tight ? 4 : 5,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isFree
-                                  ? AppTheme.successColor
-                                      .withValues(alpha: 0.15)
-                                  : AppTheme.primaryColor
-                                      .withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              priceText,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
+                              decoration: BoxDecoration(
                                 color: isFree
                                     ? AppTheme.successColor
-                                    : AppTheme.primaryColor,
+                                        .withValues(alpha: 0.14)
+                                    : categoryColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isFree
+                                      ? AppTheme.successColor
+                                          .withValues(alpha: 0.35)
+                                      : categoryColor.withValues(alpha: 0.28),
+                                ),
+                              ),
+                              child: Text(
+                                priceText,
+                                style: TextStyle(
+                                  fontSize: tight ? 11 : 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: isFree
+                                      ? AppTheme.successColor
+                                      : categoryColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
     );
   }
 }

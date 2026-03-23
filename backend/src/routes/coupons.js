@@ -1,8 +1,24 @@
 const express = require('express');
 const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
 const { query } = require('../db');
+const { getRequestLang } = require('../utils/requestLang');
 
 const router = express.Router();
+
+/** $1 = lang — join translated place/tour/event names when rows exist. */
+const COUPON_FROM = `
+FROM coupons c
+LEFT JOIN places p ON p.id = c.place_id
+LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $1
+LEFT JOIN tours t ON t.id = c.tour_id
+LEFT JOIN tour_translations tt ON tt.tour_id = t.id AND tt.lang = $1
+LEFT JOIN events e ON e.id = c.event_id
+LEFT JOIN event_translations et ON et.event_id = e.id AND et.lang = $1`;
+
+const COUPON_SELECT_NAMES = `
+  COALESCE(pt.name, p.name) AS place_name,
+  COALESCE(tt.name, t.name) AS tour_name,
+  COALESCE(et.name, e.name) AS event_name`;
 
 function toNumber(v) {
   if (v == null) return null;
@@ -23,16 +39,15 @@ function mapCoupon(row) {
 
 router.get('/', optionalAuthMiddleware, async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const result = await query(
       `SELECT c.id, c.code, c.discount_type, c.discount_value, c.min_purchase,
               c.valid_from, c.valid_until, c.usage_limit, c.place_id, c.tour_id, c.event_id,
-              p.name AS place_name, t.name AS tour_name, e.name AS event_name
-       FROM coupons c
-       LEFT JOIN places p ON p.id = c.place_id
-       LEFT JOIN tours t ON t.id = c.tour_id
-       LEFT JOIN events e ON e.id = c.event_id
+              ${COUPON_SELECT_NAMES}
+       ${COUPON_FROM}
        WHERE c.valid_from <= NOW() AND c.valid_until > NOW()
-       ORDER BY c.valid_until ASC LIMIT 50`
+       ORDER BY c.valid_until ASC LIMIT 50`,
+      [lang]
     );
     let userId = req.user?.userId;
     let usedIds = new Set();
@@ -53,16 +68,14 @@ router.get('/', optionalAuthMiddleware, async (req, res) => {
 
 router.post('/validate', optionalAuthMiddleware, async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const code = (req.body?.code || '').toString().trim().toUpperCase();
     if (!code) return res.status(400).json({ error: 'Code required' });
     const result = await query(
-      `SELECT c.*, p.name AS place_name, t.name AS tour_name, e.name AS event_name
-       FROM coupons c
-       LEFT JOIN places p ON p.id = c.place_id
-       LEFT JOIN tours t ON t.id = c.tour_id
-       LEFT JOIN events e ON e.id = c.event_id
-       WHERE UPPER(c.code) = $1 AND c.valid_from <= NOW() AND c.valid_until > NOW()`,
-      [code]
+      `SELECT c.*, ${COUPON_SELECT_NAMES}
+       ${COUPON_FROM}
+       WHERE UPPER(c.code) = $2 AND c.valid_from <= NOW() AND c.valid_until > NOW()`,
+      [lang, code]
     );
     const coupon = result.rows[0];
     if (!coupon) return res.status(404).json({ error: 'Invalid or expired code' });
@@ -84,18 +97,16 @@ router.post('/validate', optionalAuthMiddleware, async (req, res) => {
 
 router.post('/redeem', authMiddleware, async (req, res) => {
   try {
+    const lang = getRequestLang(req);
     const userId = req.user.userId;
     const code = (req.body?.code || '').toString().trim().toUpperCase();
     if (!code) return res.status(400).json({ error: 'Code required' });
     const result = await query(
       `SELECT c.id, c.code, c.discount_type, c.discount_value, c.min_purchase,
-              c.valid_until, c.place_id, p.name AS place_name, t.name AS tour_name, e.name AS event_name
-       FROM coupons c
-       LEFT JOIN places p ON p.id = c.place_id
-       LEFT JOIN tours t ON t.id = c.tour_id
-       LEFT JOIN events e ON e.id = c.event_id
-       WHERE UPPER(c.code) = $1 AND c.valid_from <= NOW() AND c.valid_until > NOW()`,
-      [code]
+              c.valid_until, c.place_id, ${COUPON_SELECT_NAMES}
+       ${COUPON_FROM}
+       WHERE UPPER(c.code) = $2 AND c.valid_from <= NOW() AND c.valid_until > NOW()`,
+      [lang, code]
     );
     const coupon = result.rows[0];
     if (!coupon) return res.status(404).json({ error: 'Invalid or expired code' });

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 import '../config/api_config.dart';
+import 'api_service.dart';
 
 const List<String> _imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
@@ -85,6 +86,24 @@ class FeedService {
     return headers;
   }
 
+  /// GET requests: auth + [Accept-Language] + `lang` query (matches [ApiService] / backend [getRequestLang]).
+  Map<String, String> _feedGetHeaders(String? authToken) {
+    final h = _authHeaders(authToken);
+    final loc = ApiService.instance.currentLocale;
+    if (loc != null && loc.isNotEmpty) {
+      h['Accept-Language'] = loc;
+    }
+    return h;
+  }
+
+  Map<String, String> _queryWithLang(Map<String, String> query) {
+    final loc = ApiService.instance.currentLocale;
+    if (loc != null && loc.isNotEmpty) {
+      return {...query, 'lang': loc};
+    }
+    return query;
+  }
+
   /// GET /api/feed — Paginated feed. Optional auth for liked/saved.
   /// [sort] `recent` (default) uses cursor [before]; `trending` uses [offset].
   Future<FeedResponse> getFeed({
@@ -95,14 +114,14 @@ class FeedService {
     int? offset,
   }) async {
     final uri = Uri.parse('$_baseUrl/api/feed').replace(
-      queryParameters: {
+      queryParameters: _queryWithLang({
         if (before != null && sort == 'recent') 'before': before,
         if (offset != null && sort == 'trending') 'offset': offset.toString(),
         'limit': limit.toString(),
         'sort': sort,
-      },
+      }),
     );
-    final response = await http.get(uri, headers: _authHeaders(authToken));
+    final response = await http.get(uri, headers: _feedGetHeaders(authToken));
     if (response.statusCode != 200) {
       throw FeedException(response.statusCode, _parseError(response.body));
     }
@@ -117,12 +136,12 @@ class FeedService {
     int limit = 20,
   }) async {
     final uri = Uri.parse('$_baseUrl/api/feed/reels').replace(
-      queryParameters: {
+      queryParameters: _queryWithLang({
         if (before != null) 'before': before,
         'limit': limit.toString(),
-      },
+      }),
     );
-    final response = await http.get(uri, headers: _authHeaders(authToken));
+    final response = await http.get(uri, headers: _feedGetHeaders(authToken));
     if (response.statusCode != 200) {
       throw FeedException(response.statusCode, _parseError(response.body));
     }
@@ -138,12 +157,12 @@ class FeedService {
     int limit = 20,
   }) async {
     final uri = Uri.parse('$_baseUrl/api/feed/place/$placeId').replace(
-      queryParameters: {
+      queryParameters: _queryWithLang({
         if (before != null) 'before': before,
         'limit': limit.toString(),
-      },
+      }),
     );
-    final response = await http.get(uri, headers: _authHeaders(authToken));
+    final response = await http.get(uri, headers: _feedGetHeaders(authToken));
     if (response.statusCode != 200) {
       throw FeedException(response.statusCode, _parseError(response.body));
     }
@@ -158,12 +177,12 @@ class FeedService {
     int limit = 20,
   }) async {
     final uri = Uri.parse('$_baseUrl/api/feed/saved').replace(
-      queryParameters: {
+      queryParameters: _queryWithLang({
         if (before != null) 'before': before,
         'limit': limit.toString(),
-      },
+      }),
     );
-    final response = await http.get(uri, headers: _authHeaders(authToken));
+    final response = await http.get(uri, headers: _feedGetHeaders(authToken));
     if (response.statusCode != 200) {
       throw FeedException(response.statusCode, _parseError(response.body));
     }
@@ -178,12 +197,12 @@ class FeedService {
     int limit = 20,
   }) async {
     final uri = Uri.parse('$_baseUrl/api/feed/liked').replace(
-      queryParameters: {
+      queryParameters: _queryWithLang({
         if (before != null) 'before': before,
         'limit': limit.toString(),
-      },
+      }),
     );
-    final response = await http.get(uri, headers: _authHeaders(authToken));
+    final response = await http.get(uri, headers: _feedGetHeaders(authToken));
     if (response.statusCode != 200) {
       throw FeedException(response.statusCode, _parseError(response.body));
     }
@@ -194,8 +213,10 @@ class FeedService {
   /// GET /api/feed/can-post - Check if user can post (business owner/admin).
   Future<CanPostResponse> canPost(String authToken) async {
     final response = await http.get(
-      Uri.parse('$_baseUrl/api/feed/can-post'),
-      headers: _authHeaders(authToken),
+      Uri.parse('$_baseUrl/api/feed/can-post').replace(
+        queryParameters: _queryWithLang({}),
+      ),
+      headers: _feedGetHeaders(authToken),
     );
     if (response.statusCode != 200) {
       throw FeedException(response.statusCode, _parseError(response.body));
@@ -397,13 +418,13 @@ class FeedService {
     String order = 'desc',
   }) async {
     final uri = Uri.parse('$_baseUrl/api/feed/$postId/comments').replace(
-      queryParameters: {
+      queryParameters: _queryWithLang({
         'limit': limit.toString(),
         'offset': offset.toString(),
         'order': order,
-      },
+      }),
     );
-    final response = await http.get(uri, headers: _authHeaders(authToken));
+    final response = await http.get(uri, headers: _feedGetHeaders(authToken));
     if (response.statusCode != 200) {
       throw FeedException(response.statusCode, _parseError(response.body));
     }

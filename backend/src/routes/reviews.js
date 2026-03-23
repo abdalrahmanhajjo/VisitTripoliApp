@@ -4,6 +4,8 @@ const { query } = require('../db');
 
 const router = express.Router();
 
+/** Review title/body are user-generated (single locale per row). Translate via review_translations if you add that table. */
+
 // GET /api/reviews?placeId=...
 // Supports place_reviews, Supabase "reviews" table, and works without "profiles" table.
 function isRelationNotFound(err) {

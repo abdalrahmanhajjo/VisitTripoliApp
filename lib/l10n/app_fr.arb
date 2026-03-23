@@ -520,6 +520,7 @@
   "signUpWithGoogle": "S'inscrire avec Google",
   "signUpWithApple": "S'inscrire avec Apple",
   "sectionVisitorTips": "Conseils aux visiteurs",
+  "reviewAuthorGuest": "Visiteur",
   "communityGoToPost": "Aller à la publication",
   "errorWithDetails": "Erreur : {details}",
   "@errorWithDetails": {

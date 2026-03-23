@@ -3064,6 +3064,12 @@ abstract class AppLocalizations {
   /// **'Visitor Tips'**
   String get sectionVisitorTips;
 
+  /// No description provided for @reviewAuthorGuest.
+  ///
+  /// In en, this message translates to:
+  /// **'Visitor'**
+  String get reviewAuthorGuest;
+
   /// No description provided for @communityGoToPost.
   ///
   /// In en, this message translates to:

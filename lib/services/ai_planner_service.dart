@@ -429,6 +429,23 @@ Apply time allocation (durationMinutes + buffer) and location ordering (lat/lng)
           ..addAll(newSlots);
       }
 
+      // Clamp dayIndex to 0..durationDays-1 so saved trips never exceed the requested length
+      if (durationDays > 1 && slots.isNotEmpty) {
+        for (var i = 0; i < slots.length; i++) {
+          final s = slots[i];
+          final raw = s.dayIndex ?? 0;
+          final c = raw.clamp(0, durationDays - 1);
+          if (raw != c) {
+            slots[i] = AIPlannerSlot(
+              placeId: s.placeId,
+              suggestedTime: s.suggestedTime,
+              reason: s.reason,
+              dayIndex: c,
+            );
+          }
+        }
+      }
+
       // Sort by day then time so multi-day itineraries display in order
       if (slots.length > 1) {
         slots.sort((a, b) {

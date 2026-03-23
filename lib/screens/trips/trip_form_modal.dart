@@ -104,6 +104,53 @@ class TripFormModalState extends State<TripFormModal> {
   static String _formatDateShort(DateTime d) =>
       DateFormat('EEE, MMM d').format(d);
 
+  /// Inclusive calendar days from [start] to [end] (date-only).
+  static int calendarDayCount(DateTime start, DateTime end) {
+    final s = DateTime(start.year, start.month, start.day);
+    final e = DateTime(end.year, end.month, end.day);
+    return e.difference(s).inDays + 1;
+  }
+
+  /// Splits [orderedSlots] across [dayCount] consecutive days starting at [startDate].
+  static List<TripDay> buildTripDaysForRange({
+    required List<TripSlot> orderedSlots,
+    required DateTime startDate,
+    required int dayCount,
+  }) {
+    if (orderedSlots.isEmpty) return [];
+    if (dayCount <= 1) {
+      return [
+        TripDay(
+          date: DateFormat('yyyy-MM-dd').format(
+            DateTime(startDate.year, startDate.month, startDate.day),
+          ),
+          slots: orderedSlots,
+        ),
+      ];
+    }
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    final days = <TripDay>[];
+    final n = orderedSlots.length;
+    var base = n ~/ dayCount;
+    var rem = n % dayCount;
+    var idx = 0;
+    for (var d = 0; d < dayCount; d++) {
+      final chunk = base + (rem > 0 ? 1 : 0);
+      if (rem > 0) rem--;
+      final endIdx = idx + chunk;
+      final safeEnd = endIdx > n ? n : endIdx;
+      final daySlots =
+          idx < safeEnd ? orderedSlots.sublist(idx, safeEnd) : <TripSlot>[];
+      idx = safeEnd;
+      final dayDate = start.add(Duration(days: d));
+      days.add(TripDay(
+        date: DateFormat('yyyy-MM-dd').format(dayDate),
+        slots: daySlots,
+      ));
+    }
+    return days;
+  }
+
   @override
   Widget build(BuildContext context) {
     final placesProvider = Provider.of<PlacesProvider>(context);
@@ -1138,14 +1185,12 @@ class TripFormModalState extends State<TripFormModal> {
               endTime: _endTimes[id],
             ))
         .toList();
-    final days = slots.isEmpty
-        ? <TripDay>[]
-        : [
-            TripDay(
-              date: DateFormat('yyyy-MM-dd').format(_startDate),
-              slots: slots,
-            ),
-          ];
+    final daySpan = calendarDayCount(_startDate, _endDate);
+    final days = buildTripDaysForRange(
+      orderedSlots: slots,
+      startDate: _startDate,
+      dayCount: daySpan,
+    );
 
     if (widget.trip != null) {
       provider.updateTrip(Trip(
