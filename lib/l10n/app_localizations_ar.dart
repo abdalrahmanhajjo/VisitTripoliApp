@@ -499,6 +499,30 @@ class AppLocalizationsAr extends AppLocalizations {
   String get discoverPlacesHint => 'اكتشف الأماكن والأسواق والطعام…';
 
   @override
+  String get mapFilterSectionTitle => 'تصفية حسب الفئة';
+
+  @override
+  String get mapFilterAll => 'الكل';
+
+  @override
+  String get mapFilterSouks => 'الأسواق';
+
+  @override
+  String get mapFilterHistorical => 'تاريخي';
+
+  @override
+  String get mapFilterMosques => 'المساجد';
+
+  @override
+  String get mapFilterFood => 'طعام';
+
+  @override
+  String get mapFilterCultural => 'ثقافي';
+
+  @override
+  String get mapFilterArchitecture => 'عمارة';
+
+  @override
   String get goodMorning => 'صباح الخير';
 
   @override
@@ -837,6 +861,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get placesInThisTrip => 'الأماكن في هذه الرحلة';
+
+  @override
+  String get tripVisitDayLabel => 'يوم الزيارة';
+
+  @override
+  String tripDayNumberDate(int dayNumber, String date) {
+    return 'اليوم $dayNumber · $date';
+  }
 
   @override
   String get dates => 'التواريخ';

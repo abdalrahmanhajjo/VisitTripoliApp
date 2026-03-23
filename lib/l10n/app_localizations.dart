@@ -1042,6 +1042,54 @@ abstract class AppLocalizations {
   /// **'Discover places, souks, food…'**
   String get discoverPlacesHint;
 
+  /// No description provided for @mapFilterSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by category'**
+  String get mapFilterSectionTitle;
+
+  /// No description provided for @mapFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get mapFilterAll;
+
+  /// No description provided for @mapFilterSouks.
+  ///
+  /// In en, this message translates to:
+  /// **'Souks'**
+  String get mapFilterSouks;
+
+  /// No description provided for @mapFilterHistorical.
+  ///
+  /// In en, this message translates to:
+  /// **'Historical'**
+  String get mapFilterHistorical;
+
+  /// No description provided for @mapFilterMosques.
+  ///
+  /// In en, this message translates to:
+  /// **'Mosques'**
+  String get mapFilterMosques;
+
+  /// No description provided for @mapFilterFood.
+  ///
+  /// In en, this message translates to:
+  /// **'Food'**
+  String get mapFilterFood;
+
+  /// No description provided for @mapFilterCultural.
+  ///
+  /// In en, this message translates to:
+  /// **'Cultural'**
+  String get mapFilterCultural;
+
+  /// No description provided for @mapFilterArchitecture.
+  ///
+  /// In en, this message translates to:
+  /// **'Architecture'**
+  String get mapFilterArchitecture;
+
   /// No description provided for @goodMorning.
   ///
   /// In en, this message translates to:
@@ -1653,6 +1701,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Places in this trip'**
   String get placesInThisTrip;
+
+  /// No description provided for @tripVisitDayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Visit day'**
+  String get tripVisitDayLabel;
+
+  /// No description provided for @tripDayNumberDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Day {dayNumber} · {date}'**
+  String tripDayNumberDate(int dayNumber, String date);
 
   /// No description provided for @dates.
   ///

@@ -24,6 +24,7 @@ import '../map/map_constants.dart';
 import '../map/map_style.dart';
 import '../map/place_coordinates.dart';
 import '../widgets/route_origin_picker.dart';
+import '../l10n/app_localizations.dart';
 
 /// True when deep link should run [MapScreen] in-app routing (not "view only").
 bool mapWantsRouteIntent(Map<String, String> params) {
@@ -170,15 +171,69 @@ class _MapScreenState extends State<MapScreen> {
     return (lat: pos.latitude, lng: pos.longitude);
   }
 
-  static const _categoryFilters = [
-    ('all', 'All', null),
-    ('souks', 'Souks', FontAwesomeIcons.store),
-    ('historical', 'Historical', FontAwesomeIcons.landmark),
-    ('mosques', 'Mosques', FontAwesomeIcons.mosque),
-    ('food', 'Food', FontAwesomeIcons.utensils),
-    ('cultural', 'Cultural', FontAwesomeIcons.masksTheater),
-    ('architecture', 'Architecture', FontAwesomeIcons.archway),
-  ];
+  List<(String id, String label, IconData? icon)> _categoryFilterEntries(
+      AppLocalizations l10n) {
+    return [
+      ('all', l10n.mapFilterAll, null),
+      ('souks', l10n.mapFilterSouks, FontAwesomeIcons.store),
+      ('historical', l10n.mapFilterHistorical, FontAwesomeIcons.landmark),
+      ('mosques', l10n.mapFilterMosques, FontAwesomeIcons.mosque),
+      ('food', l10n.mapFilterFood, FontAwesomeIcons.utensils),
+      ('cultural', l10n.mapFilterCultural, FontAwesomeIcons.masksTheater),
+      ('architecture', l10n.mapFilterArchitecture, FontAwesomeIcons.archway),
+    ];
+  }
+
+  Widget _mapCategoryFilterChip({
+    required String label,
+    required IconData? faIcon,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: isActive ? AppTheme.primaryColor : Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      elevation: isActive ? 1 : 2,
+      shadowColor: Colors.black.withValues(alpha: 0.14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (faIcon != null)
+                  FaIcon(
+                    faIcon,
+                    size: 15,
+                    color: isActive ? Colors.white : AppTheme.textSecondary,
+                  )
+                else
+                  Icon(
+                    Icons.grid_view_rounded,
+                    size: 18,
+                    color: isActive ? Colors.white : AppTheme.textSecondary,
+                  ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
+                    color: isActive ? Colors.white : AppTheme.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -603,6 +658,7 @@ class _MapScreenState extends State<MapScreen> {
   Widget build(BuildContext context) {
     final mapProvider = Provider.of<MapProvider>(context);
     final placesProvider = Provider.of<PlacesProvider>(context);
+    final l10n = AppLocalizations.of(context)!;
 
     final params = widget.queryParams ?? {};
     if (!_routeParamsHandled && mapWantsRouteIntent(params)) {
@@ -648,6 +704,7 @@ class _MapScreenState extends State<MapScreen> {
           .toList();
     }
     // Apply search filter
+    final placesBeforeSearchQuery = List<Place>.from(places);
     final query = _searchController.text.trim().toLowerCase();
     if (query.isNotEmpty) {
       places = places
@@ -657,6 +714,18 @@ class _MapScreenState extends State<MapScreen> {
               ((p.tags ?? []).any((t) => t.toLowerCase().contains(query))))
           .toList();
     }
+    final mapSearchSuggestions = (!tourOnly &&
+            !tripOnly &&
+            query.isNotEmpty)
+        ? placesBeforeSearchQuery
+            .where((p) =>
+                p.name.toLowerCase().contains(query) ||
+                p.location.toLowerCase().contains(query) ||
+                p.description.toLowerCase().contains(query) ||
+                (p.tags ?? []).any((t) => t.toLowerCase().contains(query)))
+            .take(8)
+            .toList()
+        : <Place>[];
 
     if ((tourOnly || tripOnly) && places.length >= 2 && _activeRoute == null) {
       final idsKey = places.map((p) => p.id).join(',');
@@ -870,9 +939,8 @@ class _MapScreenState extends State<MapScreen> {
                                         child: TextField(
                                           controller: _searchController,
                                           focusNode: _searchFocusNode,
-                                          decoration: const InputDecoration(
-                                            hintText:
-                                                'Search places, souks, food…',
+                                          decoration: InputDecoration(
+                                            hintText: l10n.discoverPlacesHint,
                                             border: InputBorder.none,
                                             contentPadding: EdgeInsets.zero,
                                             isDense: true,
@@ -918,66 +986,108 @@ class _MapScreenState extends State<MapScreen> {
                           const AppProfileIconButton(iconSize: 22),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 36,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          children: _categoryFilters.map((f) {
-                            final id = f.$1;
-                            final label = f.$2;
-                            final icon = f.$3;
-                            final isActive = (_categoryFilter ?? 'all') == id;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: Material(
-                                color: isActive
-                                    ? const Color(0xFF4285F4)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(18),
-                                elevation: isActive ? 0 : 2,
-                                shadowColor:
-                                    Colors.black.withValues(alpha: 0.15),
-                                child: InkWell(
-                                  onTap: () {
-                                    setState(() => _categoryFilter =
-                                        id == 'all' ? null : id);
-                                  },
-                                  borderRadius: BorderRadius.circular(18),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 8),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        if (icon != null) ...[
-                                          FaIcon(
-                                            icon,
-                                            size: 14,
-                                            color: isActive
-                                                ? Colors.white
-                                                : AppTheme.textSecondary,
-                                          ),
-                                          const SizedBox(width: 6),
-                                        ],
-                                        Text(
-                                          label,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                            color: isActive
-                                                ? Colors.white
-                                                : AppTheme.textPrimary,
-                                          ),
-                                        ),
-                                      ],
+                      if (mapSearchSuggestions.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Material(
+                          elevation: 3,
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white,
+                          shadowColor: Colors.black.withValues(alpha: 0.12),
+                          child: ConstrainedBox(
+                            constraints:
+                                const BoxConstraints(maxHeight: 220),
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 6),
+                              itemCount: mapSearchSuggestions.length,
+                              separatorBuilder: (_, __) => Divider(
+                                height: 1,
+                                color: AppTheme.borderColor
+                                    .withValues(alpha: 0.45),
+                              ),
+                              itemBuilder: (context, i) {
+                                final p = mapSearchSuggestions[i];
+                                return ListTile(
+                                  dense: true,
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  leading: Icon(
+                                    Icons.place_rounded,
+                                    size: 22,
+                                    color: AppTheme.primaryColor
+                                        .withValues(alpha: 0.9),
+                                  ),
+                                  title: Text(
+                                    p.name,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
                                     ),
                                   ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                                  subtitle: p.location.isNotEmpty
+                                      ? Text(
+                                          p.location,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 12),
+                                        )
+                                      : null,
+                                  onTap: () async {
+                                    _searchController.text = p.name;
+                                    _searchFocusNode.unfocus();
+                                    setState(() {});
+                                    final c = await _mapController.future;
+                                    if (p.latitude != null &&
+                                        p.longitude != null) {
+                                      await c.animateCamera(
+                                        CameraUpdate.newLatLngZoom(
+                                          LatLng(p.latitude!, p.longitude!),
+                                          15,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                );
+                              },
+                            ),
+                          ),
                         ),
+                      ],
+                      const SizedBox(height: 12),
+                      Text(
+                        l10n.mapFilterSectionTitle,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.textPrimary,
+                              fontSize: 13,
+                              letterSpacing: 0.2,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.start,
+                        children: _categoryFilterEntries(l10n).map((f) {
+                          final id = f.$1;
+                          final label = f.$2;
+                          final icon = f.$3;
+                          final isActive = (_categoryFilter ?? 'all') == id;
+                          return _mapCategoryFilterChip(
+                            label: label,
+                            faIcon: icon,
+                            isActive: isActive,
+                            onTap: () {
+                              setState(() =>
+                                  _categoryFilter = id == 'all' ? null : id);
+                            },
+                          );
+                        }).toList(),
                       ),
                       if (places.isNotEmpty)
                         Padding(

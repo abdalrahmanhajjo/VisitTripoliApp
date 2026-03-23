@@ -159,6 +159,14 @@
   "tripoli": "Tripoli",
   "lebanon": "Liban",
   "discoverPlacesHint": "Découvrez lieux, souks, gastronomie…",
+  "mapFilterSectionTitle": "Filtrer par catégorie",
+  "mapFilterAll": "Tout",
+  "mapFilterSouks": "Souks",
+  "mapFilterHistorical": "Historique",
+  "mapFilterMosques": "Mosquées",
+  "mapFilterFood": "Gastronomie",
+  "mapFilterCultural": "Culture",
+  "mapFilterArchitecture": "Architecture",
   "goodMorning": "Bonjour",
   "goodAfternoon": "Bon après-midi",
   "goodEvening": "Bonsoir",
@@ -261,6 +269,14 @@
   "tripMapRoute": "Carte et itinéraire du voyage",
   "viewRouteOnMap": "Voir l'itinéraire sur la carte",
   "placesInThisTrip": "Lieux de ce voyage",
+  "tripVisitDayLabel": "Jour de visite",
+  "tripDayNumberDate": "Jour {dayNumber} · {date}",
+  "@tripDayNumberDate": {
+    "placeholders": {
+      "dayNumber": { "type": "int" },
+      "date": { "type": "String" }
+    }
+  },
   "dates": "Dates",
   "shareTrip": "Partager le voyage",
   "editTrip": "Modifier le voyage",

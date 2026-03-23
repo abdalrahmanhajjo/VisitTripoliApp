@@ -502,6 +502,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discoverPlacesHint => 'Discover places, souks, food…';
 
   @override
+  String get mapFilterSectionTitle => 'Filter by category';
+
+  @override
+  String get mapFilterAll => 'All';
+
+  @override
+  String get mapFilterSouks => 'Souks';
+
+  @override
+  String get mapFilterHistorical => 'Historical';
+
+  @override
+  String get mapFilterMosques => 'Mosques';
+
+  @override
+  String get mapFilterFood => 'Food';
+
+  @override
+  String get mapFilterCultural => 'Cultural';
+
+  @override
+  String get mapFilterArchitecture => 'Architecture';
+
+  @override
   String get goodMorning => 'Good morning';
 
   @override
@@ -841,6 +865,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get placesInThisTrip => 'Places in this trip';
+
+  @override
+  String get tripVisitDayLabel => 'Visit day';
+
+  @override
+  String tripDayNumberDate(int dayNumber, String date) {
+    return 'Day $dayNumber · $date';
+  }
 
   @override
   String get dates => 'Dates';

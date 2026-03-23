@@ -159,6 +159,14 @@
   "tripoli": "طرابلس",
   "lebanon": "لبنان",
   "discoverPlacesHint": "اكتشف الأماكن والأسواق والطعام…",
+  "mapFilterSectionTitle": "تصفية حسب الفئة",
+  "mapFilterAll": "الكل",
+  "mapFilterSouks": "الأسواق",
+  "mapFilterHistorical": "تاريخي",
+  "mapFilterMosques": "المساجد",
+  "mapFilterFood": "طعام",
+  "mapFilterCultural": "ثقافي",
+  "mapFilterArchitecture": "عمارة",
   "goodMorning": "صباح الخير",
   "goodAfternoon": "مساء الخير",
   "goodEvening": "مساء الخير",
@@ -261,6 +269,14 @@
   "tripMapRoute": "خريطة ومسار الرحلة",
   "viewRouteOnMap": "عرض المسار على الخريطة",
   "placesInThisTrip": "الأماكن في هذه الرحلة",
+  "tripVisitDayLabel": "يوم الزيارة",
+  "tripDayNumberDate": "اليوم {dayNumber} · {date}",
+  "@tripDayNumberDate": {
+    "placeholders": {
+      "dayNumber": { "type": "int" },
+      "date": { "type": "String" }
+    }
+  },
   "dates": "التواريخ",
   "shareTrip": "مشاركة الرحلة",
   "editTrip": "تعديل الرحلة",

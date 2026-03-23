@@ -33,6 +33,49 @@ import '../utils/feedback_utils.dart';
 import '../utils/responsive_utils.dart';
 import '../utils/snackbar_utils.dart';
 
+/// Places whose names, tags, or text match [query] (for search suggestions).
+List<Place> _placesMatchingSearchQuery(
+  List<Place> places,
+  String query, {
+  int limit = 8,
+}) {
+  final q = query.trim().toLowerCase();
+  if (q.isEmpty) return const [];
+  final out = <Place>[];
+  for (final p in places) {
+    if (out.length >= limit) break;
+    final n = p.name.toLowerCase();
+    final loc = p.location.toLowerCase();
+    final desc = p.description.toLowerCase();
+    final tags = (p.tags ?? []).map((t) => t.toLowerCase()).toList();
+    if (n.contains(q) ||
+        loc.contains(q) ||
+        desc.contains(q) ||
+        tags.any((t) => t.contains(q))) {
+      out.add(p);
+    }
+  }
+  return out;
+}
+
+List<Tour> _toursMatchingSearchQuery(
+  List<Tour> tours,
+  String query,
+  PlacesProvider placesProvider,
+) {
+  final q = query.trim().toLowerCase();
+  if (q.isEmpty) return tours;
+  return tours.where((t) {
+    if (t.name.toLowerCase().contains(q)) return true;
+    if (t.description.toLowerCase().contains(q)) return true;
+    for (final id in t.placeIds) {
+      final place = placesProvider.getPlaceById(id);
+      if (place != null && place.name.toLowerCase().contains(q)) return true;
+    }
+    return false;
+  }).toList();
+}
+
 String _formatApiError(String? err) {
   if (err == null || err.isEmpty) return 'Unknown error';
   // Try to extract detail from "API 500: {\"error\":\"...\",\"detail\":\"...\"}"
@@ -1134,7 +1177,11 @@ class _ExploreScreenState extends State<ExploreScreen>
             .where(
               (p) =>
                   p.name.toLowerCase().contains(query) ||
-                  p.description.toLowerCase().contains(query),
+                  p.description.toLowerCase().contains(query) ||
+                  p.location.toLowerCase().contains(query) ||
+                  (p.tags ?? []).any(
+                    (t) => t.toLowerCase().contains(query),
+                  ),
             )
             .toList();
 
@@ -1142,6 +1189,15 @@ class _ExploreScreenState extends State<ExploreScreen>
     final showRecommended = showAllSections || _filterId == 'popular';
     final showTours = showAllSections || _filterId == 'tours';
     final showCategories = showAllSections || _filterId == 'places';
+    final hasSearch = query.isNotEmpty;
+    final toursForSection =
+        _toursMatchingSearchQuery(tours, query, placesProvider);
+    final showRecoBlock =
+        showRecommended && (!hasSearch || filteredPlaces.isNotEmpty);
+    final showToursBlock =
+        showTours && (!hasSearch || toursForSection.isNotEmpty);
+    final showCatBlock =
+        showCategories && (!hasSearch || filteredPlaces.isNotEmpty);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -1241,7 +1297,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     child: RepaintBoundary(
                       child: FadeTransition(
                         opacity: _heroFade,
-                        child: _buildHero(context),
+                        child: _buildHero(context, places),
                       ),
                     ),
                   ),
@@ -1261,35 +1317,37 @@ class _ExploreScreenState extends State<ExploreScreen>
                     SliverToBoxAdapter(
                       child: RepaintBoundary(
                         child: SizedBox(
-                          height: (showRecommended ? 280.0 : 0) +
-                              (showTours ? 220.0 : 0) +
-                              (showCategories ? 320.0 : 0),
+                          height: (showRecoBlock ? 280.0 : 0) +
+                              (showToursBlock ? 220.0 : 0) +
+                              (showCatBlock ? 320.0 : 0),
                         ),
                       ),
                     )
                   else ...[
-                    if (showRecommended && _belowFoldPhase >= 1)
+                    if (showRecoBlock && _belowFoldPhase >= 1)
                       _buildRecommendedSection(
                         context,
-                        places,
+                        hasSearch ? filteredPlaces : places,
                         userInterests,
                         interestsProvider,
                         sectionFade: _sectionFade,
                       ),
-                    if (showTours && _belowFoldPhase >= 2)
+                    if (showToursBlock && _belowFoldPhase >= 2)
                       _buildToursSection(
                         context,
-                        tours,
+                        toursForSection,
                         toursProvider,
                         sectionFade: _sectionFade,
+                        hideWhenEmpty: hasSearch,
                       ),
-                    if (showCategories && _belowFoldPhase >= 3)
+                    if (showCatBlock && _belowFoldPhase >= 3)
                       _buildCategoriesSection(
                         context,
                         categories,
                         filteredPlaces,
                         placesProvider,
                         sectionFade: _sectionFade,
+                        omitEmptyCategoryPanels: hasSearch,
                       ),
                   ],
                   SliverToBoxAdapter(
@@ -1851,10 +1909,12 @@ class _ExploreScreenState extends State<ExploreScreen>
     );
   }
 
-  Widget _buildHero(BuildContext context) {
+  Widget _buildHero(BuildContext context, List<Place> places) {
     final isCompact = MediaQuery.sizeOf(context).width < 360;
     final horizontalPad = _Responsive.horizontalPadding(context);
     final l10n = AppLocalizations.of(context)!;
+    final suggestionPlaces =
+        _placesMatchingSearchQuery(places, _searchController.text);
 
     return Container(
       color: Colors.transparent,
@@ -1969,75 +2029,142 @@ class _ExploreScreenState extends State<ExploreScreen>
                 firstChild: const SizedBox.shrink(),
                 secondChild: Padding(
                   padding: const EdgeInsets.only(top: 16),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          focusNode: _searchFocusNode,
-                          decoration: InputDecoration(
-                            hintText: l10n.discoverPlacesHint,
-                            hintStyle: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                              color: AppTheme.textTertiary,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              focusNode: _searchFocusNode,
+                              decoration: InputDecoration(
+                                hintText: l10n.discoverPlacesHint,
+                                hintStyle: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w400,
+                                  color: AppTheme.textTertiary,
+                                ),
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 14, horizontal: 4),
+                                isDense: true,
+                                filled: true,
+                                fillColor: AppTheme.surfaceVariant
+                                    .withValues(alpha: 0.6),
+                              ),
+                              onChanged: (_) {
+                                setState(() {});
+                                _searchLogTimer?.cancel();
+                                _searchLogTimer = Timer(
+                                    const Duration(milliseconds: 1500), () {
+                                  if (mounted) {
+                                    final q = _searchController.text.trim();
+                                    if (q.isNotEmpty) {
+                                      Provider.of<ActivityLogProvider>(context,
+                                              listen: false)
+                                          .search(q);
+                                    }
+                                    _searchLogTimer = null;
+                                  }
+                                });
+                              },
+                              maxLines: 1,
                             ),
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                                vertical: 14, horizontal: 4),
-                            isDense: true,
-                            filled: true,
-                            fillColor:
-                                AppTheme.surfaceVariant.withValues(alpha: 0.6),
                           ),
-                          onChanged: (_) {
-                            setState(() {});
-                            _searchLogTimer?.cancel();
-                            _searchLogTimer =
-                                Timer(const Duration(milliseconds: 1500), () {
-                              if (mounted) {
-                                final q = _searchController.text.trim();
-                                if (q.isNotEmpty) {
-                                  Provider.of<ActivityLogProvider>(context,
-                                          listen: false)
-                                      .search(q);
-                                }
-                                _searchLogTimer = null;
-                              }
-                            });
-                          },
-                          maxLines: 1,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              _searchBarVisible = false;
-                              _searchController.clear();
-                            });
-                            _searchFocusNode.unfocus();
-                          },
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceVariant
-                                  .withValues(alpha: 0.6),
+                          const SizedBox(width: 8),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _searchBarVisible = false;
+                                  _searchController.clear();
+                                });
+                                _searchFocusNode.unfocus();
+                              },
                               borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surfaceVariant
+                                      .withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  size: 20,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.close_rounded,
-                              size: 20,
-                              color: AppTheme.textSecondary,
+                          ),
+                        ],
+                      ),
+                      if (suggestionPlaces.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Material(
+                          elevation: 3,
+                          borderRadius: BorderRadius.circular(12),
+                          color: AppTheme.surfaceColor,
+                          shadowColor:
+                              Colors.black.withValues(alpha: 0.12),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 220),
+                            child: ListView.separated(
+                              shrinkWrap: true,
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              itemCount: suggestionPlaces.length,
+                              separatorBuilder: (_, __) => Divider(
+                                height: 1,
+                                color: AppTheme.borderColor
+                                    .withValues(alpha: 0.5),
+                              ),
+                              itemBuilder: (context, i) {
+                                final p = suggestionPlaces[i];
+                                return ListTile(
+                                  dense: true,
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 0,
+                                  ),
+                                  leading: Icon(
+                                    Icons.place_rounded,
+                                    size: 22,
+                                    color: AppTheme.primaryColor
+                                        .withValues(alpha: 0.9),
+                                  ),
+                                  title: Text(
+                                    p.name,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  subtitle: p.location.isNotEmpty
+                                      ? Text(
+                                          p.location,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 12),
+                                        )
+                                      : null,
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    context.push('/place/${p.id}');
+                                  },
+                                );
+                              },
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -2714,7 +2841,11 @@ class _ExploreScreenState extends State<ExploreScreen>
     List<Tour> tours,
     ToursProvider toursProvider, {
     Animation<double>? sectionFade,
+    bool hideWhenEmpty = false,
   }) {
+    if (tours.isEmpty && !toursProvider.isLoading && hideWhenEmpty) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
     final Widget content = RepaintBoundary(
       child: Column(
         children: [
@@ -2817,6 +2948,7 @@ class _ExploreScreenState extends State<ExploreScreen>
     List<Place> places,
     PlacesProvider placesProvider, {
     Animation<double>? sectionFade,
+    bool omitEmptyCategoryPanels = false,
   }) {
     List<Place> displayPlaces = places;
     if (_freeOnly) {
@@ -2847,6 +2979,11 @@ class _ExploreScreenState extends State<ExploreScreen>
     // Loading + empty: show skeleton strip so layout appears in ms.
     if (displayPlaces.isEmpty && placesProvider.isLoading) {
       return _buildCategoriesSkeletonSliver(context);
+    }
+    if (displayPlaces.isEmpty &&
+        !placesProvider.isLoading &&
+        omitEmptyCategoryPanels) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
     final Widget content = RepaintBoundary(
       child: Column(
@@ -2922,12 +3059,16 @@ class _ExploreScreenState extends State<ExploreScreen>
           ...(_categoryFilterId == null
                   ? categories
                   : categories.where((c) => c.id == _categoryFilterId).toList())
-              .map((category) {
+              .expand((category) {
             final categoryPlaces = _getPlacesForCategory(
               category,
               displayPlaces,
             );
-            return Padding(
+            if (omitEmptyCategoryPanels && categoryPlaces.isEmpty) {
+              return <Widget>[];
+            }
+            return [
+              Padding(
               padding:
                   EdgeInsets.only(bottom: _ExploreLayout.sectionGap(context)),
               child: _panel(
@@ -2950,7 +3091,8 @@ class _ExploreScreenState extends State<ExploreScreen>
                       _showAddPlaceToTripDialog(context, p),
                 ),
               ),
-            );
+            ),
+            ];
           }),
           const SizedBox(height: 4),
         ],
@@ -3426,7 +3568,7 @@ class _EventsErrorState extends StatelessWidget {
   }
 }
 
-/// Event card — boarding-pass style: accent rail, image stub with date, perforated edge, main panel.
+/// Event card — vertical layout: hero image, title, schedule, location, category & price.
 class _EventCard extends StatelessWidget {
   final Event event;
   final VoidCallback onTap;
@@ -3445,8 +3587,6 @@ class _EventCard extends StatelessWidget {
   });
 
   static const _radius = 18.0;
-  static const _accentWidth = 4.0;
-  static const _notchRadius = 5.0;
 
   static String _formatDateLine(DateTime date, String locale) =>
       DateFormat('EEE, MMM d', locale).format(date);
@@ -3476,14 +3616,9 @@ class _EventCard extends StatelessWidget {
     final isFree = event.price == null || event.price == 0;
     final priceText =
         event.priceDisplay ?? (isFree ? l10n.free : '\$${event.price}');
-    final stubW = ResponsiveUtils.eventTicketStubWidth(context);
     final tight = height < 132;
     final titleSize = tight ? 13.5 : 15.0;
     final metaSize = tight ? 11.5 : 12.5;
-    final locMaxLines = height >= 138 ? 2 : 1;
-    final dayNum = '${event.startDate.day}';
-    final monthShort = DateFormat('MMM', locale).format(event.startDate);
-    final weekdayShort = DateFormat('EEE', locale).format(event.startDate);
 
     return Material(
       color: AppTheme.surfaceColor,
@@ -3502,342 +3637,233 @@ class _EventCard extends StatelessWidget {
         child: SizedBox(
           width: width,
           height: height,
-          child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Brand accent rail
-                Container(
-                  width: _accentWidth,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        categoryColor,
-                        categoryColor.withValues(alpha: 0.55),
-                      ],
-                    ),
-                  ),
-                ),
-                // Stub: cover image + date block + perforations
-                Stack(
-                  clipBehavior: Clip.none,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 11,
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(0),
-                        bottomLeft: Radius.circular(0),
-                      ),
-                      child: SizedBox(
-                        width: stubW,
-                        height: height,
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            Positioned.fill(
-                              child: imageUrl != null && imageUrl.isNotEmpty
-                                  ? AppImage(
-                                      src: imageUrl,
-                                      fit: BoxFit.cover,
-                                      cacheWidth: 220,
-                                      cacheHeight: 280,
-                                    )
-                                  : Container(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            categoryColor,
-                                            categoryColor.withValues(alpha: 0.65),
-                                          ],
-                                        ),
-                                      ),
-                                      child: Center(
-                                        child: Icon(
-                                          Icons.confirmation_number_rounded,
-                                          size: tight ? 26 : 30,
-                                          color: Colors.white
-                                              .withValues(alpha: 0.92),
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                            Positioned(
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              child: Container(
-                                padding: EdgeInsets.fromLTRB(
-                                  6,
-                                  tight ? 18 : 22,
-                                  6,
-                                  tight ? 6 : 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      Colors.transparent,
-                                      Colors.black.withValues(alpha: 0.78),
-                                    ],
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      dayNum,
-                                      style: TextStyle(
-                                        fontSize: tight ? 20 : 24,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.white,
-                                        height: 1,
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      monthShort.toUpperCase(),
-                                      style: TextStyle(
-                                        fontSize: tight ? 9 : 10,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 1.2,
-                                        color: Colors.white
-                                            .withValues(alpha: 0.92),
-                                      ),
-                                    ),
+                    Positioned.fill(
+                      child: imageUrl != null && imageUrl.isNotEmpty
+                          ? AppImage(
+                              src: imageUrl,
+                              fit: BoxFit.cover,
+                              cacheWidth: 220,
+                              cacheHeight: 280,
+                            )
+                          : Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    categoryColor,
+                                    categoryColor.withValues(alpha: 0.65),
                                   ],
                                 ),
                               ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.event_rounded,
+                                  size: tight ? 36 : 42,
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                ),
+                              ),
                             ),
-                          ],
+                    ),
+                    Positioned(
+                      left: 10,
+                      top: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          DateFormat('d MMM', locale).format(event.startDate),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ),
-                    ...List.generate(4, (i) {
-                      final frac = (i + 1) / 5;
-                      final top = (height * frac - _notchRadius).clamp(
-                        6.0,
-                        height - 6 - _notchRadius * 2,
-                      );
-                      return Positioned(
-                        left: stubW - _notchRadius,
-                        top: top,
-                        child: Container(
-                          width: _notchRadius * 2,
-                          height: _notchRadius * 2,
-                          decoration: const BoxDecoration(
-                            color: AppTheme.surfaceColor,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      );
-                    }),
                   ],
                 ),
-                // Main panel
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      tight ? 8 : 10,
-                      tight ? 6 : 8,
-                      6,
-                      tight ? 6 : 8,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    weekdayShort,
-                                    style: TextStyle(
-                                      fontSize: tight ? 10 : 11,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.6,
-                                      color: categoryColor,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    event.name,
-                                    style: TextStyle(
-                                      fontSize: titleSize,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppTheme.textPrimary,
-                                      letterSpacing: -0.25,
-                                      height: 1.2,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+              ),
+              Expanded(
+                flex: 13,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    tight ? 10 : 12,
+                    tight ? 8 : 10,
+                    tight ? 10 : 12,
+                    tight ? 8 : 10,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              event.name,
+                              style: TextStyle(
+                                fontSize: titleSize,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
+                                letterSpacing: -0.25,
+                                height: 1.25,
                               ),
+                              maxLines: 4,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(20),
-                                onTap: onToggleSave,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(2),
-                                  child: Icon(
-                                    isSaved
-                                        ? Icons.bookmark_rounded
-                                        : Icons.bookmark_border_rounded,
-                                    size: tight ? 19 : 21,
-                                    color: isSaved
-                                        ? AppTheme.primaryColor
-                                        : AppTheme.textSecondary,
-                                  ),
+                          ),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: onToggleSave,
+                              child: Padding(
+                                padding: const EdgeInsets.all(2),
+                                child: Icon(
+                                  isSaved
+                                      ? Icons.bookmark_rounded
+                                      : Icons.bookmark_border_rounded,
+                                  size: tight ? 19 : 21,
+                                  color: isSaved
+                                      ? AppTheme.primaryColor
+                                      : AppTheme.textSecondary,
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-                        SizedBox(height: tight ? 4 : 5),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.event_rounded,
-                              size: tight ? 12 : 13,
-                              color: AppTheme.primaryColor,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                '${_formatDateLine(event.startDate, locale)} · ${_formatTime(event.startDate, locale)}',
-                                style: TextStyle(
-                                  fontSize: metaSize,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.textPrimary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: tight ? 4 : 6),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: tight ? 13 : 14,
+                            color: AppTheme.primaryColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              '${_formatDateLine(event.startDate, locale)} · ${_formatTime(event.startDate, locale)}',
+                              style: TextStyle(
+                                fontSize: metaSize,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimary,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
-                        SizedBox(height: tight ? 3 : 4),
-                        Row(
-                          children: [
-                            Icon(
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: tight ? 4 : 5),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Icon(
                               Icons.place_outlined,
-                              size: tight ? 12 : 13,
+                              size: tight ? 13 : 14,
                               color: AppTheme.textTertiary,
                             ),
-                            const SizedBox(width: 4),
-                            Expanded(
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              event.location,
+                              style: TextStyle(
+                                fontSize: tight ? 10.5 : 11.5,
+                                color: AppTheme.textSecondary,
+                                height: 1.25,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: tight ? 8 : 10,
+                                vertical: tight ? 4 : 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.surfaceVariant
+                                    .withValues(alpha: 0.92),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppTheme.borderColor
+                                      .withValues(alpha: 0.7),
+                                ),
+                              ),
                               child: Text(
-                                event.location,
+                                event.category,
                                 style: TextStyle(
                                   fontSize: tight ? 10.5 : 11.5,
+                                  fontWeight: FontWeight.w700,
                                   color: AppTheme.textSecondary,
-                                  height: 1.25,
                                 ),
-                                maxLines: locMaxLines,
+                                maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ],
-                        ),
-                        SizedBox(height: tight ? 4 : 8),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final narrowPanel = constraints.maxWidth < 172;
-                            Widget categoryPill() => Container(
-                                  width: narrowPanel ? double.infinity : null,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: tight ? 6 : 8,
-                                    vertical: tight ? 3 : 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.surfaceVariant
-                                        .withValues(alpha: 0.92),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: AppTheme.borderColor
-                                          .withValues(alpha: 0.7),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    event.category,
-                                    style: TextStyle(
-                                      fontSize: tight ? 10.5 : 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppTheme.textSecondary,
-                                    ),
-                                    maxLines: narrowPanel ? 2 : 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                );
-                            Widget pricePill() => Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: tight ? 8 : 10,
-                                    vertical: tight ? 4 : 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isFree
-                                        ? AppTheme.successColor
-                                            .withValues(alpha: 0.14)
-                                        : categoryColor.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: isFree
-                                          ? AppTheme.successColor
-                                              .withValues(alpha: 0.4)
-                                          : categoryColor.withValues(alpha: 0.32),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    priceText,
-                                    style: TextStyle(
-                                      fontSize: tight ? 11.5 : 12.5,
-                                      fontWeight: FontWeight.w800,
-                                      color: isFree
-                                          ? AppTheme.successColor
-                                          : categoryColor,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                );
-                            if (narrowPanel) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  categoryPill(),
-                                  const SizedBox(height: 6),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: pricePill(),
-                                  ),
-                                ],
-                              );
-                            }
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(child: categoryPill()),
-                                const SizedBox(width: 8),
-                                pricePill(),
-                              ],
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: tight ? 8 : 10,
+                              vertical: tight ? 4 : 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isFree
+                                  ? AppTheme.successColor.withValues(alpha: 0.14)
+                                  : categoryColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isFree
+                                    ? AppTheme.successColor.withValues(alpha: 0.4)
+                                    : categoryColor.withValues(alpha: 0.32),
+                              ),
+                            ),
+                            child: Text(
+                              priceText,
+                              style: TextStyle(
+                                fontSize: tight ? 11.5 : 12.5,
+                                fontWeight: FontWeight.w800,
+                                color: isFree
+                                    ? AppTheme.successColor
+                                    : categoryColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
         ),
       ),
     );

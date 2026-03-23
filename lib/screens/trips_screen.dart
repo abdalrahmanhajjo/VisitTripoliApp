@@ -7,9 +7,7 @@ import 'package:intl/intl.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
 import '../providers/trips_provider.dart';
-import '../providers/places_provider.dart';
 import '../models/trip.dart';
-import '../models/place.dart';
 import '../services/api_service.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/app_profile_icon_button.dart';
@@ -211,8 +209,6 @@ class _TripsScreenState extends State<TripsScreen> {
                             child: _TripCard(
                               trip: t,
                               placeIds: tripsProvider.getPlaceIdsForTrip(t),
-                              placesProvider:
-                                  Provider.of<PlacesProvider>(context),
                               onTap: () => _openTripDetails(context, t),
                               onEdit: () => _openEditTripModal(context, t),
                               onDelete: () => _confirmDelete(context, t),
@@ -1331,7 +1327,6 @@ class _TripCardActionButton extends StatelessWidget {
 class _TripCard extends StatelessWidget {
   final Trip trip;
   final List<String> placeIds;
-  final PlacesProvider placesProvider;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -1339,7 +1334,6 @@ class _TripCard extends StatelessWidget {
   const _TripCard({
     required this.trip,
     required this.placeIds,
-    required this.placesProvider,
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
@@ -1348,10 +1342,6 @@ class _TripCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final narrowCard = MediaQuery.sizeOf(context).width < 360;
-    final places = placeIds
-        .map((id) => placesProvider.getPlaceById(id))
-        .whereType<Place>()
-        .toList();
     final durationDays = _daysBetween(trip.startDate, trip.endDate);
     final durationText = durationDays > 1
         ? AppLocalizations.of(context)!.daysCount(durationDays)
@@ -1469,78 +1459,6 @@ class _TripCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    if (!narrowCard) ...[
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          if (places.isEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: AppTheme.surfaceVariant,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                AppLocalizations.of(context)!.noPlacesYet,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                            )
-                          else
-                            ...places.take(3).map(
-                                  (p) => Container(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 220,
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primaryColor
-                                          .withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      p.name,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppTheme.textPrimary,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ),
-                          if (places.length > 3)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.surfaceVariant,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                AppLocalizations.of(context)!
-                                    .moreCount(places.length - 3),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
               ),

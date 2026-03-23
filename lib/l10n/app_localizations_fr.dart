@@ -508,6 +508,30 @@ class AppLocalizationsFr extends AppLocalizations {
   String get discoverPlacesHint => 'Découvrez lieux, souks, gastronomie…';
 
   @override
+  String get mapFilterSectionTitle => 'Filtrer par catégorie';
+
+  @override
+  String get mapFilterAll => 'Tout';
+
+  @override
+  String get mapFilterSouks => 'Souks';
+
+  @override
+  String get mapFilterHistorical => 'Historique';
+
+  @override
+  String get mapFilterMosques => 'Mosquées';
+
+  @override
+  String get mapFilterFood => 'Gastronomie';
+
+  @override
+  String get mapFilterCultural => 'Culture';
+
+  @override
+  String get mapFilterArchitecture => 'Architecture';
+
+  @override
   String get goodMorning => 'Bonjour';
 
   @override
@@ -851,6 +875,14 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get placesInThisTrip => 'Lieux de ce voyage';
+
+  @override
+  String get tripVisitDayLabel => 'Jour de visite';
+
+  @override
+  String tripDayNumberDate(int dayNumber, String date) {
+    return 'Jour $dayNumber · $date';
+  }
 
   @override
   String get dates => 'Dates';

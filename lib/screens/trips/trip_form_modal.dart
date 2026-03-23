@@ -39,6 +39,8 @@ class TripFormModalState extends State<TripFormModal> {
   final List<String> _orderedPlaceIds = [];
   final Map<String, String?> _startTimes = {};
   final Map<String, String?> _endTimes = {};
+  /// Day index within the trip (0 = first calendar day) for each place.
+  final Map<String, int> _placeDayIndex = {};
   String _nameError = '';
 
   @override
@@ -51,12 +53,14 @@ class TripFormModalState extends State<TripFormModal> {
           TextEditingController(text: widget.trip!.description ?? '');
       _startDate = widget.trip!.startDate;
       _endDate = widget.trip!.endDate;
-      final slots = Provider.of<TripsProvider>(context, listen: false)
-          .getSlotsForTrip(widget.trip!);
-      for (final s in slots) {
-        _orderedPlaceIds.add(s.placeId);
-        _startTimes[s.placeId] = s.startTime;
-        _endTimes[s.placeId] = s.endTime;
+      for (var d = 0; d < widget.trip!.days.length; d++) {
+        final day = widget.trip!.days[d];
+        for (final s in day.slots) {
+          _orderedPlaceIds.add(s.placeId);
+          _placeDayIndex[s.placeId] = d;
+          _startTimes[s.placeId] = s.startTime;
+          _endTimes[s.placeId] = s.endTime;
+        }
       }
     } else {
       _nameController = TextEditingController();
@@ -144,6 +148,57 @@ class TripFormModalState extends State<TripFormModal> {
         date: DateFormat('yyyy-MM-dd').format(dayDate),
         slots: daySlots,
       ));
+    }
+    return days;
+  }
+
+  static int? _minutesForTime(String? s) {
+    if (s == null || s.isEmpty) return null;
+    final parts = s.trim().split(RegExp(r'[:\s]'));
+    if (parts.length < 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null || h < 0 || h > 23 || m < 0 || m > 59) {
+      return null;
+    }
+    return h * 60 + m;
+  }
+
+  /// Builds [TripDay] rows from user-chosen day per place (multi-day trips).
+  static List<TripDay> buildTripDaysFromAssignments({
+    required List<String> orderedPlaceIds,
+    required Map<String, int> placeDayIndex,
+    required Map<String, String?> startTimes,
+    required Map<String, String?> endTimes,
+    required DateTime startDate,
+    required int dayCount,
+  }) {
+    if (orderedPlaceIds.isEmpty || dayCount <= 0) return [];
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    final maxDay = dayCount - 1;
+    final days = <TripDay>[];
+    for (var d = 0; d < dayCount; d++) {
+      final dateStr =
+          DateFormat('yyyy-MM-dd').format(start.add(Duration(days: d)));
+      final slots = <TripSlot>[];
+      for (final id in orderedPlaceIds) {
+        var idx = placeDayIndex[id] ?? 0;
+        if (idx < 0) idx = 0;
+        if (idx > maxDay) idx = maxDay;
+        if (idx == d) {
+          slots.add(TripSlot(
+            placeId: id,
+            startTime: startTimes[id],
+            endTime: endTimes[id],
+          ));
+        }
+      }
+      slots.sort((a, b) {
+        final ma = _minutesForTime(a.startTime) ?? 0;
+        final mb = _minutesForTime(b.startTime) ?? 0;
+        return ma.compareTo(mb);
+      });
+      days.add(TripDay(date: dateStr, slots: slots));
     }
     return days;
   }
@@ -476,14 +531,15 @@ class TripFormModalState extends State<TripFormModal> {
         child: const SizedBox(height: 0, width: 0),
       );
     }
+    final daySpan = calendarDayCount(_startDate, _endDate);
     final start = _startTimes[placeId];
     final end = _endTimes[placeId];
     final timeStr = (start != null && end != null)
         ? '$start – $end'
         : (start != null)
-            ? 'From $start'
+            ? l10n.fromTime(start)
             : (end != null)
-                ? 'Until $end'
+                ? l10n.untilTime(end)
                 : l10n.tapClockToSetTime;
     return ReorderableDragStartListener(
       key: ValueKey('manual_$placeId'),
@@ -499,8 +555,8 @@ class TripFormModalState extends State<TripFormModal> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
               child: Icon(Icons.drag_handle,
                   size: 20, color: AppTheme.textTertiary),
             ),
@@ -539,18 +595,81 @@ class TripFormModalState extends State<TripFormModal> {
                           const Icon(FontAwesomeIcons.clock,
                               size: 11, color: AppTheme.primaryColor),
                           const SizedBox(width: 6),
-                          Text(
-                            timeStr,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.primaryColor,
-                              decoration: TextDecoration.underline,
+                          Flexible(
+                            child: Text(
+                              timeStr,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.primaryColor,
+                                decoration: TextDecoration.underline,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
+                  if (daySpan > 1) ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 280),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.tripVisitDayLabel,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: AppTheme.borderColor),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int>(
+                                  isExpanded: true,
+                                  isDense: true,
+                                  value: (_placeDayIndex[placeId] ?? 0)
+                                      .clamp(0, daySpan - 1),
+                                  items: List.generate(daySpan, (d) {
+                                    final date = DateTime(_startDate.year,
+                                            _startDate.month, _startDate.day)
+                                        .add(Duration(days: d));
+                                    return DropdownMenuItem(
+                                      value: d,
+                                      child: Text(
+                                        l10n.tripDayNumberDate(
+                                          d + 1,
+                                          DateFormat.MMMEd(
+                                            Localizations.localeOf(context)
+                                                .toString(),
+                                          ).format(date),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    );
+                                  }),
+                                  onChanged: (v) {
+                                    if (v == null) return;
+                                    setState(() => _placeDayIndex[placeId] = v);
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -578,6 +697,7 @@ class TripFormModalState extends State<TripFormModal> {
                   _orderedPlaceIds.remove(placeId);
                   _startTimes.remove(placeId);
                   _endTimes.remove(placeId);
+                  _placeDayIndex.remove(placeId);
                 });
               },
               icon: const Icon(Icons.remove_circle_outline,
@@ -693,8 +813,10 @@ class TripFormModalState extends State<TripFormModal> {
                             _orderedPlaceIds.remove(p.id);
                             _startTimes.remove(p.id);
                             _endTimes.remove(p.id);
+                            _placeDayIndex.remove(p.id);
                           } else {
                             _orderedPlaceIds.add(p.id);
+                            _placeDayIndex[p.id] = 0;
                           }
                         });
                       },
@@ -940,16 +1062,12 @@ class TripFormModalState extends State<TripFormModal> {
     }
 
     final provider = Provider.of<TripsProvider>(context, listen: false);
-    final slots = _orderedPlaceIds
-        .map((id) => TripSlot(
-              placeId: id,
-              startTime: _startTimes[id],
-              endTime: _endTimes[id],
-            ))
-        .toList();
     final daySpan = calendarDayCount(_startDate, _endDate);
-    final days = buildTripDaysForRange(
-      orderedSlots: slots,
+    final days = buildTripDaysFromAssignments(
+      orderedPlaceIds: _orderedPlaceIds,
+      placeDayIndex: _placeDayIndex,
+      startTimes: _startTimes,
+      endTimes: _endTimes,
       startDate: _startDate,
       dayCount: daySpan,
     );

@@ -810,14 +810,15 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
       ),
       body: Column(
         children: [
-          _PlannerTripSetupCard(
-            duration: _duration,
-            placesPerDay: _placesPerDay,
-            selectedDate: _selectedDate,
-            onDurationTap: () => _showDurationPicker(context),
-            onPlacesTap: () => _showPlacesPerDayPicker(context),
-            onDateTap: _pickDate,
-          ),
+          if (_chatMessages.isEmpty)
+            _PlannerTripSetupCard(
+              duration: _duration,
+              placesPerDay: _placesPerDay,
+              selectedDate: _selectedDate,
+              onDurationTap: () => _showDurationPicker(context),
+              onPlacesTap: () => _showPlacesPerDayPicker(context),
+              onDateTap: _pickDate,
+            ),
           Expanded(
             child: _chatMessages.isEmpty
                 ? _WelcomeHero(
@@ -3251,11 +3252,12 @@ class _PlanRow extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
                             letterSpacing: -0.2,
-                            height: 1.25,
+                            height: 1.28,
                             color: AppTheme.textPrimary,
                           ),
-                          maxLines: 4,
+                          maxLines: 12,
                           overflow: TextOverflow.ellipsis,
+                          softWrap: true,
                         ),
                       ),
                       PopupMenuButton<String>(
@@ -3366,9 +3368,11 @@ class _PlanRow extends StatelessWidget {
                                 fontSize: 15,
                                 letterSpacing: -0.2,
                                 color: AppTheme.textPrimary,
+                                height: 1.28,
                               ),
-                              maxLines: 2,
+                              maxLines: 12,
                               overflow: TextOverflow.ellipsis,
+                              softWrap: true,
                             ),
                           ),
                           if (place.location.isNotEmpty)
