@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../config/api_config.dart';
+import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
 import '../services/deals_service.dart';
 import '../theme/app_theme.dart';
@@ -110,13 +111,14 @@ class _DealsScreenState extends State<DealsScreen> with SingleTickerProviderStat
 
   void _showRedeemSuccess(BuildContext context, Map<String, dynamic> res) {
     SystemSound.play(SystemSoundType.click);
+    final l10n = AppLocalizations.of(context)!;
     final redemptionId = res['redemption_id']?.toString() ?? '';
     final code = res['code'] as String? ?? '';
     final coupon = res['coupon'] as Map<String, dynamic>?;
     final displayValue = coupon != null
         ? (coupon['discount_type'] == 'percent'
-            ? '${(coupon['discount_value'] as num?)?.toInt() ?? 0}% off'
-            : '\$${coupon['discount_value']} off')
+            ? l10n.dealsPercentOff((coupon['discount_value'] as num?)?.toInt() ?? 0)
+            : l10n.dealsAmountOff('\$${coupon['discount_value']}'))
         : code;
     final qrData = 'TRIPOLI:$code:$redemptionId';
     showDialog(
@@ -138,7 +140,7 @@ class _DealsScreenState extends State<DealsScreen> with SingleTickerProviderStat
                 child: const Icon(Icons.check_circle_rounded, size: 48, color: AppTheme.primaryColor),
               ),
               const SizedBox(height: 16),
-              const Text('Redeemed!', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22, color: AppTheme.textPrimary)),
+              Text(l10n.dealsRedeemedTitle, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 22, color: AppTheme.textPrimary)),
               const SizedBox(height: 4),
               Text(displayValue, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: AppTheme.primaryColor)),
               const SizedBox(height: 20),
@@ -160,7 +162,7 @@ class _DealsScreenState extends State<DealsScreen> with SingleTickerProviderStat
                 ),
               ),
               const SizedBox(height: 12),
-              const Text('Show this QR at checkout', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              Text(l10n.dealsShowQrAtCheckout, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
               const SizedBox(height: 8),
               Text(code, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: 2, color: AppTheme.textPrimary)),
               const SizedBox(height: 20),
@@ -171,7 +173,7 @@ class _DealsScreenState extends State<DealsScreen> with SingleTickerProviderStat
                   padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Done'),
+                child: Text(l10n.done),
               ),
             ],
           ),
@@ -182,12 +184,13 @@ class _DealsScreenState extends State<DealsScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text(
-          'Deals & Offers',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
+        title: Text(
+          l10n.dealsAndOffers,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
         ),
         elevation: 0,
         backgroundColor: Colors.white,
@@ -197,10 +200,10 @@ class _DealsScreenState extends State<DealsScreen> with SingleTickerProviderStat
           indicatorColor: AppTheme.primaryColor,
           labelColor: AppTheme.primaryColor,
           unselectedLabelColor: AppTheme.textSecondary,
-          tabs: const [
-            Tab(text: 'Coupons'),
-            Tab(text: 'Restaurant Offers'),
-            Tab(text: 'My Proposals'),
+          tabs: [
+            Tab(text: l10n.coupons),
+            Tab(text: l10n.dealsTabRestaurantOffers),
+            Tab(text: l10n.dealsTabMyProposals),
           ],
         ),
       ),
@@ -219,7 +222,7 @@ class _DealsScreenState extends State<DealsScreen> with SingleTickerProviderStat
                           const SizedBox(height: 16),
                           Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary)),
                           const SizedBox(height: 24),
-                          FilledButton(onPressed: _load, child: const Text('Retry')),
+                          FilledButton(onPressed: _load, child: Text(l10n.retry)),
                         ],
                       ),
                     ),
@@ -262,6 +265,7 @@ class _CouponsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -275,9 +279,9 @@ class _CouponsTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Have a promo code?',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: AppTheme.textPrimary),
+              Text(
+                l10n.dealsHavePromoCode,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: AppTheme.textPrimary),
               ),
               const SizedBox(height: 12),
               Row(
@@ -286,7 +290,7 @@ class _CouponsTab extends StatelessWidget {
                     child: TextField(
                       controller: codeController,
                       decoration: InputDecoration(
-                        hintText: 'Enter code',
+                        hintText: l10n.dealsEnterCodeHint,
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -304,7 +308,7 @@ class _CouponsTab extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Redeem'),
+                    child: Text(l10n.dealsRedeem),
                   ),
                 ],
               ),
@@ -312,9 +316,9 @@ class _CouponsTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        const Text(
-          'Active Coupons',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: AppTheme.textPrimary),
+        Text(
+          l10n.dealsActiveCoupons,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: AppTheme.textPrimary),
         ),
         const SizedBox(height: 12),
         if (coupons.isEmpty)
@@ -325,13 +329,13 @@ class _CouponsTab extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
             ),
-            child: const Column(
+            child: Column(
               children: [
-                Icon(Icons.local_offer_outlined, size: 48, color: AppTheme.textTertiary),
-                SizedBox(height: 16),
+                const Icon(Icons.local_offer_outlined, size: 48, color: AppTheme.textTertiary),
+                const SizedBox(height: 16),
                 Text(
-                  'No active coupons at the moment',
-                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+                  l10n.dealsNoActiveCoupons,
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -351,7 +355,8 @@ class _CouponCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final target = coupon.placeName ?? coupon.tourName ?? coupon.eventName ?? 'Various';
+    final l10n = AppLocalizations.of(context)!;
+    final target = coupon.placeName ?? coupon.tourName ?? coupon.eventName ?? l10n.dealsPlaceVarious;
     final used = coupon.usedByMe;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -408,7 +413,7 @@ class _CouponCard extends StatelessWidget {
                               color: AppTheme.textTertiary.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text('Used', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+                            child: Text(l10n.dealsUsedLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
                           ),
                         ],
                       ],
@@ -416,7 +421,7 @@ class _CouponCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(target, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                     if (coupon.validUntil != null)
-                      Text('Valid until ${coupon.validUntil!.substring(0, 10)}', style: const TextStyle(color: AppTheme.textTertiary, fontSize: 12)),
+                      Text(l10n.dealsValidUntil(coupon.validUntil!.substring(0, 10)), style: const TextStyle(color: AppTheme.textTertiary, fontSize: 12)),
                   ],
                 ),
               ),
@@ -425,7 +430,7 @@ class _CouponCard extends StatelessWidget {
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: coupon.code));
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Code ${coupon.code} copied'), duration: const Duration(seconds: 2), behavior: SnackBarBehavior.floating),
+                    SnackBar(content: Text(l10n.dealsCodeCopied(coupon.code)), duration: const Duration(seconds: 2), behavior: SnackBarBehavior.floating),
                   );
                 },
               ),
@@ -505,18 +510,19 @@ class _OffersTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final auth = context.read<AuthProvider>();
     final canPropose = auth.isLoggedIn && !auth.isGuest;
     if (offers.isEmpty && !canPropose) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.restaurant_outlined, size: 64, color: AppTheme.textTertiary),
-            SizedBox(height: 16),
+            const Icon(Icons.restaurant_outlined, size: 64, color: AppTheme.textTertiary),
+            const SizedBox(height: 16),
             Text(
-              'No restaurant offers at the moment',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+              l10n.dealsNoRestaurantOffers,
+              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
               textAlign: TextAlign.center,
             ),
           ],
@@ -555,13 +561,13 @@ class _OffersTab extends StatelessWidget {
                     child: const Icon(Icons.send_rounded, size: 28, color: Color(0xFF2D5A4A)),
                   ),
                   const SizedBox(width: 16),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Send offer to restaurant', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary)),
-                        SizedBox(height: 4),
-                        Text('Propose a deal or special offer to your favorite spot', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                        Text(l10n.dealsSendOfferTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary)),
+                        const SizedBox(height: 4),
+                        Text(l10n.dealsSendOfferSubtitle, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
                       ],
                     ),
                   ),
@@ -571,13 +577,13 @@ class _OffersTab extends StatelessWidget {
             ),
           ),
         if (offers.isEmpty)
-          const Center(
+          Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.restaurant_outlined, size: 64, color: AppTheme.textTertiary),
-                SizedBox(height: 16),
-                Text('No restaurant offers yet', style: TextStyle(color: AppTheme.textSecondary, fontSize: 15), textAlign: TextAlign.center),
+                const Icon(Icons.restaurant_outlined, size: 64, color: AppTheme.textTertiary),
+                const SizedBox(height: 16),
+                Text(l10n.dealsNoRestaurantOffersShort, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15), textAlign: TextAlign.center),
               ],
             ),
           )
@@ -588,6 +594,7 @@ class _OffersTab extends StatelessWidget {
   }
 
   void _showOfferDetails(BuildContext context, PlaceOffer o) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -698,19 +705,19 @@ class _OffersTab extends StatelessWidget {
                     if (o.expiresAt != null)
                       _offerChip(
                         icon: Icons.schedule_rounded,
-                        label: 'Valid until ${o.expiresAt!.substring(0, 10)}',
+                        label: l10n.dealsValidUntil(o.expiresAt!.substring(0, 10)),
                       ),
                     _offerChip(
                       icon: Icons.group_rounded,
-                      label: 'In-restaurant only',
+                      label: l10n.dealsInRestaurantOnly,
                     ),
                   ],
                 ),
                 if (o.description != null && o.description!.isNotEmpty) ...[
                   const SizedBox(height: 20),
-                  const Text(
-                    'What you get',
-                    style: TextStyle(
+                  Text(
+                    l10n.dealsWhatYouGet,
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.textPrimary,
@@ -723,20 +730,18 @@ class _OffersTab extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 16),
-                const Text(
-                  'How to use this offer',
-                  style: TextStyle(
+                Text(
+                  l10n.dealsHowToUseOffer,
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  '1. Visit the restaurant during opening hours.\n'
-                  '2. Show this screen to staff before you order.\n'
-                  '3. The discount will be applied according to the restaurant’s conditions.',
-                  style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.5),
+                Text(
+                  l10n.dealsHowToUseOfferSteps,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.5),
                 ),
                 const SizedBox(height: 24),
                 OutlinedButton.icon(
@@ -745,7 +750,7 @@ class _OffersTab extends StatelessWidget {
                     context.push('/place/${o.placeId}');
                   },
                   icon: const Icon(Icons.info_rounded, size: 20),
-                  label: const Text('View restaurant details'),
+                  label: Text(l10n.dealsViewRestaurantDetails),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.primaryColor,
                     side: const BorderSide(color: AppTheme.primaryColor),
@@ -762,6 +767,7 @@ class _OffersTab extends StatelessWidget {
   }
 
   Widget _buildOfferCard(BuildContext context, PlaceOffer o) {
+    final l10n = AppLocalizations.of(context)!;
     final imgUrl = o.placeImages.isNotEmpty ? _imageUrl(o.placeImages.first) : null;
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -853,7 +859,7 @@ class _OffersTab extends StatelessWidget {
                           if (o.expiresAt != null) ...[
                             const SizedBox(height: 4),
                             Text(
-                              'Valid until ${o.expiresAt!.substring(0, 10)}',
+                              l10n.dealsValidUntil(o.expiresAt!.substring(0, 10)),
                               style: const TextStyle(
                                 color: AppTheme.textTertiary,
                                 fontSize: 11,
@@ -899,6 +905,7 @@ class _ProposalsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (!isLoggedIn) {
       return Center(
         child: Padding(
@@ -908,15 +915,15 @@ class _ProposalsTab extends StatelessWidget {
             children: [
               Icon(Icons.send_rounded, size: 64, color: AppTheme.primaryColor.withValues(alpha: 0.5)),
               const SizedBox(height: 20),
-              const Text(
-                'Log in to see your proposals',
-                style: TextStyle(fontSize: 16, color: AppTheme.textSecondary),
+              Text(
+                l10n.dealsLoginToSeeProposals,
+                style: const TextStyle(fontSize: 16, color: AppTheme.textSecondary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Your requests to restaurants and their responses will appear here.',
-                style: TextStyle(fontSize: 14, color: AppTheme.textTertiary),
+              Text(
+                l10n.dealsProposalsLoginSubtitle,
+                style: const TextStyle(fontSize: 14, color: AppTheme.textTertiary),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -927,7 +934,7 @@ class _ProposalsTab extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Log in'),
+                child: Text(l10n.dealsLogIn),
               ),
             ],
           ),
@@ -943,14 +950,14 @@ class _ProposalsTab extends StatelessWidget {
             children: [
               Icon(Icons.inbox_outlined, size: 64, color: AppTheme.textTertiary.withValues(alpha: 0.6)),
               const SizedBox(height: 20),
-              const Text(
-                'No proposals yet',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+              Text(
+                l10n.dealsNoProposalsYet,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Send an offer request from the Restaurant Offers tab. Restaurants will respond here.',
-                style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+              Text(
+                l10n.dealsNoProposalsSubtitle,
+                style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -991,7 +998,7 @@ class _ProposalsTab extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            p.placeName ?? 'Restaurant',
+                            p.placeName ?? l10n.dealsRestaurantDefault,
                             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary),
                           ),
                           Text(
@@ -1010,7 +1017,7 @@ class _ProposalsTab extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        p.hasResponse ? 'Replied' : 'Pending',
+                        p.hasResponse ? l10n.dealsProposalStatusReplied : l10n.dealsProposalStatusPending,
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -1037,13 +1044,13 @@ class _ProposalsTab extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Row(
+                        Row(
                           children: [
-                            Icon(Icons.reply_rounded, size: 18, color: AppTheme.primaryColor),
-                            SizedBox(width: 6),
+                            const Icon(Icons.reply_rounded, size: 18, color: AppTheme.primaryColor),
+                            const SizedBox(width: 6),
                             Text(
-                              'Restaurant response',
-                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.primaryColor),
+                              l10n.dealsRestaurantResponse,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.primaryColor),
                             ),
                           ],
                         ),
@@ -1060,7 +1067,7 @@ class _ProposalsTab extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: () => context.push('/place/${p.placeId}'),
                   icon: const Icon(Icons.directions_rounded, size: 18),
-                  label: const Text('View restaurant'),
+                  label: Text(l10n.dealsViewRestaurant),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.primaryColor,
                     side: const BorderSide(color: AppTheme.primaryColor),
@@ -1105,7 +1112,7 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
     final phone = _phoneController.text.trim();
     if (placeId == null || msg.isEmpty) return;
     if (phone.isEmpty) {
-      AppSnackBars.showError(context, 'Please enter your phone number');
+      AppSnackBars.showError(context, AppLocalizations.of(context)!.dealsEnterPhoneRequired);
       return;
     }
     final auth = context.read<AuthProvider>();
@@ -1115,7 +1122,7 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
       await DealsService.instance.proposeOfferToRestaurant(auth.authToken!, placeId, msg, phone);
       if (mounted) {
         Navigator.pop(context);
-        AppSnackBars.showSuccess(context, 'Proposal sent to restaurant!');
+        AppSnackBars.showSuccess(context, AppLocalizations.of(context)!.dealsProposalSentSuccess);
       }
     } catch (e) {
       if (mounted) AppSnackBars.showError(context, e.toString().replaceAll('API Exception: ', ''));
@@ -1126,6 +1133,7 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       decoration: const BoxDecoration(
@@ -1147,23 +1155,23 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
                   decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
                 ),
               ),
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.send_rounded, color: Color(0xFF2D5A4A), size: 28),
-                  SizedBox(width: 12),
-                  Text('Send offer to restaurant', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: AppTheme.textPrimary)),
+                  const Icon(Icons.send_rounded, color: Color(0xFF2D5A4A), size: 28),
+                  const SizedBox(width: 12),
+                  Text(l10n.dealsSendOfferDialogTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20, color: AppTheme.textPrimary)),
                 ],
               ),
               const SizedBox(height: 8),
-              const Text('Propose a special deal. Restaurants may respond with personalized offers.', style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+              Text(l10n.dealsSendOfferDialogSubtitle, style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
               const SizedBox(height: 24),
-              const Text('Select restaurant', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary)),
+              Text(l10n.dealsSelectRestaurant, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary)),
               const SizedBox(height: 8),
               if (widget.places.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
-                  child: const Text('No restaurants available. Browse places in Explore to find restaurants.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                  child: Text(l10n.dealsNoRestaurantsAvailable, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
                 )
               else
                 DropdownButtonFormField<String>(
@@ -1174,18 +1182,18 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
-                  hint: const Text('Choose a restaurant'),
+                  hint: Text(l10n.dealsChooseRestaurantHint),
                   items: widget.places.map((p) => DropdownMenuItem(value: p['id'], child: Text(p['name']!, overflow: TextOverflow.ellipsis))).toList(),
                   onChanged: (v) => setState(() => _selectedPlaceId = v),
                 ),
               const SizedBox(height: 20),
-              const Text('Your phone number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary)),
+              Text(l10n.dealsYourPhone, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary)),
               const SizedBox(height: 8),
               TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
-                  hintText: 'e.g. +961 3 123 456',
+                  hintText: l10n.dealsPhoneHintExample,
                   filled: true,
                   fillColor: Colors.grey.shade50,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -1193,13 +1201,13 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text('Your message', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary)),
+              Text(l10n.dealsYourMessage, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary)),
               const SizedBox(height: 8),
               TextField(
                 controller: _messageController,
                 maxLines: 4,
                 decoration: InputDecoration(
-                  hintText: 'E.g. I\'d love 15% off for lunch on weekdays...',
+                  hintText: l10n.dealsMessageHintExample,
                   filled: true,
                   fillColor: Colors.grey.shade50,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -1214,7 +1222,7 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: _sending ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Send proposal'),
+                child: _sending ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text(l10n.dealsSendProposal),
               ),
             ],
           ),

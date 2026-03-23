@@ -14,6 +14,7 @@ import '../providers/events_provider.dart';
 import '../providers/places_provider.dart';
 import '../providers/map_provider.dart';
 import '../providers/trips_provider.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../utils/responsive_utils.dart';
 import '../widgets/route_origin_picker.dart';
@@ -64,8 +65,9 @@ class _EventDetailScreenState extends State<EventDetailScreen>
         '${event.name} - ${event.location}\n${DateFormat('MMM d, y').format(event.startDate)}\n\nCheck out this event in Visit Tripoli';
     await Clipboard.setData(ClipboardData(text: text));
     if (mounted) {
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Event info copied to clipboard')),
+        SnackBar(content: Text(l10n.eventInfoCopied)),
       );
     }
   }
@@ -123,13 +125,15 @@ class _EventDetailScreenState extends State<EventDetailScreen>
         : null;
 
     if (event == null) {
+      final l10n = AppLocalizations.of(context)!;
       return Scaffold(
-        appBar: AppBar(title: const Text('Event Not Found')),
-        body: const Center(child: Text('Event not found')),
+        appBar: AppBar(title: Text(l10n.eventNotFoundTitle)),
+        body: Center(child: Text(l10n.eventNotFoundBody)),
       );
     }
 
     final isSaved = eventsProvider.isEventSaved(widget.eventId);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       body: NestedScrollView(
@@ -142,7 +146,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
               onPressed: () => context.pop(),
             ),
             title: Text(
-              'Event Details',
+              l10n.eventDetailsTitle,
               style: Theme.of(context).textTheme.titleLarge,
             ),
             centerTitle: true,
@@ -206,7 +210,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                         ],
                       ),
                       child: Text(
-                        event.priceDisplay ?? 'Free',
+                        event.priceDisplay ?? l10n.free,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -227,9 +231,9 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                 unselectedLabelColor: AppTheme.textSecondary,
                 indicatorColor: AppTheme.primaryColor,
                 indicatorWeight: 3,
-                tabs: const [
-                  Tab(text: 'Overview'),
-                  Tab(text: 'Map'),
+                tabs: [
+                  Tab(text: l10n.eventOverviewTab),
+                  Tab(text: l10n.eventMapTab),
                 ],
               ),
             ),
@@ -258,9 +262,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   }
 
   void _showAddToTripDialog(BuildContext context, Event event) {
+    final l10n = AppLocalizations.of(context)!;
     if (event.placeId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This event has no linked venue')),
+        SnackBar(content: Text(l10n.eventNoLinkedVenue)),
       );
       return;
     }
@@ -272,9 +277,9 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Add to Trip'),
+        title: Text(l10n.eventAddToTripTitle),
         content: tripsProvider.trips.isEmpty
-            ? const Text('No trips available. Create a new trip first.')
+            ? Text(l10n.eventNoTripsCreateFirst)
             : SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -293,8 +298,8 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                               trip.id, place.id, dateStr);
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Event venue added to trip')),
+                              SnackBar(
+                                  content: Text(AppLocalizations.of(context)!.eventVenueAddedToTrip)),
                             );
                           }
                         },
@@ -303,7 +308,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                     const Divider(),
                     ListTile(
                       leading: const Icon(Icons.add),
-                      title: const Text('Create New Trip'),
+                      title: Text(l10n.createNewTripTitle),
                       onTap: () {
                         Navigator.pop(dialogContext);
                         context.push('/trips');
@@ -315,7 +320,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
         ],
       ),
@@ -407,7 +412,7 @@ class _EventOverviewTab extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: () => launchUrl(Uri.parse(event.location)),
                   icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                  label: const Text('Open link'),
+                  label: Text(AppLocalizations.of(context)!.openLink),
                 ),
                 SizedBox(height: gap),
               ],
@@ -445,8 +450,9 @@ class _EventOverviewTab extends StatelessWidget {
               ),
               SizedBox(height: gap * 1.16),
               // Description
-              const _EventSectionHeader(
-                  icon: Icons.article_outlined, title: 'About'),
+              _EventSectionHeader(
+                  icon: Icons.article_outlined,
+                  title: AppLocalizations.of(context)!.about),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -478,16 +484,16 @@ class _EventOverviewTab extends StatelessWidget {
             const SizedBox(height: 28),
             _ContactInfoCard(
               icon: Icons.business_outlined,
-              label: 'Organizer',
+              label: AppLocalizations.of(context)!.eventOrganizerLabel,
               value: event.organizer!,
             ),
           ],
           // Similar events
           if (similarEvents.isNotEmpty) ...[
             const SizedBox(height: 28),
-            const _EventSectionHeader(
+            _EventSectionHeader(
               icon: Icons.explore_outlined,
-              title: 'Similar Events',
+              title: AppLocalizations.of(context)!.similarEventsSectionTitle,
             ),
             const SizedBox(height: 14),
             SizedBox(
@@ -509,8 +515,9 @@ class _EventOverviewTab extends StatelessWidget {
           ],
           // Visitor tips
           const SizedBox(height: 28),
-          const _EventSectionHeader(
-              icon: Icons.lightbulb_outline_rounded, title: 'Visitor Tips'),
+          _EventSectionHeader(
+              icon: Icons.lightbulb_outline_rounded,
+              title: AppLocalizations.of(context)!.sectionVisitorTips),
           const SizedBox(height: 12),
           ..._visitorTips(event).map(
             (tip) => Padding(
@@ -818,6 +825,7 @@ class _EventPrimaryActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final eventsProvider = Provider.of<EventsProvider>(context);
     final gap = ResponsiveUtils.actionButtonGap(context);
     final pad = ResponsiveUtils.actionButtonPadding(context);
@@ -834,7 +842,7 @@ class _EventPrimaryActions extends StatelessWidget {
               size: iconSize,
               color: isSaved ? AppTheme.primaryColor : null,
             ),
-            label: Text(isSaved ? 'Saved' : 'Save', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: btnFontSize)),
+            label: Text(isSaved ? l10n.saved : l10n.save, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: btnFontSize)),
             style: OutlinedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: pad)),
           ),
         ),
@@ -844,7 +852,7 @@ class _EventPrimaryActions extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onDirections,
               icon: Icon(Icons.directions, size: iconSize),
-              label: Text('Directions', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: btnFontSize)),
+              label: Text(l10n.directions, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: btnFontSize)),
               style: FilledButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
                 padding: EdgeInsets.symmetric(vertical: pad),
@@ -857,7 +865,7 @@ class _EventPrimaryActions extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: hasPlace ? onAddToTrip : null,
             icon: Icon(Icons.add, size: iconSize),
-            label: Text('Add to Trip', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: btnFontSize)),
+            label: Text(l10n.addToTrip, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: btnFontSize)),
             style: OutlinedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: pad)),
           ),
         ),
@@ -879,6 +887,7 @@ class _EventMapTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (place == null || !place!.hasMapCoordinates) {
       return Center(
         child: Padding(
@@ -889,7 +898,7 @@ class _EventMapTab extends StatelessWidget {
               Icon(Icons.map_outlined, size: 64, color: Colors.grey[400]),
               const SizedBox(height: 16),
               Text(
-                'No map location for this event',
+                l10n.eventNoMapLocation,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: AppTheme.textSecondary,
                     ),
@@ -937,7 +946,7 @@ class _EventMapTab extends StatelessWidget {
                     child: FilledButton.icon(
                       onPressed: () => onDirections(context),
                       icon: Icon(Icons.directions, size: ResponsiveUtils.isSmallPhone(context) ? 18 : 20),
-                      label: const Text('Get Directions', maxLines: 1, overflow: TextOverflow.ellipsis),
+                      label: Text(l10n.getDirections, maxLines: 1, overflow: TextOverflow.ellipsis),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
                         padding: EdgeInsets.symmetric(vertical: ResponsiveUtils.actionButtonPadding(context)),
@@ -951,7 +960,7 @@ class _EventMapTab extends StatelessWidget {
                         context.push('/map?placeId=${place!.id}');
                       },
                       icon: Icon(Icons.map_outlined, size: ResponsiveUtils.isSmallPhone(context) ? 18 : 20),
-                      label: const Text('View on Map', maxLines: 1, overflow: TextOverflow.ellipsis),
+                      label: Text(l10n.viewOnMap, maxLines: 1, overflow: TextOverflow.ellipsis),
                       style: OutlinedButton.styleFrom(
                         padding: EdgeInsets.symmetric(vertical: ResponsiveUtils.actionButtonPadding(context)),
                       ),
@@ -960,7 +969,7 @@ class _EventMapTab extends StatelessWidget {
                 ],
               ),
               SizedBox(height: gap * 0.83),
-              Text('Venue', style: Theme.of(context).textTheme.titleLarge),
+              Text(l10n.venue, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),
               _TransportCard(
                 icon: FontAwesomeIcons.locationDot,

@@ -23,6 +23,7 @@ import 'routes/app_router.dart';
 import 'services/api_service.dart';
 import 'theme/app_theme.dart';
 import 'package:showcaseview/showcaseview.dart';
+import 'utils/app_text_scale.dart';
 import 'utils/feed_media_precache.dart';
 import 'utils/places_image_precache.dart';
 
@@ -121,7 +122,8 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
           });
         }
         return MaterialApp.router(
-          title: 'Visit Tripoli',
+          onGenerateTitle: (context) =>
+              AppLocalizations.of(context)?.appTitle ?? 'Visit Tripoli',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           locale: languageProvider.locale,
@@ -139,60 +141,62 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
           routerConfig: _router,
           // Lighthouse a11y: ensure app root has semantic label and is treated as main content
           builder: (context, child) {
-            final body = child ?? const SizedBox.shrink();
+            final l10n = AppLocalizations.of(context);
             final offline = connectivity.isOffline;
+            final stack = Stack(
+              clipBehavior: Clip.none,
+              children: [
+                child ?? const SizedBox.shrink(),
+                if (offline)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Material(
+                      elevation: 4,
+                      color: Color(0xFFB45309),
+                      child: SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.wifi_off_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  l10n?.offlineBannerMessage ??
+                                      'No internet — you can still browse saved content.',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.25,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
             return _FeedWarmup(
               child: ShowCaseWidget(
                 builder: (context) => Semantics(
                   container: true,
-                  label:
+                  label: l10n?.appRootSemanticsLabel ??
                       'Visit Tripoli - Explore places, tours and plan your trip',
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      body,
-                      if (offline)
-                      const Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        child: Material(
-                          elevation: 4,
-                          color: Color(0xFFB45309),
-                          child: SafeArea(
-                            bottom: false,
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.wifi_off_rounded,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                  SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      'No internet — you can still browse saved content.',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        height: 1.25,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: applyAppTextScale(context, stack),
                 ),
               ),
             );

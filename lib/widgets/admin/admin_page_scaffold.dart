@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:tripoli_explorer/l10n/app_localizations.dart';
 import '../../theme/admin_theme.dart';
 
 /// Reusable empty state for admin list pages.
@@ -109,8 +110,8 @@ class AdminItemCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                IconButton(onPressed: onEdit, icon: const FaIcon(FontAwesomeIcons.penToSquare, size: 18), color: AdminTheme.textSecondary, tooltip: 'Edit'),
-                IconButton(onPressed: onDelete, icon: const FaIcon(FontAwesomeIcons.trashCan, size: 18), color: AdminTheme.error, tooltip: 'Delete'),
+                IconButton(onPressed: onEdit, icon: const FaIcon(FontAwesomeIcons.penToSquare, size: 18), color: AdminTheme.textSecondary, tooltip: AppLocalizations.of(context)!.edit),
+                IconButton(onPressed: onDelete, icon: const FaIcon(FontAwesomeIcons.trashCan, size: 18), color: AdminTheme.error, tooltip: AppLocalizations.of(context)!.deleteTooltip),
               ],
             ),
           ),
@@ -173,7 +174,7 @@ class AdminPageScaffold extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                'Something went wrong',
+                AppLocalizations.of(context)!.errorGenericTitle,
                 style: AdminTheme.titleMedium,
               ),
               const SizedBox(height: 8),
@@ -193,7 +194,7 @@ class AdminPageScaffold extends StatelessWidget {
                   ),
                 ),
                 icon: const FaIcon(FontAwesomeIcons.arrowsRotate, size: 16),
-                label: const Text('Try again'),
+                label: Text(AppLocalizations.of(context)!.tryAgain),
               ),
             ],
           ),

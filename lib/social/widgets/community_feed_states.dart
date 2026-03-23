@@ -322,7 +322,10 @@ class CommunityFeedErrorBanner extends StatelessWidget {
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Retry', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: Text(
+                AppLocalizations.of(context)!.retry,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
             IconButton(
               icon: Icon(Icons.close_rounded, size: 20, color: AppTheme.errorColor.withValues(alpha: 0.75)),

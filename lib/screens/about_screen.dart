@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:tripoli_explorer/l10n/app_localizations.dart';
 import '../utils/responsive_utils.dart';
 
 class AboutScreen extends StatelessWidget {
@@ -7,10 +8,11 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: const Color(0xFFf8fafc),
       appBar: AppBar(
-        title: const Text('About'),
+        title: Text(l10n.about),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
@@ -89,9 +91,9 @@ class AboutScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'About',
-                  style: TextStyle(
+                Text(
+                  l10n.about,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF0F172a),
@@ -173,13 +175,13 @@ class AboutScreen extends StatelessWidget {
               children: [
                 ListTile(
                   leading: const Icon(FontAwesomeIcons.shieldHalved, color: Color(0xFF1d4ed8)),
-                  title: const Text('Privacy Policy'),
+                  title: Text(l10n.privacyPolicy),
                   trailing: const Icon(Icons.chevron_right, color: Colors.grey),
                   onTap: () {
                     showDialog(
                       context: context,
                       builder: (ctx) => AlertDialog(
-                        title: const Text('Privacy Policy'),
+                        title: Text(AppLocalizations.of(ctx)!.privacyPolicy),
                         content: const SingleChildScrollView(
                           child: Text(
                             'Your privacy is important to us. This app collects minimal data necessary for functionality:\n\n'
@@ -192,7 +194,7 @@ class AboutScreen extends StatelessWidget {
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Close'),
+                            child: Text(AppLocalizations.of(ctx)!.close),
                           ),
                         ],
                       ),
@@ -202,22 +204,22 @@ class AboutScreen extends StatelessWidget {
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(FontAwesomeIcons.fileContract, color: Color(0xFF1d4ed8)),
-                  title: const Text('Terms of Service'),
+                  title: Text(l10n.termsOfService),
                   trailing: const Icon(Icons.chevron_right, color: Colors.grey),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Terms of Service coming soon')),
+                      SnackBar(content: Text(l10n.termsComingSoon)),
                     );
                   },
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(FontAwesomeIcons.code, color: Color(0xFF1d4ed8)),
-                  title: const Text('Open Source Licenses'),
+                  title: Text(l10n.openSourceLicenses),
                   trailing: const Icon(Icons.chevron_right, color: Colors.grey),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Open source licenses coming soon')),
+                      SnackBar(content: Text(l10n.openSourceLicensesComingSoon)),
                     );
                   },
                 ),

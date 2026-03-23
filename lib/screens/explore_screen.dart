@@ -3399,7 +3399,7 @@ class _EventsErrorState extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Could not load events',
+              AppLocalizations.of(context)!.couldNotLoadData,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
@@ -3419,7 +3419,7 @@ class _EventsErrorState extends StatelessWidget {
             const SizedBox(height: 18),
             FilledButton.tonal(
               onPressed: onRetry,
-              child: const Text('Retry'),
+              child: Text(AppLocalizations.of(context)!.retry),
             ),
           ],
         ),

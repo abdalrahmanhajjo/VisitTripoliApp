@@ -1,9 +1,8 @@
-import 'dart:async';
+import 'dart:async' show Timer, unawaited;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -117,8 +116,6 @@ class FeedPostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final mediaWidth = MediaQuery.sizeOf(context).width;
     final l10n = AppLocalizations.of(context)!;
-    bool isLiking = false;
-    bool isSaving = false;
 
     return Container(
       margin: CommunityTokens.cardMargin,
@@ -248,10 +245,7 @@ class FeedPostCard extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-            child: StatefulBuilder(
-              builder: (ctx, setState) {
-                final canSeeLikes = !post.hideLikes || isOwner;
-                return Row(
+            child: Row(
                   children: [
                     _PillActionButton(
                       label: l10n.like,
@@ -261,25 +255,15 @@ class FeedPostCard extends StatelessWidget {
                       iconColor: post.likedByMe
                           ? const Color(0xFFE11D48)
                           : AppTheme.textSecondary,
-                      count: canSeeLikes ? post.likeCount : null,
-                      isLoading: isLiking,
+                      count: (!post.hideLikes || isOwner) ? post.likeCount : null,
                       onTap: authToken == null
                           ? () => context.go(
                                 '/login?redirect=${Uri.encodeComponent('/community')}',
                               )
-                          : (isLiking
-                              ? null
-                              : () async {
-                                  AppFeedback.selection();
-                                  setState(() => isLiking = true);
-                                  try {
-                                    await onLike();
-                                  } finally {
-                                    if (ctx.mounted) {
-                                      setState(() => isLiking = false);
-                                    }
-                                  }
-                                }),
+                          : () {
+                              AppFeedback.selection();
+                              unawaited(onLike());
+                            },
                     ),
                     const SizedBox(width: 18),
                     _PillActionButton(
@@ -293,7 +277,7 @@ class FeedPostCard extends StatelessWidget {
                               if (authToken != null) {
                                 AppSnackBars.showSuccess(
                                   context,
-                                  'Comments are turned off for this post',
+                                  l10n.commentsDisabledForPost,
                                 );
                               } else {
                                 context.go(
@@ -324,25 +308,13 @@ class FeedPostCard extends StatelessWidget {
                             ? Icons.bookmark_rounded
                             : Icons.bookmark_border_rounded,
                         iconColor: post.savedByMe ? AppTheme.primaryColor : AppTheme.textSecondary,
-                        isLoading: isSaving,
-                        onTap: isSaving
-                            ? null
-                            : () async {
-                                AppFeedback.selection();
-                                setState(() => isSaving = true);
-                                try {
-                                  await onSave();
-                                } finally {
-                                  if (ctx.mounted) {
-                                    setState(() => isSaving = false);
-                                  }
-                                }
-                              },
+                        onTap: () {
+                          AppFeedback.selection();
+                          unawaited(onSave());
+                        },
                       ),
                   ],
-                );
-              },
-            ),
+                ),
           ),
           if (post.caption != null && post.caption!.isNotEmpty)
             Padding(
@@ -640,6 +612,7 @@ class _FeedDeferredInlineVideoState extends State<_FeedDeferredInlineVideo> {
         isActive: widget.isActive,
         isMuted: _muted,
         onMuteToggled: _toggleMute,
+        showMuteButton: true,
       ),
     );
   }
@@ -716,7 +689,6 @@ class _PillActionButton extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
   final int? count;
-  final bool isLoading;
   final VoidCallback? onTap;
 
   const _PillActionButton({
@@ -724,38 +696,19 @@ class _PillActionButton extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     this.count,
-    this.isLoading = false,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final iconWidget = TweenAnimationBuilder<double>(
-      duration: const Duration(milliseconds: 150),
-      tween: Tween<double>(begin: 1.0, end: isLoading ? 1.0 : 1.0),
-      builder: (context, value, child) {
-        // We use a custom key on the Icon below to trigger a rebuild animations if needed,
-        // but for a simple "pop" on tap, we'll use an AnimatedScale inside the onTap.
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 120),
-          child: isLoading
-              ? SizedBox(
-                  key: const ValueKey('loading'),
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    valueColor: AlwaysStoppedAnimation<Color>(iconColor),
-                  ),
-                )
-              : Icon(
-                  key: ValueKey(icon.codePoint ^ iconColor.value),
-                  icon,
-                  size: 22,
-                  color: iconColor,
-                ),
-        );
-      },
+    final iconWidget = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 120),
+      child: Icon(
+        key: ValueKey(icon.codePoint ^ iconColor.toARGB32()),
+        icon,
+        size: 22,
+        color: iconColor,
+      ),
     );
 
     final content = Padding(

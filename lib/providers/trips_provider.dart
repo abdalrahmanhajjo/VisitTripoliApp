@@ -278,6 +278,12 @@ class TripsProvider extends ChangeNotifier {
     return ids;
   }
 
+  /// Place IDs for a single day (slot order), for multi-day trip maps and directions.
+  List<String> getPlaceIdsForTripDay(Trip trip, int dayIndex) {
+    if (dayIndex < 0 || dayIndex >= trip.days.length) return [];
+    return trip.days[dayIndex].slots.map((s) => s.placeId).toList();
+  }
+
   /// Returns all slots in trip order (same order as getPlaceIdsForTrip).
   List<TripSlot> getSlotsForTrip(Trip trip) {
     final slots = <TripSlot>[];

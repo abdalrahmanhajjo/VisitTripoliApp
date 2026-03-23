@@ -21,6 +21,7 @@ import '../services/ai_planner_service.dart';
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
+import '../utils/responsive_utils.dart';
 import '../widgets/app_bottom_nav.dart';
 
 const _keyPlannerDays = 'planner_days';
@@ -777,7 +778,12 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
                   )
                 : ListView.builder(
                     controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                    padding: EdgeInsets.fromLTRB(
+                      ResponsiveUtils.isSmallPhone(context) ? 10 : 16,
+                      12,
+                      ResponsiveUtils.isSmallPhone(context) ? 10 : 16,
+                      20,
+                    ),
                     itemCount: _chatMessages.length + (_isGenerating ? 1 : 0),
                     itemBuilder: (context, index) {
                       if (index == _chatMessages.length) {
@@ -1038,37 +1044,56 @@ class _PlannerTripSetupCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _PlannerSetupTile(
-                    label: l10n.plannerSetupDurationLabel,
-                    value: durationValue,
-                    icon: Icons.calendar_view_week_rounded,
-                    onTap: onDurationTap,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _PlannerSetupTile(
-                    label: l10n.plannerSetupPaceLabel,
-                    value: l10n.plannerPacePerDayValue(placesPerDay),
-                    icon: Icons.directions_walk_rounded,
-                    onTap: onPlacesTap,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _PlannerSetupTile(
-                    label: l10n.plannerSetupStartLabel,
-                    value: dateValue,
-                    icon: Icons.event_available_rounded,
-                    onTap: onDateTap,
-                    trailingIcon: Icons.edit_calendar_rounded,
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final narrow = constraints.maxWidth < 342;
+                final durationW = _PlannerSetupTile(
+                  label: l10n.plannerSetupDurationLabel,
+                  value: durationValue,
+                  icon: Icons.calendar_view_week_rounded,
+                  onTap: onDurationTap,
+                );
+                final paceW = _PlannerSetupTile(
+                  label: l10n.plannerSetupPaceLabel,
+                  value: l10n.plannerPacePerDayValue(placesPerDay),
+                  icon: Icons.directions_walk_rounded,
+                  onTap: onPlacesTap,
+                );
+                final dateW = _PlannerSetupTile(
+                  label: l10n.plannerSetupStartLabel,
+                  value: dateValue,
+                  icon: Icons.event_available_rounded,
+                  onTap: onDateTap,
+                  trailingIcon: Icons.edit_calendar_rounded,
+                );
+                if (narrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: durationW),
+                          const SizedBox(width: 10),
+                          Expanded(child: paceW),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      dateW,
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: durationW),
+                    const SizedBox(width: 10),
+                    Expanded(child: paceW),
+                    const SizedBox(width: 10),
+                    Expanded(child: dateW),
+                  ],
+                );
+              },
             ),
           ],
         ),
@@ -1756,6 +1781,8 @@ class _ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final displayText = _displayTextForMessage(message);
+    final narrow = MediaQuery.sizeOf(context).width < 360;
+    final planSideInset = narrow ? 6.0 : 54.0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
@@ -1778,7 +1805,10 @@ class _ChatBubble extends StatelessWidget {
                     return Container(
                       width: double.infinity,
                       constraints: BoxConstraints(maxWidth: constraints.maxWidth),
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: narrow ? 14 : 18,
+                        vertical: narrow ? 12 : 14,
+                      ),
                       decoration: BoxDecoration(
                         color: message.isUser
                             ? AppTheme.primaryColor
@@ -1801,8 +1831,8 @@ class _ChatBubble extends StatelessWidget {
                         displayText,
                         style: TextStyle(
                           color: message.isUser ? Colors.white : AppTheme.textPrimary,
-                          fontSize: 15,
-                          height: 1.45,
+                          fontSize: narrow ? 14 : 15,
+                          height: narrow ? 1.42 : 1.45,
                         ),
                         maxLines: 25,
                         overflow: TextOverflow.ellipsis,
@@ -1824,7 +1854,7 @@ class _ChatBubble extends StatelessWidget {
           if (message.isRetryable && onRetry != null && !message.isUser) ...[
             const SizedBox(height: 10),
             Padding(
-              padding: const EdgeInsets.only(left: 54),
+              padding: EdgeInsets.only(left: planSideInset),
               child: TextButton.icon(
                 onPressed: () {
                   HapticFeedback.lightImpact();
@@ -1838,7 +1868,9 @@ class _ChatBubble extends StatelessWidget {
           if (message.places != null && message.places!.isNotEmpty && message.slots != null) ...[
             const SizedBox(height: 18),
             Padding(
-              padding: message.isUser ? const EdgeInsets.only(right: 54) : const EdgeInsets.only(left: 54),
+              padding: message.isUser
+                  ? EdgeInsets.only(right: planSideInset)
+                  : EdgeInsets.only(left: planSideInset),
               child: _EditableItineraryCard(
                 slots: message.slots!,
                 places: message.places!,
@@ -2823,6 +2855,7 @@ class _EditableItineraryCardState extends State<_EditableItineraryCard> {
   @override
   Widget build(BuildContext context) {
     final totalPlaces = _days.fold<int>(0, (s, d) => s + d.length);
+    final tightPlan = MediaQuery.sizeOf(context).width < 360;
     const cardRadius = 24.0;
     return Container(
       decoration: BoxDecoration(
@@ -2847,91 +2880,128 @@ class _EditableItineraryCardState extends State<_EditableItineraryCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppTheme.primaryColor.withValues(alpha: 0.08),
-                  AppTheme.primaryColor.withValues(alpha: 0.04),
-                ],
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.12),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.map_rounded, color: AppTheme.primaryColor, size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        AppLocalizations.of(context)!.yourPlan,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.3,
-                          color: AppTheme.textPrimary,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final narrowHeader = constraints.maxWidth < 340;
+              final titleBlock = Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.place_outlined, size: 14, color: AppTheme.textSecondary),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$totalPlaces ${totalPlaces == 1 ? 'place' : 'places'} · ${_days.length} ${_days.length == 1 ? 'day' : 'days'}',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppTheme.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: const Icon(Icons.map_rounded, color: AppTheme.primaryColor, size: 24),
                   ),
-                ),
-                if (widget.onSaveTrip != null)
-                  FilledButton.icon(
-                    onPressed: _save,
-                    icon: const Icon(Icons.check_rounded, size: 18),
-                    label: Text(AppLocalizations.of(context)!.acceptAndSave),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppLocalizations.of(context)!.yourPlan,
+                          style: TextStyle(
+                            fontSize: narrowHeader ? 16 : 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.place_outlined, size: 14, color: AppTheme.textSecondary),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '$totalPlaces ${totalPlaces == 1 ? 'place' : 'places'} · ${_days.length} ${_days.length == 1 ? 'day' : 'days'}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-              ],
-            ),
+                ],
+              );
+              final saveBtn = widget.onSaveTrip != null
+                  ? FilledButton.icon(
+                      onPressed: _save,
+                      icon: const Icon(Icons.check_rounded, size: 18),
+                      label: Text(AppLocalizations.of(context)!.acceptAndSave),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    )
+                  : null;
+              return Container(
+                padding: EdgeInsets.fromLTRB(
+                  narrowHeader ? 14 : 20,
+                  narrowHeader ? 14 : 20,
+                  narrowHeader ? 14 : 20,
+                  narrowHeader ? 14 : 18,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppTheme.primaryColor.withValues(alpha: 0.08),
+                      AppTheme.primaryColor.withValues(alpha: 0.04),
+                    ],
+                  ),
+                ),
+                child: narrowHeader && saveBtn != null
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          titleBlock,
+                          const SizedBox(height: 12),
+                          saveBtn,
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: titleBlock),
+                          if (saveBtn != null) ...[
+                            const SizedBox(width: 8),
+                            saveBtn,
+                          ],
+                        ],
+                      ),
+              );
+            },
           ),
           ...List.generate(_days.length, (dayIndex) {
             final dayEntries = _days[dayIndex];
             if (dayEntries.isEmpty) return const SizedBox.shrink();
             final isFirstDay = dayIndex == 0;
             return Container(
-              margin: EdgeInsets.fromLTRB(16, isFirstDay ? 16 : 20, 16, 16),
-              padding: const EdgeInsets.all(16),
+              margin: EdgeInsets.fromLTRB(
+                tightPlan ? 12 : 16,
+                isFirstDay ? (tightPlan ? 12 : 16) : (tightPlan ? 16 : 20),
+                tightPlan ? 12 : 16,
+                tightPlan ? 12 : 16,
+              ),
+              padding: EdgeInsets.all(tightPlan ? 12 : 16),
               decoration: BoxDecoration(
                 color: AppTheme.surfaceVariant.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(16),
@@ -3521,6 +3591,41 @@ class _PlacesGroupPicker extends StatelessWidget {
   }
 }
 
+Widget _plannerSelectionChip({
+  required bool selected,
+  required String label,
+  required VoidCallback onTap,
+}) {
+  return Material(
+    color: Colors.transparent,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primaryColor : AppTheme.surfaceVariant.withValues(alpha: 0.95),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected ? AppTheme.primaryColor : AppTheme.borderColor,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: selected ? Colors.white : AppTheme.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _DurationPicker extends StatelessWidget {
   final int value;
   final void Function(int) onChanged;
@@ -3531,36 +3636,38 @@ class _DurationPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     const maxDays = 7;
     final days = List.generate(maxDays, (i) => i + 1);
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppLocalizations.of(context)!.duration,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'How many days is your trip?',
-            style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: days.map((d) {
-              final sel = value == d;
-              return ChoiceChip(
-                label: Text('$d ${d == 1 ? AppLocalizations.of(context)!.day : AppLocalizations.of(context)!.days}'),
-                selected: sel,
-                onSelected: (_) => onChanged(d),
-                selectedColor: AppTheme.primaryColor.withValues(alpha: 0.2),
-              );
-            }).toList(),
-          ),
-        ],
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppLocalizations.of(context)!.duration,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'How many days is your trip?',
+              style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: days.map((d) {
+                final sel = value == d;
+                return _plannerSelectionChip(
+                  selected: sel,
+                  label:
+                      '$d ${d == 1 ? AppLocalizations.of(context)!.day : AppLocalizations.of(context)!.days}',
+                  onTap: () => onChanged(d),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -3575,36 +3682,37 @@ class _PlacesPerDayPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const options = [2, 3, 4, 5, 6, 7, 8];
-    return Container(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Places per day',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'The AI will suggest exactly this many places each day.',
-            style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: options.map((p) {
-              final sel = value == p;
-              return ChoiceChip(
-                label: Text('$p places'),
-                selected: sel,
-                onSelected: (_) => onChanged(p),
-                selectedColor: AppTheme.primaryColor.withValues(alpha: 0.2),
-              );
-            }).toList(),
-          ),
-        ],
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Places per day',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'The AI will suggest exactly this many places each day.',
+              style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: options.map((p) {
+                final sel = value == p;
+                return _plannerSelectionChip(
+                  selected: sel,
+                  label: '$p places',
+                  onTap: () => onChanged(p),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
       ),
     );
   }

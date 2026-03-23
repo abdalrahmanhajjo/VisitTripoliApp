@@ -615,6 +615,7 @@ class _MapScreenState extends State<MapScreen> {
     final placeIdsParam = params['placeIds'];
     final tripOnly = params['tripOnly'] == 'true';
     final tourOnly = params['tourOnly'] == 'true';
+    final tripDayLabel = params['tripDayLabel'];
     final focusPlaceId = params['placeId'] ?? params['mapFocusPlaceId'];
 
     List<String> filterIds = [];
@@ -713,7 +714,11 @@ class _MapScreenState extends State<MapScreen> {
       appBar: (tourOnly || tripOnly)
           ? AppBar(
               title: Text(
-                tripOnly ? 'Trip route' : 'Tour route',
+                tripOnly
+                    ? (tripDayLabel != null && tripDayLabel.isNotEmpty
+                        ? tripDayLabel
+                        : 'Trip route')
+                    : 'Tour route',
               ),
               backgroundColor: Colors.white,
               elevation: 0,

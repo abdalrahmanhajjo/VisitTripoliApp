@@ -121,6 +121,8 @@ class TripDetailsModal extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onShare;
   final VoidCallback onOpenMap;
+  /// Opens place details (e.g. `/place/:id`).
+  final ValueChanged<String> onOpenPlace;
 
   const TripDetailsModal({
     super.key,
@@ -129,6 +131,7 @@ class TripDetailsModal extends StatelessWidget {
     required this.onEdit,
     required this.onShare,
     required this.onOpenMap,
+    required this.onOpenPlace,
   });
 
   @override
@@ -393,84 +396,81 @@ class TripDetailsModal extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 12),
                                       Expanded(
-                                        child: Container(
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: AppTheme.surfaceVariant
-                                                .withValues(alpha: 0.65),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () => onOpenPlace(p.id),
                                             borderRadius:
                                                 BorderRadius.circular(12),
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                p.name,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: AppTheme.textPrimary,
-                                                ),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.surfaceVariant
+                                                    .withValues(alpha: 0.65),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                               ),
-                                              if (timeStr != null) ...[
-                                                const SizedBox(height: 6),
-                                                Row(
-                                                  children: [
-                                                    const Icon(
-                                                      FontAwesomeIcons.clock,
-                                                      size: 12,
-                                                      color:
-                                                          AppTheme.primaryColor,
-                                                    ),
-                                                    const SizedBox(width: 6),
-                                                    Expanded(
-                                                      child: Text(
-                                                        timeStr,
-                                                        style: const TextStyle(
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          color: AppTheme
-                                                              .primaryColor,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                              const SizedBox(height: 4),
-                                              Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
+                                              child: Row(
                                                 children: [
-                                                  const Padding(
-                                                    padding: EdgeInsets.only(
-                                                      top: 2,
-                                                    ),
-                                                    child: Icon(
-                                                      FontAwesomeIcons
-                                                          .locationDot,
-                                                      size: 12,
-                                                      color: AppTheme
-                                                          .textSecondary,
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                          p.name,
+                                                          style: const TextStyle(
+                                                            fontSize: 14,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color: AppTheme
+                                                                .textPrimary,
+                                                          ),
+                                                        ),
+                                                        if (timeStr != null) ...[
+                                                          const SizedBox(
+                                                              height: 6),
+                                                          Row(
+                                                            children: [
+                                                              const Icon(
+                                                                FontAwesomeIcons
+                                                                    .clock,
+                                                                size: 12,
+                                                                color: AppTheme
+                                                                    .primaryColor,
+                                                              ),
+                                                              const SizedBox(
+                                                                  width: 6),
+                                                              Expanded(
+                                                                child: Text(
+                                                                  timeStr,
+                                                                  style:
+                                                                      const TextStyle(
+                                                                    fontSize:
+                                                                        12,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w500,
+                                                                    color: AppTheme
+                                                                        .primaryColor,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ],
+                                                      ],
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 6),
-                                                  Expanded(
-                                                    child: Text(
-                                                      p.location,
-                                                      style: const TextStyle(
-                                                        fontSize: 12,
-                                                        height: 1.35,
-                                                        color: AppTheme
-                                                            .textSecondary,
-                                                      ),
-                                                    ),
+                                                  Icon(
+                                                    Icons.chevron_right_rounded,
+                                                    size: 22,
+                                                    color: AppTheme.textTertiary,
                                                   ),
                                                 ],
                                               ),
-                                            ],
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -547,81 +547,77 @@ class TripDetailsModal extends StatelessWidget {
                               final isLast = i == places.length - 1;
                               return Column(
                                 children: [
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Container(
-                                          width: 32,
-                                          height: 32,
-                                          decoration: BoxDecoration(
-                                            color: AppTheme.primaryColor
-                                                .withValues(alpha: 0.1),
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                          ),
-                                          child: const Icon(
-                                            FontAwesomeIcons.locationDot,
-                                            size: 14,
-                                            color: AppTheme.primaryColor,
-                                          ),
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () => onOpenPlace(p.id),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 12,
                                         ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                p.name,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: AppTheme.textPrimary,
-                                                ),
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Container(
+                                              width: 32,
+                                              height: 32,
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.primaryColor
+                                                    .withValues(alpha: 0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
                                               ),
-                                              if (timeStr != null) ...[
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  timeStr,
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w500,
-                                                    color:
-                                                        AppTheme.primaryColor,
-                                                  ),
-                                                ),
-                                              ],
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                p.location,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  height: 1.35,
-                                                  color:
-                                                      AppTheme.textSecondary,
-                                                ),
+                                              child: const Icon(
+                                                FontAwesomeIcons.locationDot,
+                                                size: 14,
+                                                color: AppTheme.primaryColor,
                                               ),
-                                              if (p.category.isNotEmpty) ...[
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  p.category,
-                                                  style: const TextStyle(
-                                                    fontSize: 11,
-                                                    color:
-                                                        AppTheme.textTertiary,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    p.name,
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color:
+                                                          AppTheme.textPrimary,
+                                                    ),
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                   ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
+                                                  if (timeStr != null) ...[
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      timeStr,
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                        color: AppTheme
+                                                            .primaryColor,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                            Icon(
+                                              Icons.chevron_right_rounded,
+                                              size: 22,
+                                              color: AppTheme.textTertiary,
+                                            ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                   if (!isLast)

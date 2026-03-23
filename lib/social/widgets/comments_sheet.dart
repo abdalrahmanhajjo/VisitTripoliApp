@@ -142,20 +142,21 @@ class CommentsSheetState extends State<CommentsSheet> {
 
   Future<void> _deleteComment(FeedComment c) async {
     if (_loading) return;
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete comment'),
-        content: const Text('Are you sure you want to delete this comment?'),
+        title: Text(l10n.deleteCommentTitle),
+        content: Text(l10n.deleteCommentMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
+            child: Text(l10n.delete),
           ),
         ],
       ),
@@ -169,7 +170,7 @@ class CommentsSheetState extends State<CommentsSheet> {
         commentId: c.id,
       );
       if (!mounted) return;
-      AppSnackBars.showSuccess(context, 'Comment deleted');
+      AppSnackBars.showSuccess(context, AppLocalizations.of(context)!.commentDeleted);
       if (context.mounted) {
         context.read<FeedProvider>().decrementCommentCount(widget.post.id);
       }
@@ -184,11 +185,12 @@ class CommentsSheetState extends State<CommentsSheet> {
   }
 
   Future<void> _editComment(FeedComment c) async {
+    final l10n = AppLocalizations.of(context)!;
     final editController = TextEditingController(text: c.body);
     final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Edit comment'),
+        title: Text(l10n.editCommentTitle),
         content: TextField(
           controller: editController,
           maxLines: 5,
@@ -199,11 +201,11 @@ class CommentsSheetState extends State<CommentsSheet> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Save'),
+            child: Text(l10n.saveProfile),
           ),
         ],
       ),
@@ -214,7 +216,7 @@ class CommentsSheetState extends State<CommentsSheet> {
 
     final newBody = editController.text.trim();
     if (newBody.isEmpty) {
-      AppSnackBars.showError(context, 'Comment cannot be empty');
+      AppSnackBars.showError(context, AppLocalizations.of(context)!.commentCannotBeEmpty);
       return;
     }
 

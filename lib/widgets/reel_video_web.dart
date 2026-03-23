@@ -18,6 +18,7 @@ class ReelVideoImpl extends StatefulWidget {
   final bool isActive;
   final bool isMuted;
   final VoidCallback onMuteToggled;
+  final bool showMuteButton;
 
   const ReelVideoImpl({
     super.key,
@@ -27,6 +28,7 @@ class ReelVideoImpl extends StatefulWidget {
     required this.isActive,
     required this.isMuted,
     required this.onMuteToggled,
+    this.showMuteButton = false,
   });
 
   @override
@@ -219,28 +221,27 @@ class _ReelVideoImplState extends State<ReelVideoImpl> {
               minHeight: 2.5,
             ),
           ),
-
-        // Mute/Unmute button
-        Positioned(
-          top: 12,
-          right: 12,
-          child: GestureDetector(
-            onTap: _toggleMute,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                widget.isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                color: Colors.white,
-                size: 20,
+        if (widget.showMuteButton)
+          Positioned(
+            top: 12,
+            right: 12,
+            child: GestureDetector(
+              onTap: _toggleMute,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  widget.isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
             ),
           ),
-        ),
       ],
     );
   }

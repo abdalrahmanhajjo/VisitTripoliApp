@@ -787,7 +787,7 @@ abstract class AppLocalizations {
   /// No description provided for @createTrip.
   ///
   /// In en, this message translates to:
-  /// **'Create trip'**
+  /// **'Create Trip'**
   String get createTrip;
 
   /// No description provided for @noTripsYet.
@@ -2397,6 +2397,1722 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Are you sure you want to delete this post? This cannot be undone.'**
   String get deletePostConfirm;
+
+  /// No description provided for @offlineBannerMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet — you can still browse saved content.'**
+  String get offlineBannerMessage;
+
+  /// No description provided for @appRootSemanticsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Visit Tripoli — explore places, tours, and plan your trip'**
+  String get appRootSemanticsLabel;
+
+  /// No description provided for @dealsTabRestaurantOffers.
+  ///
+  /// In en, this message translates to:
+  /// **'Restaurant Offers'**
+  String get dealsTabRestaurantOffers;
+
+  /// No description provided for @dealsTabMyProposals.
+  ///
+  /// In en, this message translates to:
+  /// **'My Proposals'**
+  String get dealsTabMyProposals;
+
+  /// No description provided for @dealsHavePromoCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Have a promo code?'**
+  String get dealsHavePromoCode;
+
+  /// No description provided for @dealsEnterCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter code'**
+  String get dealsEnterCodeHint;
+
+  /// No description provided for @dealsRedeem.
+  ///
+  /// In en, this message translates to:
+  /// **'Redeem'**
+  String get dealsRedeem;
+
+  /// No description provided for @dealsActiveCoupons.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Coupons'**
+  String get dealsActiveCoupons;
+
+  /// No description provided for @dealsNoActiveCoupons.
+  ///
+  /// In en, this message translates to:
+  /// **'No active coupons at the moment'**
+  String get dealsNoActiveCoupons;
+
+  /// No description provided for @dealsRedeemedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Redeemed!'**
+  String get dealsRedeemedTitle;
+
+  /// No description provided for @dealsShowQrAtCheckout.
+  ///
+  /// In en, this message translates to:
+  /// **'Show this QR at checkout'**
+  String get dealsShowQrAtCheckout;
+
+  /// No description provided for @dealsPlaceVarious.
+  ///
+  /// In en, this message translates to:
+  /// **'Various'**
+  String get dealsPlaceVarious;
+
+  /// No description provided for @dealsCodeCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Code {code} copied'**
+  String dealsCodeCopied(String code);
+
+  /// No description provided for @dealsValidUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid until {date}'**
+  String dealsValidUntil(String date);
+
+  /// No description provided for @dealsUsedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Used'**
+  String get dealsUsedLabel;
+
+  /// No description provided for @dealsNoRestaurantOffers.
+  ///
+  /// In en, this message translates to:
+  /// **'No restaurant offers at the moment'**
+  String get dealsNoRestaurantOffers;
+
+  /// No description provided for @dealsSendOfferTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send offer to restaurant'**
+  String get dealsSendOfferTitle;
+
+  /// No description provided for @dealsSendOfferSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Propose a deal or special offer to your favorite spot'**
+  String get dealsSendOfferSubtitle;
+
+  /// No description provided for @dealsNoRestaurantOffersShort.
+  ///
+  /// In en, this message translates to:
+  /// **'No restaurant offers yet'**
+  String get dealsNoRestaurantOffersShort;
+
+  /// No description provided for @dealsViewRestaurantDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'View restaurant details'**
+  String get dealsViewRestaurantDetails;
+
+  /// No description provided for @dealsLogIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in'**
+  String get dealsLogIn;
+
+  /// No description provided for @dealsViewRestaurant.
+  ///
+  /// In en, this message translates to:
+  /// **'View restaurant'**
+  String get dealsViewRestaurant;
+
+  /// No description provided for @dealsSendOfferDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send offer to restaurant'**
+  String get dealsSendOfferDialogTitle;
+
+  /// No description provided for @dealsSendOfferDialogSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Propose a special deal. Restaurants may respond with personalized offers.'**
+  String get dealsSendOfferDialogSubtitle;
+
+  /// No description provided for @dealsSelectRestaurant.
+  ///
+  /// In en, this message translates to:
+  /// **'Select restaurant'**
+  String get dealsSelectRestaurant;
+
+  /// No description provided for @dealsNoRestaurantsAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No restaurants available. Browse places in Explore to find restaurants.'**
+  String get dealsNoRestaurantsAvailable;
+
+  /// No description provided for @dealsChooseRestaurantHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a restaurant'**
+  String get dealsChooseRestaurantHint;
+
+  /// No description provided for @dealsYourPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Your phone number'**
+  String get dealsYourPhone;
+
+  /// No description provided for @dealsYourMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your message'**
+  String get dealsYourMessage;
+
+  /// No description provided for @dealsSendProposal.
+  ///
+  /// In en, this message translates to:
+  /// **'Send proposal'**
+  String get dealsSendProposal;
+
+  /// No description provided for @dealsPercentOff.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% off'**
+  String dealsPercentOff(int percent);
+
+  /// No description provided for @dealsAmountOff.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} off'**
+  String dealsAmountOff(String amount);
+
+  /// No description provided for @dealsWhatYouGet.
+  ///
+  /// In en, this message translates to:
+  /// **'What you get'**
+  String get dealsWhatYouGet;
+
+  /// No description provided for @dealsHowToUseOffer.
+  ///
+  /// In en, this message translates to:
+  /// **'How to use this offer'**
+  String get dealsHowToUseOffer;
+
+  /// No description provided for @dealsHowToUseOfferSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Visit the restaurant during opening hours.\n2. Show this screen to staff before you order.\n3. The discount will be applied according to the restaurant’s conditions.'**
+  String get dealsHowToUseOfferSteps;
+
+  /// No description provided for @dealsInRestaurantOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'In-restaurant only'**
+  String get dealsInRestaurantOnly;
+
+  /// No description provided for @postSortNewestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest First'**
+  String get postSortNewestFirst;
+
+  /// No description provided for @postSortMostPopular.
+  ///
+  /// In en, this message translates to:
+  /// **'Most Popular'**
+  String get postSortMostPopular;
+
+  /// No description provided for @postSortOldestFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest First'**
+  String get postSortOldestFirst;
+
+  /// No description provided for @postSortNewest.
+  ///
+  /// In en, this message translates to:
+  /// **'Newest'**
+  String get postSortNewest;
+
+  /// No description provided for @postSortOldest.
+  ///
+  /// In en, this message translates to:
+  /// **'Oldest'**
+  String get postSortOldest;
+
+  /// No description provided for @postSortPopular.
+  ///
+  /// In en, this message translates to:
+  /// **'Popular'**
+  String get postSortPopular;
+
+  /// No description provided for @feedPostSingular.
+  ///
+  /// In en, this message translates to:
+  /// **'Post'**
+  String get feedPostSingular;
+
+  /// No description provided for @feedPostPlural.
+  ///
+  /// In en, this message translates to:
+  /// **'Posts'**
+  String get feedPostPlural;
+
+  /// No description provided for @commentsDisabledForPost.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments are turned off for this post'**
+  String get commentsDisabledForPost;
+
+  /// No description provided for @postDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Post deleted'**
+  String get postDeleted;
+
+  /// No description provided for @postDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Post'**
+  String get postDeleteTitle;
+
+  /// No description provided for @communityShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get communityShare;
+
+  /// No description provided for @communityCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get communityCopyLink;
+
+  /// No description provided for @communityReportPost.
+  ///
+  /// In en, this message translates to:
+  /// **'Report post'**
+  String get communityReportPost;
+
+  /// No description provided for @communityReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Report'**
+  String get communityReport;
+
+  /// No description provided for @communityEmbed.
+  ///
+  /// In en, this message translates to:
+  /// **'Embed'**
+  String get communityEmbed;
+
+  /// No description provided for @communityEmbedInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy this code to embed the post on your website:'**
+  String get communityEmbedInstructions;
+
+  /// No description provided for @communityCopyCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy code'**
+  String get communityCopyCode;
+
+  /// No description provided for @linkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get linkCopied;
+
+  /// No description provided for @sharePostSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Check out this post from Visit Tripoli'**
+  String get sharePostSubject;
+
+  /// No description provided for @reportPostConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to report this post? It will be reviewed by our team.'**
+  String get reportPostConfirmBody;
+
+  /// No description provided for @postReportedThanks.
+  ///
+  /// In en, this message translates to:
+  /// **'Post reported. Thank you.'**
+  String get postReportedThanks;
+
+  /// No description provided for @embedCodeCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Embed code copied'**
+  String get embedCodeCopied;
+
+  /// No description provided for @deleteCommentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete comment'**
+  String get deleteCommentTitle;
+
+  /// No description provided for @deleteCommentMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this comment?'**
+  String get deleteCommentMessage;
+
+  /// No description provided for @editCommentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit comment'**
+  String get editCommentTitle;
+
+  /// No description provided for @commentDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment deleted'**
+  String get commentDeleted;
+
+  /// No description provided for @commentCannotBeEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment cannot be empty'**
+  String get commentCannotBeEmpty;
+
+  /// No description provided for @eventInfoCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Event info copied to clipboard'**
+  String get eventInfoCopied;
+
+  /// No description provided for @eventNotFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Event Not Found'**
+  String get eventNotFoundTitle;
+
+  /// No description provided for @eventNotFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Event not found'**
+  String get eventNotFoundBody;
+
+  /// No description provided for @eventNoLinkedVenue.
+  ///
+  /// In en, this message translates to:
+  /// **'This event has no linked venue'**
+  String get eventNoLinkedVenue;
+
+  /// No description provided for @eventAddToTripTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Trip'**
+  String get eventAddToTripTitle;
+
+  /// No description provided for @eventNoTripsCreateFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'No trips available. Create a new trip first.'**
+  String get eventNoTripsCreateFirst;
+
+  /// No description provided for @eventVenueAddedToTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Event venue added to trip'**
+  String get eventVenueAddedToTrip;
+
+  /// No description provided for @createNewTripTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create New Trip'**
+  String get createNewTripTitle;
+
+  /// No description provided for @openLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Open link'**
+  String get openLink;
+
+  /// No description provided for @directions.
+  ///
+  /// In en, this message translates to:
+  /// **'Directions'**
+  String get directions;
+
+  /// No description provided for @viewOnMap.
+  ///
+  /// In en, this message translates to:
+  /// **'View on Map'**
+  String get viewOnMap;
+
+  /// No description provided for @venue.
+  ///
+  /// In en, this message translates to:
+  /// **'Venue'**
+  String get venue;
+
+  /// No description provided for @eventDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Event Details'**
+  String get eventDetailsTitle;
+
+  /// No description provided for @eventOverviewTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get eventOverviewTab;
+
+  /// No description provided for @eventMapTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Map'**
+  String get eventMapTab;
+
+  /// No description provided for @eventNoMapLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'No map location for this event'**
+  String get eventNoMapLocation;
+
+  /// No description provided for @dealsLoginToSeeProposals.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in to see your proposals'**
+  String get dealsLoginToSeeProposals;
+
+  /// No description provided for @dealsProposalsLoginSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your requests to restaurants and their responses will appear here.'**
+  String get dealsProposalsLoginSubtitle;
+
+  /// No description provided for @dealsNoProposalsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No proposals yet'**
+  String get dealsNoProposalsYet;
+
+  /// No description provided for @dealsNoProposalsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Send an offer request from the Restaurant Offers tab. Restaurants will respond here.'**
+  String get dealsNoProposalsSubtitle;
+
+  /// No description provided for @dealsProposalStatusReplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Replied'**
+  String get dealsProposalStatusReplied;
+
+  /// No description provided for @dealsProposalStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get dealsProposalStatusPending;
+
+  /// No description provided for @dealsRestaurantResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Restaurant response'**
+  String get dealsRestaurantResponse;
+
+  /// No description provided for @dealsRestaurantDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Restaurant'**
+  String get dealsRestaurantDefault;
+
+  /// No description provided for @dealsProposalSentSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Proposal sent to restaurant!'**
+  String get dealsProposalSentSuccess;
+
+  /// No description provided for @dealsEnterPhoneRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter your phone number'**
+  String get dealsEnterPhoneRequired;
+
+  /// No description provided for @dealsPhoneHintExample.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. +961 3 123 456'**
+  String get dealsPhoneHintExample;
+
+  /// No description provided for @dealsMessageHintExample.
+  ///
+  /// In en, this message translates to:
+  /// **'E.g. I\'d love 15% off for lunch on weekdays...'**
+  String get dealsMessageHintExample;
+
+  /// No description provided for @apiServerUrlTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'API Server URL'**
+  String get apiServerUrlTitle;
+
+  /// No description provided for @serverUrlSavedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Server URL saved. Restart or refresh to use it.'**
+  String get serverUrlSavedMessage;
+
+  /// No description provided for @darkThemeComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark theme coming soon'**
+  String get darkThemeComingSoon;
+
+  /// No description provided for @downloadingYourData.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading your data...'**
+  String get downloadingYourData;
+
+  /// No description provided for @clearCacheTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Cache'**
+  String get clearCacheTitle;
+
+  /// No description provided for @cacheCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache cleared'**
+  String get cacheCleared;
+
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get privacyPolicy;
+
+  /// No description provided for @termsOfService.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Service'**
+  String get termsOfService;
+
+  /// No description provided for @termsComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Service coming soon'**
+  String get termsComingSoon;
+
+  /// No description provided for @openSourceLicenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Source Licenses'**
+  String get openSourceLicenses;
+
+  /// No description provided for @openSourceLicensesComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Open source licenses coming soon'**
+  String get openSourceLicensesComingSoon;
+
+  /// No description provided for @helpSupportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Help & Support'**
+  String get helpSupportTitle;
+
+  /// No description provided for @helpEmailComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Email support coming soon'**
+  String get helpEmailComingSoon;
+
+  /// No description provided for @helpPhoneComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone support coming soon'**
+  String get helpPhoneComingSoon;
+
+  /// No description provided for @helpUserGuideComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'User guide coming soon'**
+  String get helpUserGuideComingSoon;
+
+  /// No description provided for @helpVideoTutorialsComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Video tutorials coming soon'**
+  String get helpVideoTutorialsComingSoon;
+
+  /// No description provided for @signUpWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign up with Google'**
+  String get signUpWithGoogle;
+
+  /// No description provided for @signUpWithApple.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign up with Apple'**
+  String get signUpWithApple;
+
+  /// No description provided for @sectionVisitorTips.
+  ///
+  /// In en, this message translates to:
+  /// **'Visitor Tips'**
+  String get sectionVisitorTips;
+
+  /// No description provided for @communityGoToPost.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to post'**
+  String get communityGoToPost;
+
+  /// No description provided for @errorWithDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Error: {details}'**
+  String errorWithDetails(String details);
+
+  /// No description provided for @adminDeleteUserTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete user?'**
+  String get adminDeleteUserTitle;
+
+  /// No description provided for @adminDeleteUserBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This user will be removed permanently.'**
+  String get adminDeleteUserBody;
+
+  /// No description provided for @adminDeleteCategoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete category?'**
+  String get adminDeleteCategoryTitle;
+
+  /// No description provided for @adminDeleteCategoryBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This category will be removed permanently.'**
+  String get adminDeleteCategoryBody;
+
+  /// No description provided for @adminDeleteTourTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete tour?'**
+  String get adminDeleteTourTitle;
+
+  /// No description provided for @adminDeleteTourBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This tour will be removed permanently.'**
+  String get adminDeleteTourBody;
+
+  /// No description provided for @adminDeleteInterestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete interest?'**
+  String get adminDeleteInterestTitle;
+
+  /// No description provided for @adminDeleteInterestBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This interest will be removed permanently.'**
+  String get adminDeleteInterestBody;
+
+  /// No description provided for @adminDeletePlaceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete place?'**
+  String get adminDeletePlaceTitle;
+
+  /// No description provided for @adminDeletePlaceBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This place will be removed permanently. You can\'t undo this.'**
+  String get adminDeletePlaceBody;
+
+  /// No description provided for @adminDeleteEventTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete event?'**
+  String get adminDeleteEventTitle;
+
+  /// No description provided for @adminDeleteEventBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This event will be removed permanently.'**
+  String get adminDeleteEventBody;
+
+  /// No description provided for @adminUserDeletedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'User deleted successfully'**
+  String get adminUserDeletedSuccess;
+
+  /// No description provided for @adminCategoryDeletedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Category deleted successfully'**
+  String get adminCategoryDeletedSuccess;
+
+  /// No description provided for @adminTourDeletedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Tour deleted successfully'**
+  String get adminTourDeletedSuccess;
+
+  /// No description provided for @adminInterestDeletedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Interest deleted successfully'**
+  String get adminInterestDeletedSuccess;
+
+  /// No description provided for @adminEventDeletedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Event deleted successfully'**
+  String get adminEventDeletedSuccess;
+
+  /// No description provided for @adminPlaceDeletedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Place deleted'**
+  String get adminPlaceDeletedSuccess;
+
+  /// No description provided for @adminEditUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit user'**
+  String get adminEditUser;
+
+  /// No description provided for @adminAddUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Add user'**
+  String get adminAddUser;
+
+  /// No description provided for @adminEditCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit category'**
+  String get adminEditCategory;
+
+  /// No description provided for @adminAddCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Add category'**
+  String get adminAddCategory;
+
+  /// No description provided for @adminEditTour.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit tour'**
+  String get adminEditTour;
+
+  /// No description provided for @adminAddTour.
+  ///
+  /// In en, this message translates to:
+  /// **'Add tour'**
+  String get adminAddTour;
+
+  /// No description provided for @adminEditInterest.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit interest'**
+  String get adminEditInterest;
+
+  /// No description provided for @adminAddInterest.
+  ///
+  /// In en, this message translates to:
+  /// **'Add interest'**
+  String get adminAddInterest;
+
+  /// No description provided for @adminEditPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit place'**
+  String get adminEditPlace;
+
+  /// No description provided for @adminAddPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Add place'**
+  String get adminAddPlace;
+
+  /// No description provided for @adminEditEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit event'**
+  String get adminEditEvent;
+
+  /// No description provided for @adminAddEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Add event'**
+  String get adminAddEvent;
+
+  /// No description provided for @adminUpdateUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Update user'**
+  String get adminUpdateUser;
+
+  /// No description provided for @adminCreateUser.
+  ///
+  /// In en, this message translates to:
+  /// **'Create user'**
+  String get adminCreateUser;
+
+  /// No description provided for @adminUpdateCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Update category'**
+  String get adminUpdateCategory;
+
+  /// No description provided for @adminCreateCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Create category'**
+  String get adminCreateCategory;
+
+  /// No description provided for @adminUpdateTour.
+  ///
+  /// In en, this message translates to:
+  /// **'Update tour'**
+  String get adminUpdateTour;
+
+  /// No description provided for @adminCreateTour.
+  ///
+  /// In en, this message translates to:
+  /// **'Create tour'**
+  String get adminCreateTour;
+
+  /// No description provided for @adminUpdateInterest.
+  ///
+  /// In en, this message translates to:
+  /// **'Update interest'**
+  String get adminUpdateInterest;
+
+  /// No description provided for @adminCreateInterest.
+  ///
+  /// In en, this message translates to:
+  /// **'Create interest'**
+  String get adminCreateInterest;
+
+  /// No description provided for @adminUpdatePlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Update place'**
+  String get adminUpdatePlace;
+
+  /// No description provided for @adminCreatePlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Create place'**
+  String get adminCreatePlace;
+
+  /// No description provided for @adminUpdateEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Update event'**
+  String get adminUpdateEvent;
+
+  /// No description provided for @adminCreateEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Create event'**
+  String get adminCreateEvent;
+
+  /// No description provided for @adminIsAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Is admin'**
+  String get adminIsAdmin;
+
+  /// No description provided for @adminPasswordRequiredNewUsers.
+  ///
+  /// In en, this message translates to:
+  /// **'Password is required for new users'**
+  String get adminPasswordRequiredNewUsers;
+
+  /// No description provided for @adminSnackUserCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'User created'**
+  String get adminSnackUserCreated;
+
+  /// No description provided for @adminSnackUserUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'User updated'**
+  String get adminSnackUserUpdated;
+
+  /// No description provided for @adminSnackCategoryCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Category created'**
+  String get adminSnackCategoryCreated;
+
+  /// No description provided for @adminSnackCategoryUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Category updated'**
+  String get adminSnackCategoryUpdated;
+
+  /// No description provided for @adminSnackTourCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Tour created'**
+  String get adminSnackTourCreated;
+
+  /// No description provided for @adminSnackTourUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Tour updated'**
+  String get adminSnackTourUpdated;
+
+  /// No description provided for @adminSnackInterestCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Interest created'**
+  String get adminSnackInterestCreated;
+
+  /// No description provided for @adminSnackInterestUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Interest updated'**
+  String get adminSnackInterestUpdated;
+
+  /// No description provided for @adminSnackPlaceCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Place created'**
+  String get adminSnackPlaceCreated;
+
+  /// No description provided for @adminSnackPlaceUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Place updated'**
+  String get adminSnackPlaceUpdated;
+
+  /// No description provided for @adminSnackEventCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Event created'**
+  String get adminSnackEventCreated;
+
+  /// No description provided for @adminSnackEventUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Event updated'**
+  String get adminSnackEventUpdated;
+
+  /// No description provided for @adminAddPlaceButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Place'**
+  String get adminAddPlaceButton;
+
+  /// No description provided for @refreshData.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh data'**
+  String get refreshData;
+
+  /// No description provided for @businessDashboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Business Dashboard'**
+  String get businessDashboardTitle;
+
+  /// No description provided for @openBusinessDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Business Dashboard'**
+  String get openBusinessDashboard;
+
+  /// No description provided for @signInAsAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in as Admin'**
+  String get signInAsAdmin;
+
+  /// No description provided for @overview.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get overview;
+
+  /// No description provided for @businessEditPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Place'**
+  String get businessEditPlace;
+
+  /// No description provided for @businessUpdatePlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Place'**
+  String get businessUpdatePlace;
+
+  /// No description provided for @businessPlaceUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Place updated successfully'**
+  String get businessPlaceUpdated;
+
+  /// No description provided for @imageUploadedAndAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Image uploaded and added'**
+  String get imageUploadedAndAdded;
+
+  /// No description provided for @uploadFailedWithError.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload failed: {error}'**
+  String uploadFailedWithError(String error);
+
+  /// No description provided for @uploadingEllipsis.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading...'**
+  String get uploadingEllipsis;
+
+  /// No description provided for @uploadImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload image'**
+  String get uploadImage;
+
+  /// No description provided for @mapTapAnyPointRouteStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap any point on the map to choose route start'**
+  String get mapTapAnyPointRouteStart;
+
+  /// No description provided for @mapRouteCalculationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not calculate in-app route. Please try another mode.'**
+  String get mapRouteCalculationFailed;
+
+  /// No description provided for @mapSearchDestinationFromMain.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for destination from the main map'**
+  String get mapSearchDestinationFromMain;
+
+  /// No description provided for @mapExit.
+  ///
+  /// In en, this message translates to:
+  /// **'Exit'**
+  String get mapExit;
+
+  /// No description provided for @mapDirectionsFullTour.
+  ///
+  /// In en, this message translates to:
+  /// **'Get directions for full tour'**
+  String get mapDirectionsFullTour;
+
+  /// No description provided for @mapStepsAndMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Steps & more'**
+  String get mapStepsAndMore;
+
+  /// No description provided for @mapHideSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide steps'**
+  String get mapHideSteps;
+
+  /// No description provided for @mapViewOnMapLowercase.
+  ///
+  /// In en, this message translates to:
+  /// **'View on map'**
+  String get mapViewOnMapLowercase;
+
+  /// No description provided for @mapPlaceDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Place details'**
+  String get mapPlaceDetails;
+
+  /// No description provided for @placeNotFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Place Not Found'**
+  String get placeNotFoundTitle;
+
+  /// No description provided for @placeNotFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Place not found'**
+  String get placeNotFoundBody;
+
+  /// No description provided for @placeNewBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'New badge: {names}'**
+  String placeNewBadge(String names);
+
+  /// No description provided for @bookPlaceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Book {name}'**
+  String bookPlaceTitle(String name);
+
+  /// No description provided for @confirmBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm booking'**
+  String get confirmBooking;
+
+  /// No description provided for @placeAddedToTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Place added to trip'**
+  String get placeAddedToTrip;
+
+  /// No description provided for @readMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Read more'**
+  String get readMore;
+
+  /// No description provided for @checkIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Check in'**
+  String get checkIn;
+
+  /// No description provided for @book.
+  ///
+  /// In en, this message translates to:
+  /// **'Book'**
+  String get book;
+
+  /// No description provided for @howToGetThere.
+  ///
+  /// In en, this message translates to:
+  /// **'How to get there'**
+  String get howToGetThere;
+
+  /// No description provided for @deleteReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete review?'**
+  String get deleteReviewTitle;
+
+  /// No description provided for @rateThisPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate this Place'**
+  String get rateThisPlace;
+
+  /// No description provided for @viewAllReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'View All Reviews'**
+  String get viewAllReviews;
+
+  /// No description provided for @recentReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Reviews'**
+  String get recentReviews;
+
+  /// No description provided for @reviewsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviews'**
+  String get reviewsTitle;
+
+  /// No description provided for @addReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Review'**
+  String get addReview;
+
+  /// No description provided for @tourInfoCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Tour info copied to clipboard'**
+  String get tourInfoCopied;
+
+  /// No description provided for @tourNotFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tour Not Found'**
+  String get tourNotFoundTitle;
+
+  /// No description provided for @tourNotFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tour not found'**
+  String get tourNotFoundBody;
+
+  /// No description provided for @tourNoPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'This tour has no places'**
+  String get tourNoPlaces;
+
+  /// No description provided for @addTourToTripTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Tour to Trip'**
+  String get addTourToTripTitle;
+
+  /// No description provided for @tourStartAddedToTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Tour start added to trip'**
+  String get tourStartAddedToTrip;
+
+  /// No description provided for @fullItinerary.
+  ///
+  /// In en, this message translates to:
+  /// **'Full itinerary'**
+  String get fullItinerary;
+
+  /// No description provided for @viewMap.
+  ///
+  /// In en, this message translates to:
+  /// **'View Map'**
+  String get viewMap;
+
+  /// No description provided for @tourStopsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tour Stops'**
+  String get tourStopsTitle;
+
+  /// No description provided for @fullMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Map'**
+  String get fullMap;
+
+  /// No description provided for @shareLinkCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Share link created'**
+  String get shareLinkCreated;
+
+  /// No description provided for @shareFailedWithError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to share: {error}'**
+  String shareFailedWithError(String error);
+
+  /// No description provided for @configureYourPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure your plan'**
+  String get configureYourPlan;
+
+  /// No description provided for @placesPerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Places per day'**
+  String get placesPerDay;
+
+  /// No description provided for @placesPerDayExactly.
+  ///
+  /// In en, this message translates to:
+  /// **'Exactly {count} places each day'**
+  String placesPerDayExactly(int count);
+
+  /// No description provided for @placesAndPeopleSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{places} places · {people} people'**
+  String placesAndPeopleSummary(String places, String people);
+
+  /// No description provided for @plannerActivityLogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View / Edit activity log'**
+  String get plannerActivityLogTitle;
+
+  /// No description provided for @plannerActivityLogSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 120 actions — remove items or clear'**
+  String get plannerActivityLogSubtitle;
+
+  /// No description provided for @plannerTripAlreadyOnDate.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have a trip on this date.'**
+  String get plannerTripAlreadyOnDate;
+
+  /// No description provided for @tripSavedExclamation.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip saved!'**
+  String get tripSavedExclamation;
+
+  /// No description provided for @plannerCurrentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get plannerCurrentLabel;
+
+  /// No description provided for @plannerTryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get plannerTryAgain;
+
+  /// No description provided for @creatingYourPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating your plan...'**
+  String get creatingYourPlan;
+
+  /// No description provided for @plannerNoPlacesToChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'No places available to choose from.'**
+  String get plannerNoPlacesToChoose;
+
+  /// No description provided for @editTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit time'**
+  String get editTime;
+
+  /// No description provided for @ok.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get ok;
+
+  /// No description provided for @reelsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No reels yet'**
+  String get reelsEmptyTitle;
+
+  /// No description provided for @reelsEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Video posts will appear here'**
+  String get reelsEmptySubtitle;
+
+  /// No description provided for @backToFeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to feed'**
+  String get backToFeed;
+
+  /// No description provided for @deleteReelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Reel'**
+  String get deleteReelTitle;
+
+  /// No description provided for @deleteReelConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete this reel? This cannot be undone.'**
+  String get deleteReelConfirm;
+
+  /// No description provided for @reelsLoginToComment.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in to comment'**
+  String get reelsLoginToComment;
+
+  /// No description provided for @reply.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get reply;
+
+  /// No description provided for @loadingProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading profile...'**
+  String get loadingProfile;
+
+  /// No description provided for @sendResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Send response'**
+  String get sendResponse;
+
+  /// No description provided for @customerProposalsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer Proposals'**
+  String get customerProposalsTitle;
+
+  /// No description provided for @yourResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Your response'**
+  String get yourResponse;
+
+  /// No description provided for @respond.
+  ///
+  /// In en, this message translates to:
+  /// **'Respond'**
+  String get respond;
+
+  /// No description provided for @emailSmtpSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Email / SMTP Setup'**
+  String get emailSmtpSetupTitle;
+
+  /// No description provided for @scanQrCheckInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan QR to check in'**
+  String get scanQrCheckInTitle;
+
+  /// No description provided for @videoCouldNotPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not play video'**
+  String get videoCouldNotPlay;
+
+  /// No description provided for @deleteCommentCannotUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'This cannot be undone.'**
+  String get deleteCommentCannotUndo;
+
+  /// No description provided for @commentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments'**
+  String get commentsTitle;
+
+  /// No description provided for @emailConfigSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get emailConfigSave;
+
+  /// No description provided for @submit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit'**
+  String get submit;
+
+  /// No description provided for @tryAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get tryAgain;
+
+  /// No description provided for @deleteTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get deleteTooltip;
+
+  /// No description provided for @settingsGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get settingsGeneral;
+
+  /// No description provided for @settingsTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get settingsTheme;
+
+  /// No description provided for @settingsThemeLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get settingsThemeLight;
+
+  /// No description provided for @settingsNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get settingsNotifications;
+
+  /// No description provided for @settingsPushNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Push Notifications'**
+  String get settingsPushNotifications;
+
+  /// No description provided for @settingsEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get settingsEnabled;
+
+  /// No description provided for @settingsEmailNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Email Notifications'**
+  String get settingsEmailNotifications;
+
+  /// No description provided for @settingsDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get settingsDisabled;
+
+  /// No description provided for @settingsServerSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Server'**
+  String get settingsServerSection;
+
+  /// No description provided for @settingsDefaultCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Default (cloud)'**
+  String get settingsDefaultCloud;
+
+  /// No description provided for @settingsEmailSmtpSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure SMTP for password reset and verification emails'**
+  String get settingsEmailSmtpSubtitle;
+
+  /// No description provided for @settingsDataPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Data & Privacy'**
+  String get settingsDataPrivacy;
+
+  /// No description provided for @settingsDownloadData.
+  ///
+  /// In en, this message translates to:
+  /// **'Download Data'**
+  String get settingsDownloadData;
+
+  /// No description provided for @settingsClearCacheMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This will clear all cached data. Continue?'**
+  String get settingsClearCacheMessage;
+
+  /// No description provided for @apiServerUrlDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'API server URL. Default is the cloud (https://tripoli-explorer-api.onrender.com). Change only if you use a different server.'**
+  String get apiServerUrlDialogBody;
+
+  /// No description provided for @serverUrlLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Server URL'**
+  String get serverUrlLabel;
+
+  /// No description provided for @serverUrlInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid URL (e.g. https://example.com)'**
+  String get serverUrlInvalid;
+
+  /// No description provided for @postAddToFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to favorites'**
+  String get postAddToFavorites;
+
+  /// No description provided for @postRemoveFromFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from favorites'**
+  String get postRemoveFromFavorites;
+
+  /// No description provided for @communityShareTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Share to...'**
+  String get communityShareTo;
+
+  /// No description provided for @postShowLikeCountToOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Show like count to others'**
+  String get postShowLikeCountToOthers;
+
+  /// No description provided for @postHideLikeCountToOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide like count to others'**
+  String get postHideLikeCountToOthers;
+
+  /// No description provided for @postLikeCountVisibleSnackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Like count visible'**
+  String get postLikeCountVisibleSnackbar;
+
+  /// No description provided for @postLikeCountHiddenSnackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Like count hidden'**
+  String get postLikeCountHiddenSnackbar;
+
+  /// No description provided for @postTurnOnCommenting.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on commenting'**
+  String get postTurnOnCommenting;
+
+  /// No description provided for @postTurnOffCommenting.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off commenting'**
+  String get postTurnOffCommenting;
+
+  /// No description provided for @postCommentsOnSnackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments on'**
+  String get postCommentsOnSnackbar;
+
+  /// No description provided for @postCommentsOffSnackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Comments off'**
+  String get postCommentsOffSnackbar;
+
+  /// No description provided for @viewPlacePosts.
+  ///
+  /// In en, this message translates to:
+  /// **'View place posts'**
+  String get viewPlacePosts;
+
+  /// No description provided for @eventOrganizerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Organizer'**
+  String get eventOrganizerLabel;
+
+  /// No description provided for @similarEventsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Similar Events'**
+  String get similarEventsSectionTitle;
+
+  /// No description provided for @errorGenericTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get errorGenericTitle;
 }
 
 class _AppLocalizationsDelegate

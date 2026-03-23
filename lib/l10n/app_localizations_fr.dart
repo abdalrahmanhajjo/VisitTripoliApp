@@ -129,7 +129,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get verifyEmailBtn => 'Verify';
+  String get verifyEmailBtn => 'Vérifier';
 
   @override
   String get verificationSent => 'Email envoyé. Vérifiez votre boîte mail.';
@@ -286,7 +286,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get coupons => 'Coupons';
 
   @override
-  String get dealsAndOffers => 'Deals & Offers';
+  String get dealsAndOffers => 'Promotions et offres';
 
   @override
   String get savedPlaces => 'Lieux enregistrés';
@@ -373,7 +373,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get myTrips => 'Mes voyages';
 
   @override
-  String get createTrip => 'Créer le voyage';
+  String get createTrip => 'Créer un voyage';
 
   @override
   String get noTripsYet => 'Pas encore de voyages';
@@ -1252,13 +1252,934 @@ class AppLocalizationsFr extends AppLocalizations {
   String get selectPlaceToPost => 'Sélectionnez votre lieu pour publier';
 
   @override
-  String get communityEmptyTitle => 'No posts yet';
+  String get communityEmptyTitle => 'Aucune publication pour le moment';
 
   @override
   String get communityEmptySubtitle =>
-      'Business owners can share updates here. Sign in to like and comment.';
+      'Les commerçants peuvent partager des actualités ici. Connectez-vous pour aimer et commenter.';
 
   @override
   String get deletePostConfirm =>
-      'Are you sure you want to delete this post? This cannot be undone.';
+      'Voulez-vous vraiment supprimer cette publication ? Cette action est irréversible.';
+
+  @override
+  String get offlineBannerMessage =>
+      'Pas de connexion — vous pouvez toujours consulter le contenu enregistré.';
+
+  @override
+  String get appRootSemanticsLabel =>
+      'Visit Tripoli — explorez les lieux, les visites et planifiez votre voyage';
+
+  @override
+  String get dealsTabRestaurantOffers => 'Offres restaurants';
+
+  @override
+  String get dealsTabMyProposals => 'Mes propositions';
+
+  @override
+  String get dealsHavePromoCode => 'Vous avez un code promo ?';
+
+  @override
+  String get dealsEnterCodeHint => 'Entrez le code';
+
+  @override
+  String get dealsRedeem => 'Utiliser';
+
+  @override
+  String get dealsActiveCoupons => 'Coupons actifs';
+
+  @override
+  String get dealsNoActiveCoupons => 'Aucun coupon actif pour le moment';
+
+  @override
+  String get dealsRedeemedTitle => 'Utilisé !';
+
+  @override
+  String get dealsShowQrAtCheckout => 'Montrez ce QR à la caisse';
+
+  @override
+  String get dealsPlaceVarious => 'Divers';
+
+  @override
+  String dealsCodeCopied(String code) {
+    return 'Code $code copié';
+  }
+
+  @override
+  String dealsValidUntil(String date) {
+    return 'Valable jusqu’au $date';
+  }
+
+  @override
+  String get dealsUsedLabel => 'Utilisé';
+
+  @override
+  String get dealsNoRestaurantOffers =>
+      'Aucune offre restaurant pour le moment';
+
+  @override
+  String get dealsSendOfferTitle => 'Envoyer une offre au restaurant';
+
+  @override
+  String get dealsSendOfferSubtitle =>
+      'Proposez une offre ou une promotion à votre lieu préféré';
+
+  @override
+  String get dealsNoRestaurantOffersShort => 'Pas encore d’offres restaurant';
+
+  @override
+  String get dealsViewRestaurantDetails => 'Voir les détails du restaurant';
+
+  @override
+  String get dealsLogIn => 'Connexion';
+
+  @override
+  String get dealsViewRestaurant => 'Voir le restaurant';
+
+  @override
+  String get dealsSendOfferDialogTitle => 'Envoyer une offre au restaurant';
+
+  @override
+  String get dealsSendOfferDialogSubtitle =>
+      'Proposez une offre spéciale. Les restaurants peuvent répondre avec des offres personnalisées.';
+
+  @override
+  String get dealsSelectRestaurant => 'Choisir un restaurant';
+
+  @override
+  String get dealsNoRestaurantsAvailable =>
+      'Aucun restaurant disponible. Parcourez les lieux dans Explorer pour en trouver.';
+
+  @override
+  String get dealsChooseRestaurantHint => 'Choisir un restaurant';
+
+  @override
+  String get dealsYourPhone => 'Votre numéro de téléphone';
+
+  @override
+  String get dealsYourMessage => 'Votre message';
+
+  @override
+  String get dealsSendProposal => 'Envoyer la proposition';
+
+  @override
+  String dealsPercentOff(int percent) {
+    return '-$percent %';
+  }
+
+  @override
+  String dealsAmountOff(String amount) {
+    return '$amount de réduction';
+  }
+
+  @override
+  String get dealsWhatYouGet => 'Ce que vous obtenez';
+
+  @override
+  String get dealsHowToUseOffer => 'Comment utiliser cette offre';
+
+  @override
+  String get dealsHowToUseOfferSteps =>
+      '1. Rendez-vous au restaurant pendant les heures d’ouverture.\n2. Montrez cet écran au personnel avant de commander.\n3. La réduction sera appliquée selon les conditions du restaurant.';
+
+  @override
+  String get dealsInRestaurantOnly => 'Sur place uniquement';
+
+  @override
+  String get postSortNewestFirst => 'Plus récents d’abord';
+
+  @override
+  String get postSortMostPopular => 'Plus populaires';
+
+  @override
+  String get postSortOldestFirst => 'Plus anciens d’abord';
+
+  @override
+  String get postSortNewest => 'Récents';
+
+  @override
+  String get postSortOldest => 'Anciens';
+
+  @override
+  String get postSortPopular => 'Populaires';
+
+  @override
+  String get feedPostSingular => 'Publication';
+
+  @override
+  String get feedPostPlural => 'Publications';
+
+  @override
+  String get commentsDisabledForPost =>
+      'Les commentaires sont désactivés pour cette publication';
+
+  @override
+  String get postDeleted => 'Publication supprimée';
+
+  @override
+  String get postDeleteTitle => 'Supprimer la publication';
+
+  @override
+  String get communityShare => 'Partager';
+
+  @override
+  String get communityCopyLink => 'Copier le lien';
+
+  @override
+  String get communityReportPost => 'Signaler la publication';
+
+  @override
+  String get communityReport => 'Signaler';
+
+  @override
+  String get communityEmbed => 'Intégrer';
+
+  @override
+  String get communityEmbedInstructions =>
+      'Copiez ce code pour intégrer la publication sur votre site :';
+
+  @override
+  String get communityCopyCode => 'Copier le code';
+
+  @override
+  String get linkCopied => 'Lien copié';
+
+  @override
+  String get sharePostSubject =>
+      'Découvrez cette publication sur Visit Tripoli';
+
+  @override
+  String get reportPostConfirmBody =>
+      'Voulez-vous vraiment signaler cette publication ? Notre équipe l’examinera.';
+
+  @override
+  String get postReportedThanks => 'Publication signalée. Merci.';
+
+  @override
+  String get embedCodeCopied => 'Code d’intégration copié';
+
+  @override
+  String get deleteCommentTitle => 'Supprimer le commentaire';
+
+  @override
+  String get deleteCommentMessage =>
+      'Voulez-vous vraiment supprimer ce commentaire ?';
+
+  @override
+  String get editCommentTitle => 'Modifier le commentaire';
+
+  @override
+  String get commentDeleted => 'Commentaire supprimé';
+
+  @override
+  String get commentCannotBeEmpty => 'Le commentaire ne peut pas être vide';
+
+  @override
+  String get eventInfoCopied =>
+      'Informations de l’événement copiées dans le presse-papiers';
+
+  @override
+  String get eventNotFoundTitle => 'Événement introuvable';
+
+  @override
+  String get eventNotFoundBody => 'Événement introuvable';
+
+  @override
+  String get eventNoLinkedVenue => 'Cet événement n’a pas de lieu associé';
+
+  @override
+  String get eventAddToTripTitle => 'Ajouter au voyage';
+
+  @override
+  String get eventNoTripsCreateFirst =>
+      'Aucun voyage disponible. Créez d’abord un voyage.';
+
+  @override
+  String get eventVenueAddedToTrip => 'Lieu de l’événement ajouté au voyage';
+
+  @override
+  String get createNewTripTitle => 'Créer un nouveau voyage';
+
+  @override
+  String get openLink => 'Ouvrir le lien';
+
+  @override
+  String get directions => 'Itinéraire';
+
+  @override
+  String get viewOnMap => 'Voir sur la carte';
+
+  @override
+  String get venue => 'Lieu';
+
+  @override
+  String get eventDetailsTitle => 'Détails de l’événement';
+
+  @override
+  String get eventOverviewTab => 'Aperçu';
+
+  @override
+  String get eventMapTab => 'Carte';
+
+  @override
+  String get eventNoMapLocation =>
+      'Aucun emplacement sur la carte pour cet événement';
+
+  @override
+  String get dealsLoginToSeeProposals =>
+      'Connectez-vous pour voir vos propositions';
+
+  @override
+  String get dealsProposalsLoginSubtitle =>
+      'Vos demandes aux restaurants et leurs réponses apparaîtront ici.';
+
+  @override
+  String get dealsNoProposalsYet => 'Aucune proposition pour le moment';
+
+  @override
+  String get dealsNoProposalsSubtitle =>
+      'Envoyez une demande depuis l’onglet Offres restaurants. Les réponses s’affichent ici.';
+
+  @override
+  String get dealsProposalStatusReplied => 'Répondu';
+
+  @override
+  String get dealsProposalStatusPending => 'En attente';
+
+  @override
+  String get dealsRestaurantResponse => 'Réponse du restaurant';
+
+  @override
+  String get dealsRestaurantDefault => 'Restaurant';
+
+  @override
+  String get dealsProposalSentSuccess => 'Proposition envoyée au restaurant !';
+
+  @override
+  String get dealsEnterPhoneRequired =>
+      'Veuillez entrer votre numéro de téléphone';
+
+  @override
+  String get dealsPhoneHintExample => 'ex. +961 3 123 456';
+
+  @override
+  String get dealsMessageHintExample =>
+      'Ex. : j’aimerais 15 % de réduction le midi en semaine...';
+
+  @override
+  String get apiServerUrlTitle => 'URL du serveur API';
+
+  @override
+  String get serverUrlSavedMessage =>
+      'URL enregistrée. Redémarrez ou actualisez pour l\'utiliser.';
+
+  @override
+  String get darkThemeComingSoon => 'Thème sombre bientôt disponible';
+
+  @override
+  String get downloadingYourData => 'Téléchargement de vos données...';
+
+  @override
+  String get clearCacheTitle => 'Vider le cache';
+
+  @override
+  String get cacheCleared => 'Cache vidé';
+
+  @override
+  String get privacyPolicy => 'Politique de confidentialité';
+
+  @override
+  String get termsOfService => 'Conditions d\'utilisation';
+
+  @override
+  String get termsComingSoon => 'Conditions d\'utilisation bientôt disponibles';
+
+  @override
+  String get openSourceLicenses => 'Licences open source';
+
+  @override
+  String get openSourceLicensesComingSoon =>
+      'Licences open source bientôt disponibles';
+
+  @override
+  String get helpSupportTitle => 'Aide et support';
+
+  @override
+  String get helpEmailComingSoon => 'Support par e-mail bientôt';
+
+  @override
+  String get helpPhoneComingSoon => 'Support téléphonique bientôt';
+
+  @override
+  String get helpUserGuideComingSoon => 'Guide utilisateur bientôt';
+
+  @override
+  String get helpVideoTutorialsComingSoon => 'Tutoriels vidéo bientôt';
+
+  @override
+  String get signUpWithGoogle => 'S\'inscrire avec Google';
+
+  @override
+  String get signUpWithApple => 'S\'inscrire avec Apple';
+
+  @override
+  String get sectionVisitorTips => 'Conseils aux visiteurs';
+
+  @override
+  String get communityGoToPost => 'Aller à la publication';
+
+  @override
+  String errorWithDetails(String details) {
+    return 'Erreur : $details';
+  }
+
+  @override
+  String get adminDeleteUserTitle => 'Supprimer l\'utilisateur ?';
+
+  @override
+  String get adminDeleteUserBody =>
+      'Cet utilisateur sera supprimé définitivement.';
+
+  @override
+  String get adminDeleteCategoryTitle => 'Supprimer la catégorie ?';
+
+  @override
+  String get adminDeleteCategoryBody =>
+      'Cette catégorie sera supprimée définitivement.';
+
+  @override
+  String get adminDeleteTourTitle => 'Supprimer le parcours ?';
+
+  @override
+  String get adminDeleteTourBody => 'Ce parcours sera supprimé définitivement.';
+
+  @override
+  String get adminDeleteInterestTitle => 'Supprimer le centre d\'intérêt ?';
+
+  @override
+  String get adminDeleteInterestBody =>
+      'Ce centre d\'intérêt sera supprimé définitivement.';
+
+  @override
+  String get adminDeletePlaceTitle => 'Supprimer le lieu ?';
+
+  @override
+  String get adminDeletePlaceBody =>
+      'Ce lieu sera supprimé définitivement. Action irréversible.';
+
+  @override
+  String get adminDeleteEventTitle => 'Supprimer l\'événement ?';
+
+  @override
+  String get adminDeleteEventBody =>
+      'Cet événement sera supprimé définitivement.';
+
+  @override
+  String get adminUserDeletedSuccess => 'Utilisateur supprimé';
+
+  @override
+  String get adminCategoryDeletedSuccess => 'Catégorie supprimée';
+
+  @override
+  String get adminTourDeletedSuccess => 'Parcours supprimé';
+
+  @override
+  String get adminInterestDeletedSuccess => 'Centre d\'intérêt supprimé';
+
+  @override
+  String get adminEventDeletedSuccess => 'Événement supprimé';
+
+  @override
+  String get adminPlaceDeletedSuccess => 'Lieu supprimé';
+
+  @override
+  String get adminEditUser => 'Modifier l\'utilisateur';
+
+  @override
+  String get adminAddUser => 'Ajouter un utilisateur';
+
+  @override
+  String get adminEditCategory => 'Modifier la catégorie';
+
+  @override
+  String get adminAddCategory => 'Ajouter une catégorie';
+
+  @override
+  String get adminEditTour => 'Modifier le parcours';
+
+  @override
+  String get adminAddTour => 'Ajouter un parcours';
+
+  @override
+  String get adminEditInterest => 'Modifier le centre d\'intérêt';
+
+  @override
+  String get adminAddInterest => 'Ajouter un centre d\'intérêt';
+
+  @override
+  String get adminEditPlace => 'Modifier le lieu';
+
+  @override
+  String get adminAddPlace => 'Ajouter un lieu';
+
+  @override
+  String get adminEditEvent => 'Modifier l\'événement';
+
+  @override
+  String get adminAddEvent => 'Ajouter un événement';
+
+  @override
+  String get adminUpdateUser => 'Mettre à jour l\'utilisateur';
+
+  @override
+  String get adminCreateUser => 'Créer l\'utilisateur';
+
+  @override
+  String get adminUpdateCategory => 'Mettre à jour la catégorie';
+
+  @override
+  String get adminCreateCategory => 'Créer la catégorie';
+
+  @override
+  String get adminUpdateTour => 'Mettre à jour le parcours';
+
+  @override
+  String get adminCreateTour => 'Créer le parcours';
+
+  @override
+  String get adminUpdateInterest => 'Mettre à jour le centre d\'intérêt';
+
+  @override
+  String get adminCreateInterest => 'Créer le centre d\'intérêt';
+
+  @override
+  String get adminUpdatePlace => 'Mettre à jour le lieu';
+
+  @override
+  String get adminCreatePlace => 'Créer le lieu';
+
+  @override
+  String get adminUpdateEvent => 'Mettre à jour l\'événement';
+
+  @override
+  String get adminCreateEvent => 'Créer l\'événement';
+
+  @override
+  String get adminIsAdmin => 'Administrateur';
+
+  @override
+  String get adminPasswordRequiredNewUsers =>
+      'Mot de passe obligatoire pour les nouveaux utilisateurs';
+
+  @override
+  String get adminSnackUserCreated => 'Utilisateur créé';
+
+  @override
+  String get adminSnackUserUpdated => 'Utilisateur mis à jour';
+
+  @override
+  String get adminSnackCategoryCreated => 'Catégorie créée';
+
+  @override
+  String get adminSnackCategoryUpdated => 'Catégorie mise à jour';
+
+  @override
+  String get adminSnackTourCreated => 'Parcours créé';
+
+  @override
+  String get adminSnackTourUpdated => 'Parcours mis à jour';
+
+  @override
+  String get adminSnackInterestCreated => 'Centre d\'intérêt créé';
+
+  @override
+  String get adminSnackInterestUpdated => 'Centre d\'intérêt mis à jour';
+
+  @override
+  String get adminSnackPlaceCreated => 'Lieu créé';
+
+  @override
+  String get adminSnackPlaceUpdated => 'Lieu mis à jour';
+
+  @override
+  String get adminSnackEventCreated => 'Événement créé';
+
+  @override
+  String get adminSnackEventUpdated => 'Événement mis à jour';
+
+  @override
+  String get adminAddPlaceButton => 'Ajouter un lieu';
+
+  @override
+  String get refreshData => 'Actualiser les données';
+
+  @override
+  String get businessDashboardTitle => 'Tableau de bord entreprise';
+
+  @override
+  String get openBusinessDashboard => 'Ouvrir le tableau de bord entreprise';
+
+  @override
+  String get signInAsAdmin => 'Connexion administrateur';
+
+  @override
+  String get overview => 'Aperçu';
+
+  @override
+  String get businessEditPlace => 'Modifier le lieu';
+
+  @override
+  String get businessUpdatePlace => 'Mettre à jour le lieu';
+
+  @override
+  String get businessPlaceUpdated => 'Lieu mis à jour';
+
+  @override
+  String get imageUploadedAndAdded => 'Image téléchargée et ajoutée';
+
+  @override
+  String uploadFailedWithError(String error) {
+    return 'Échec du téléversement : $error';
+  }
+
+  @override
+  String get uploadingEllipsis => 'Téléversement...';
+
+  @override
+  String get uploadImage => 'Téléverser une image';
+
+  @override
+  String get mapTapAnyPointRouteStart =>
+      'Touchez un point sur la carte pour le départ de l\'itinéraire';
+
+  @override
+  String get mapRouteCalculationFailed =>
+      'Impossible de calculer l\'itinéraire dans l\'app. Essayez un autre mode.';
+
+  @override
+  String get mapSearchDestinationFromMain =>
+      'Recherchez la destination depuis la carte principale';
+
+  @override
+  String get mapExit => 'Quitter';
+
+  @override
+  String get mapDirectionsFullTour => 'Itinéraire pour tout le parcours';
+
+  @override
+  String get mapStepsAndMore => 'Étapes et plus';
+
+  @override
+  String get mapHideSteps => 'Masquer les étapes';
+
+  @override
+  String get mapViewOnMapLowercase => 'Voir sur la carte';
+
+  @override
+  String get mapPlaceDetails => 'Détails du lieu';
+
+  @override
+  String get placeNotFoundTitle => 'Lieu introuvable';
+
+  @override
+  String get placeNotFoundBody => 'Lieu introuvable';
+
+  @override
+  String placeNewBadge(String names) {
+    return 'Nouveau badge : $names';
+  }
+
+  @override
+  String bookPlaceTitle(String name) {
+    return 'Réserver $name';
+  }
+
+  @override
+  String get confirmBooking => 'Confirmer la réservation';
+
+  @override
+  String get placeAddedToTrip => 'Lieu ajouté au voyage';
+
+  @override
+  String get readMore => 'Lire la suite';
+
+  @override
+  String get checkIn => 'Enregistrement';
+
+  @override
+  String get book => 'Réserver';
+
+  @override
+  String get howToGetThere => 'Comment s\'y rendre';
+
+  @override
+  String get deleteReviewTitle => 'Supprimer l\'avis ?';
+
+  @override
+  String get rateThisPlace => 'Noter ce lieu';
+
+  @override
+  String get viewAllReviews => 'Voir tous les avis';
+
+  @override
+  String get recentReviews => 'Avis récents';
+
+  @override
+  String get reviewsTitle => 'Avis';
+
+  @override
+  String get addReview => 'Ajouter un avis';
+
+  @override
+  String get tourInfoCopied => 'Infos du parcours copiées';
+
+  @override
+  String get tourNotFoundTitle => 'Parcours introuvable';
+
+  @override
+  String get tourNotFoundBody => 'Parcours introuvable';
+
+  @override
+  String get tourNoPlaces => 'Ce parcours n\'a pas de lieux';
+
+  @override
+  String get addTourToTripTitle => 'Ajouter le parcours au voyage';
+
+  @override
+  String get tourStartAddedToTrip => 'Début du parcours ajouté au voyage';
+
+  @override
+  String get fullItinerary => 'Itinéraire complet';
+
+  @override
+  String get viewMap => 'Voir la carte';
+
+  @override
+  String get tourStopsTitle => 'Étapes du parcours';
+
+  @override
+  String get fullMap => 'Carte complète';
+
+  @override
+  String get shareLinkCreated => 'Lien de partage créé';
+
+  @override
+  String shareFailedWithError(String error) {
+    return 'Échec du partage : $error';
+  }
+
+  @override
+  String get configureYourPlan => 'Configurez votre plan';
+
+  @override
+  String get placesPerDay => 'Lieux par jour';
+
+  @override
+  String placesPerDayExactly(int count) {
+    return 'Exactement $count lieux par jour';
+  }
+
+  @override
+  String placesAndPeopleSummary(String places, String people) {
+    return '$places lieux · $people personnes';
+  }
+
+  @override
+  String get plannerActivityLogTitle =>
+      'Voir / modifier le journal d\'activité';
+
+  @override
+  String get plannerActivityLogSubtitle =>
+      '120 dernières actions — retirer des éléments ou tout effacer';
+
+  @override
+  String get plannerTripAlreadyOnDate =>
+      'Vous avez déjà un voyage à cette date.';
+
+  @override
+  String get tripSavedExclamation => 'Voyage enregistré !';
+
+  @override
+  String get plannerCurrentLabel => 'Actuel';
+
+  @override
+  String get plannerTryAgain => 'Réessayer';
+
+  @override
+  String get creatingYourPlan => 'Création de votre plan...';
+
+  @override
+  String get plannerNoPlacesToChoose => 'Aucun lieu disponible à choisir.';
+
+  @override
+  String get editTime => 'Modifier l\'heure';
+
+  @override
+  String get ok => 'OK';
+
+  @override
+  String get reelsEmptyTitle => 'Aucun reel pour le moment';
+
+  @override
+  String get reelsEmptySubtitle => 'Les vidéos apparaîtront ici';
+
+  @override
+  String get backToFeed => 'Retour au fil';
+
+  @override
+  String get deleteReelTitle => 'Supprimer le reel';
+
+  @override
+  String get deleteReelConfirm =>
+      'Supprimer ce reel ? Cette action est irréversible.';
+
+  @override
+  String get reelsLoginToComment => 'Connectez-vous pour commenter';
+
+  @override
+  String get reply => 'Répondre';
+
+  @override
+  String get loadingProfile => 'Chargement du profil...';
+
+  @override
+  String get sendResponse => 'Envoyer la réponse';
+
+  @override
+  String get customerProposalsTitle => 'Propositions clients';
+
+  @override
+  String get yourResponse => 'Votre réponse';
+
+  @override
+  String get respond => 'Répondre';
+
+  @override
+  String get emailSmtpSetupTitle => 'E-mail / configuration SMTP';
+
+  @override
+  String get scanQrCheckInTitle => 'Scannez le QR pour vous enregistrer';
+
+  @override
+  String get videoCouldNotPlay => 'Impossible de lire la vidéo';
+
+  @override
+  String get deleteCommentCannotUndo => 'Action irréversible.';
+
+  @override
+  String get commentsTitle => 'Commentaires';
+
+  @override
+  String get emailConfigSave => 'Enregistrer';
+
+  @override
+  String get submit => 'Envoyer';
+
+  @override
+  String get tryAgain => 'Réessayer';
+
+  @override
+  String get deleteTooltip => 'Supprimer';
+
+  @override
+  String get settingsGeneral => 'Général';
+
+  @override
+  String get settingsTheme => 'Thème';
+
+  @override
+  String get settingsThemeLight => 'Clair';
+
+  @override
+  String get settingsNotifications => 'Notifications';
+
+  @override
+  String get settingsPushNotifications => 'Notifications push';
+
+  @override
+  String get settingsEnabled => 'Activé';
+
+  @override
+  String get settingsEmailNotifications => 'Notifications e-mail';
+
+  @override
+  String get settingsDisabled => 'Désactivé';
+
+  @override
+  String get settingsServerSection => 'Serveur';
+
+  @override
+  String get settingsDefaultCloud => 'Par défaut (cloud)';
+
+  @override
+  String get settingsEmailSmtpSubtitle =>
+      'Configurer SMTP pour la réinitialisation du mot de passe et les e-mails de vérification';
+
+  @override
+  String get settingsDataPrivacy => 'Données et confidentialité';
+
+  @override
+  String get settingsDownloadData => 'Télécharger les données';
+
+  @override
+  String get settingsClearCacheMessage =>
+      'Cela effacera toutes les données en cache. Continuer ?';
+
+  @override
+  String get apiServerUrlDialogBody =>
+      'URL du serveur API. Par défaut : le cloud (https://tripoli-explorer-api.onrender.com). Modifiez uniquement si vous utilisez un autre serveur.';
+
+  @override
+  String get serverUrlLabel => 'URL du serveur';
+
+  @override
+  String get serverUrlInvalid =>
+      'Entrez une URL valide (ex. https://example.com)';
+
+  @override
+  String get postAddToFavorites => 'Ajouter aux favoris';
+
+  @override
+  String get postRemoveFromFavorites => 'Retirer des favoris';
+
+  @override
+  String get communityShareTo => 'Partager vers...';
+
+  @override
+  String get postShowLikeCountToOthers =>
+      'Afficher le nombre de likes aux autres';
+
+  @override
+  String get postHideLikeCountToOthers =>
+      'Masquer le nombre de likes aux autres';
+
+  @override
+  String get postLikeCountVisibleSnackbar => 'Nombre de likes visible';
+
+  @override
+  String get postLikeCountHiddenSnackbar => 'Nombre de likes masqué';
+
+  @override
+  String get postTurnOnCommenting => 'Activer les commentaires';
+
+  @override
+  String get postTurnOffCommenting => 'Désactiver les commentaires';
+
+  @override
+  String get postCommentsOnSnackbar => 'Commentaires activés';
+
+  @override
+  String get postCommentsOffSnackbar => 'Commentaires désactivés';
+
+  @override
+  String get viewPlacePosts => 'Voir les publications du lieu';
+
+  @override
+  String get eventOrganizerLabel => 'Organisateur';
+
+  @override
+  String get similarEventsSectionTitle => 'Événements similaires';
+
+  @override
+  String get errorGenericTitle => 'Une erreur s\'est produite';
 }

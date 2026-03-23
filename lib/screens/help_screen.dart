@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:tripoli_explorer/l10n/app_localizations.dart';
 import '../utils/responsive_utils.dart';
 
 class HelpScreen extends StatelessWidget {
@@ -7,10 +8,11 @@ class HelpScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: const Color(0xFFf8fafc),
       appBar: AppBar(
-        title: const Text('Help & Support'),
+        title: Text(l10n.helpSupportTitle),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
@@ -51,7 +53,7 @@ class HelpScreen extends StatelessWidget {
                 subtitle: 'support@tripoliexplorer.com',
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Email support coming soon')),
+                    SnackBar(content: Text(l10n.helpEmailComingSoon)),
                   );
                 },
               ),
@@ -61,7 +63,7 @@ class HelpScreen extends StatelessWidget {
                 subtitle: '+961 1 234 567',
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Phone support coming soon')),
+                    SnackBar(content: Text(l10n.helpPhoneComingSoon)),
                   );
                 },
               ),
@@ -78,7 +80,7 @@ class HelpScreen extends StatelessWidget {
                 title: 'User Guide',
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('User guide coming soon')),
+                    SnackBar(content: Text(l10n.helpUserGuideComingSoon)),
                   );
                 },
               ),
@@ -87,7 +89,7 @@ class HelpScreen extends StatelessWidget {
                 title: 'Video Tutorials',
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Video tutorials coming soon')),
+                    SnackBar(content: Text(l10n.helpVideoTutorialsComingSoon)),
                   );
                 },
               ),

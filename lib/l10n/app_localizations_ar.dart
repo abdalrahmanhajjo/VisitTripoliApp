@@ -127,10 +127,11 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get verifyEmailBtn => 'Verify';
+  String get verifyEmailBtn => 'تحقق';
 
   @override
-  String get verificationSent => 'تم إرسال email. تحقق من صندوق الوارد.';
+  String get verificationSent =>
+      'تم إرسال البريد الإلكتروني. تحقق من صندوق الوارد.';
 
   @override
   String get emailNotVerified => 'يرجى التحقق من بريدك الإلكتروني أولاً.';
@@ -274,10 +275,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get navTrips => 'رحلاتي';
 
   @override
-  String get coupons => 'Coupons';
+  String get coupons => 'القسائم';
 
   @override
-  String get dealsAndOffers => 'Deals & Offers';
+  String get dealsAndOffers => 'العروض والصفقات';
 
   @override
   String get savedPlaces => 'الأماكن المحفوظة';
@@ -1220,13 +1221,914 @@ class AppLocalizationsAr extends AppLocalizations {
   String get selectPlaceToPost => 'اختر مكانك للنشر';
 
   @override
-  String get communityEmptyTitle => 'No posts yet';
+  String get communityEmptyTitle => 'لا توجد منشورات بعد';
 
   @override
   String get communityEmptySubtitle =>
-      'Business owners can share updates here. Sign in to like and comment.';
+      'يمكن لأصحاب الأعمال مشاركة التحديثات هنا. سجّل الدخول للإعجاب والتعليق.';
 
   @override
   String get deletePostConfirm =>
-      'Are you sure you want to delete this post? This cannot be undone.';
+      'هل أنت متأكد أنك تريد حذف هذا المنشور؟ لا يمكن التراجع عن ذلك.';
+
+  @override
+  String get offlineBannerMessage =>
+      'لا يوجد اتصال — يمكنك متابعة تصفح المحتوى المحفوظ.';
+
+  @override
+  String get appRootSemanticsLabel =>
+      'زيارة طرابلس — استكشف الأماكن والجولات وخطط رحلتك';
+
+  @override
+  String get dealsTabRestaurantOffers => 'عروض المطاعم';
+
+  @override
+  String get dealsTabMyProposals => 'عروضي';
+
+  @override
+  String get dealsHavePromoCode => 'لديك رمز ترويجي؟';
+
+  @override
+  String get dealsEnterCodeHint => 'أدخل الرمز';
+
+  @override
+  String get dealsRedeem => 'استرداد';
+
+  @override
+  String get dealsActiveCoupons => 'القسائم النشطة';
+
+  @override
+  String get dealsNoActiveCoupons => 'لا توجد قسائم نشطة حالياً';
+
+  @override
+  String get dealsRedeemedTitle => 'تم الاسترداد!';
+
+  @override
+  String get dealsShowQrAtCheckout => 'اعرض رمز QR هذا عند الدفع';
+
+  @override
+  String get dealsPlaceVarious => 'متنوع';
+
+  @override
+  String dealsCodeCopied(String code) {
+    return 'تم نسخ الرمز $code';
+  }
+
+  @override
+  String dealsValidUntil(String date) {
+    return 'صالح حتى $date';
+  }
+
+  @override
+  String get dealsUsedLabel => 'مستخدم';
+
+  @override
+  String get dealsNoRestaurantOffers => 'لا توجد عروض مطاعم حالياً';
+
+  @override
+  String get dealsSendOfferTitle => 'أرسل عرضاً للمطعم';
+
+  @override
+  String get dealsSendOfferSubtitle =>
+      'اقترح صفقة أو عرضاً خاصاً على مطعمك المفضل';
+
+  @override
+  String get dealsNoRestaurantOffersShort => 'لا توجد عروض مطاعم بعد';
+
+  @override
+  String get dealsViewRestaurantDetails => 'عرض تفاصيل المطعم';
+
+  @override
+  String get dealsLogIn => 'تسجيل الدخول';
+
+  @override
+  String get dealsViewRestaurant => 'عرض المطعم';
+
+  @override
+  String get dealsSendOfferDialogTitle => 'أرسل عرضاً للمطعم';
+
+  @override
+  String get dealsSendOfferDialogSubtitle =>
+      'اقترح صفقة خاصة. قد ترد المطاعم بعروض مخصصة.';
+
+  @override
+  String get dealsSelectRestaurant => 'اختر المطعم';
+
+  @override
+  String get dealsNoRestaurantsAvailable =>
+      'لا توجد مطاعم متاحة. تصفّح الأماكن في الاستكشاف للعثور على مطاعم.';
+
+  @override
+  String get dealsChooseRestaurantHint => 'اختر مطعماً';
+
+  @override
+  String get dealsYourPhone => 'رقم هاتفك';
+
+  @override
+  String get dealsYourMessage => 'رسالتك';
+
+  @override
+  String get dealsSendProposal => 'إرسال العرض';
+
+  @override
+  String dealsPercentOff(int percent) {
+    return '$percent٪ خصم';
+  }
+
+  @override
+  String dealsAmountOff(String amount) {
+    return '$amount خصم';
+  }
+
+  @override
+  String get dealsWhatYouGet => 'ما الذي تحصل عليه';
+
+  @override
+  String get dealsHowToUseOffer => 'كيفية استخدام هذا العرض';
+
+  @override
+  String get dealsHowToUseOfferSteps =>
+      '1. زر المطعم خلال ساعات العمل.\n2. اعرض هذه الشاشة للطاقم قبل الطلب.\n3. يُطبَّق الخصم وفق شروط المطعم.';
+
+  @override
+  String get dealsInRestaurantOnly => 'داخل المطعم فقط';
+
+  @override
+  String get postSortNewestFirst => 'الأحدث أولاً';
+
+  @override
+  String get postSortMostPopular => 'الأكثر شعبية';
+
+  @override
+  String get postSortOldestFirst => 'الأقدم أولاً';
+
+  @override
+  String get postSortNewest => 'الأحدث';
+
+  @override
+  String get postSortOldest => 'الأقدم';
+
+  @override
+  String get postSortPopular => 'شائع';
+
+  @override
+  String get feedPostSingular => 'منشور';
+
+  @override
+  String get feedPostPlural => 'منشورات';
+
+  @override
+  String get commentsDisabledForPost => 'التعليقات مُعطّلة لهذا المنشور';
+
+  @override
+  String get postDeleted => 'تم حذف المنشور';
+
+  @override
+  String get postDeleteTitle => 'حذف المنشور';
+
+  @override
+  String get communityShare => 'مشاركة';
+
+  @override
+  String get communityCopyLink => 'نسخ الرابط';
+
+  @override
+  String get communityReportPost => 'الإبلاغ عن المنشور';
+
+  @override
+  String get communityReport => 'إبلاغ';
+
+  @override
+  String get communityEmbed => 'تضمين';
+
+  @override
+  String get communityEmbedInstructions =>
+      'انسخ هذا الرمز لتضمين المنشور في موقعك:';
+
+  @override
+  String get communityCopyCode => 'نسخ الرمز';
+
+  @override
+  String get linkCopied => 'تم نسخ الرابط';
+
+  @override
+  String get sharePostSubject => 'اطلع على هذا المنشور من زيارة طرابلس';
+
+  @override
+  String get reportPostConfirmBody =>
+      'هل تريد الإبلاغ عن هذا المنشور؟ سيراجعه فريقنا.';
+
+  @override
+  String get postReportedThanks => 'تم الإبلاغ عن المنشور. شكراً لك.';
+
+  @override
+  String get embedCodeCopied => 'تم نسخ رمز التضمين';
+
+  @override
+  String get deleteCommentTitle => 'حذف التعليق';
+
+  @override
+  String get deleteCommentMessage => 'هل أنت متأكد أنك تريد حذف هذا التعليق؟';
+
+  @override
+  String get editCommentTitle => 'تعديل التعليق';
+
+  @override
+  String get commentDeleted => 'تم حذف التعليق';
+
+  @override
+  String get commentCannotBeEmpty => 'لا يمكن أن يكون التعليق فارغاً';
+
+  @override
+  String get eventInfoCopied => 'تم نسخ معلومات الفعالية';
+
+  @override
+  String get eventNotFoundTitle => 'الفعالية غير موجودة';
+
+  @override
+  String get eventNotFoundBody => 'لم يتم العثور على الفعالية';
+
+  @override
+  String get eventNoLinkedVenue => 'لا يوجد مكان مرتبط بهذه الفعالية';
+
+  @override
+  String get eventAddToTripTitle => 'أضف إلى الرحلة';
+
+  @override
+  String get eventNoTripsCreateFirst => 'لا توجد رحلات. أنشئ رحلة جديدة أولاً.';
+
+  @override
+  String get eventVenueAddedToTrip => 'تمت إضافة مكان الفعالية إلى الرحلة';
+
+  @override
+  String get createNewTripTitle => 'إنشاء رحلة جديدة';
+
+  @override
+  String get openLink => 'فتح الرابط';
+
+  @override
+  String get directions => 'الاتجاهات';
+
+  @override
+  String get viewOnMap => 'عرض على الخريطة';
+
+  @override
+  String get venue => 'المكان';
+
+  @override
+  String get eventDetailsTitle => 'تفاصيل الفعالية';
+
+  @override
+  String get eventOverviewTab => 'نظرة عامة';
+
+  @override
+  String get eventMapTab => 'الخريطة';
+
+  @override
+  String get eventNoMapLocation => 'لا يوجد موقع على الخريطة لهذه الفعالية';
+
+  @override
+  String get dealsLoginToSeeProposals => 'سجّل الدخول لعرض عروضك';
+
+  @override
+  String get dealsProposalsLoginSubtitle => 'ستظهر هنا طلباتك للمطاعم وردودها.';
+
+  @override
+  String get dealsNoProposalsYet => 'لا توجد عروض بعد';
+
+  @override
+  String get dealsNoProposalsSubtitle =>
+      'أرسل طلب عرض من تبويب عروض المطاعم. سترد المطاعم هنا.';
+
+  @override
+  String get dealsProposalStatusReplied => 'تم الرد';
+
+  @override
+  String get dealsProposalStatusPending => 'قيد الانتظار';
+
+  @override
+  String get dealsRestaurantResponse => 'رد المطعم';
+
+  @override
+  String get dealsRestaurantDefault => 'مطعم';
+
+  @override
+  String get dealsProposalSentSuccess => 'تم إرسال العرض إلى المطعم!';
+
+  @override
+  String get dealsEnterPhoneRequired => 'يرجى إدخال رقم هاتفك';
+
+  @override
+  String get dealsPhoneHintExample => 'مثال: +961 3 123 456';
+
+  @override
+  String get dealsMessageHintExample =>
+      'مثال: أود خصم 15٪ على الغداء في أيام الأسبوع...';
+
+  @override
+  String get apiServerUrlTitle => 'عنوان خادم API';
+
+  @override
+  String get serverUrlSavedMessage =>
+      'تم حفظ عنوان الخادم. أعد التشغيل أو التحديث لاستخدامه.';
+
+  @override
+  String get darkThemeComingSoon => 'الوضع الداكن قريباً';
+
+  @override
+  String get downloadingYourData => 'جارٍ تنزيل بياناتك...';
+
+  @override
+  String get clearCacheTitle => 'مسح الذاكرة المؤقتة';
+
+  @override
+  String get cacheCleared => 'تم مسح الذاكرة المؤقتة';
+
+  @override
+  String get privacyPolicy => 'سياسة الخصوصية';
+
+  @override
+  String get termsOfService => 'شروط الخدمة';
+
+  @override
+  String get termsComingSoon => 'شروط الخدمة قريباً';
+
+  @override
+  String get openSourceLicenses => 'تراخيص مفتوحة المصدر';
+
+  @override
+  String get openSourceLicensesComingSoon => 'تراخيص المصدر المفتوح قريباً';
+
+  @override
+  String get helpSupportTitle => 'المساعدة والدعم';
+
+  @override
+  String get helpEmailComingSoon => 'دعم البريد الإلكتروني قريباً';
+
+  @override
+  String get helpPhoneComingSoon => 'دعم الهاتف قريباً';
+
+  @override
+  String get helpUserGuideComingSoon => 'دليل المستخدم قريباً';
+
+  @override
+  String get helpVideoTutorialsComingSoon => 'دروس فيديو قريباً';
+
+  @override
+  String get signUpWithGoogle => 'التسجيل باستخدام Google';
+
+  @override
+  String get signUpWithApple => 'التسجيل باستخدام Apple';
+
+  @override
+  String get sectionVisitorTips => 'نصائح للزوار';
+
+  @override
+  String get communityGoToPost => 'الانتقال إلى المنشور';
+
+  @override
+  String errorWithDetails(String details) {
+    return 'خطأ: $details';
+  }
+
+  @override
+  String get adminDeleteUserTitle => 'حذف المستخدم؟';
+
+  @override
+  String get adminDeleteUserBody => 'سيتم إزالة هذا المستخدم نهائياً.';
+
+  @override
+  String get adminDeleteCategoryTitle => 'حذف التصنيف؟';
+
+  @override
+  String get adminDeleteCategoryBody => 'سيتم إزالة هذا التصنيف نهائياً.';
+
+  @override
+  String get adminDeleteTourTitle => 'حذف الجولة؟';
+
+  @override
+  String get adminDeleteTourBody => 'سيتم إزالة هذه الجولة نهائياً.';
+
+  @override
+  String get adminDeleteInterestTitle => 'حذف الاهتمام؟';
+
+  @override
+  String get adminDeleteInterestBody => 'سيتم إزالة هذا الاهتمام نهائياً.';
+
+  @override
+  String get adminDeletePlaceTitle => 'حذف المكان؟';
+
+  @override
+  String get adminDeletePlaceBody =>
+      'سيتم إزالة هذا المكان نهائياً. لا يمكن التراجع.';
+
+  @override
+  String get adminDeleteEventTitle => 'حذف الفعالية؟';
+
+  @override
+  String get adminDeleteEventBody => 'سيتم إزالة هذه الفعالية نهائياً.';
+
+  @override
+  String get adminUserDeletedSuccess => 'تم حذف المستخدم بنجاح';
+
+  @override
+  String get adminCategoryDeletedSuccess => 'تم حذف التصنيف بنجاح';
+
+  @override
+  String get adminTourDeletedSuccess => 'تم حذف الجولة بنجاح';
+
+  @override
+  String get adminInterestDeletedSuccess => 'تم حذف الاهتمام بنجاح';
+
+  @override
+  String get adminEventDeletedSuccess => 'تم حذف الفعالية بنجاح';
+
+  @override
+  String get adminPlaceDeletedSuccess => 'تم حذف المكان';
+
+  @override
+  String get adminEditUser => 'تعديل مستخدم';
+
+  @override
+  String get adminAddUser => 'إضافة مستخدم';
+
+  @override
+  String get adminEditCategory => 'تعديل تصنيف';
+
+  @override
+  String get adminAddCategory => 'إضافة تصنيف';
+
+  @override
+  String get adminEditTour => 'تعديل جولة';
+
+  @override
+  String get adminAddTour => 'إضافة جولة';
+
+  @override
+  String get adminEditInterest => 'تعديل اهتمام';
+
+  @override
+  String get adminAddInterest => 'إضافة اهتمام';
+
+  @override
+  String get adminEditPlace => 'تعديل مكان';
+
+  @override
+  String get adminAddPlace => 'إضافة مكان';
+
+  @override
+  String get adminEditEvent => 'تعديل فعالية';
+
+  @override
+  String get adminAddEvent => 'إضافة فعالية';
+
+  @override
+  String get adminUpdateUser => 'تحديث المستخدم';
+
+  @override
+  String get adminCreateUser => 'إنشاء مستخدم';
+
+  @override
+  String get adminUpdateCategory => 'تحديث التصنيف';
+
+  @override
+  String get adminCreateCategory => 'إنشاء تصنيف';
+
+  @override
+  String get adminUpdateTour => 'تحديث الجولة';
+
+  @override
+  String get adminCreateTour => 'إنشاء جولة';
+
+  @override
+  String get adminUpdateInterest => 'تحديث الاهتمام';
+
+  @override
+  String get adminCreateInterest => 'إنشاء اهتمام';
+
+  @override
+  String get adminUpdatePlace => 'تحديث المكان';
+
+  @override
+  String get adminCreatePlace => 'إنشاء مكان';
+
+  @override
+  String get adminUpdateEvent => 'تحديث الفعالية';
+
+  @override
+  String get adminCreateEvent => 'إنشاء فعالية';
+
+  @override
+  String get adminIsAdmin => 'مسؤول';
+
+  @override
+  String get adminPasswordRequiredNewUsers =>
+      'كلمة المرور مطلوبة للمستخدمين الجدد';
+
+  @override
+  String get adminSnackUserCreated => 'تم إنشاء المستخدم';
+
+  @override
+  String get adminSnackUserUpdated => 'تم تحديث المستخدم';
+
+  @override
+  String get adminSnackCategoryCreated => 'تم إنشاء التصنيف';
+
+  @override
+  String get adminSnackCategoryUpdated => 'تم تحديث التصنيف';
+
+  @override
+  String get adminSnackTourCreated => 'تم إنشاء الجولة';
+
+  @override
+  String get adminSnackTourUpdated => 'تم تحديث الجولة';
+
+  @override
+  String get adminSnackInterestCreated => 'تم إنشاء الاهتمام';
+
+  @override
+  String get adminSnackInterestUpdated => 'تم تحديث الاهتمام';
+
+  @override
+  String get adminSnackPlaceCreated => 'تم إنشاء المكان';
+
+  @override
+  String get adminSnackPlaceUpdated => 'تم تحديث المكان';
+
+  @override
+  String get adminSnackEventCreated => 'تم إنشاء الفعالية';
+
+  @override
+  String get adminSnackEventUpdated => 'تم تحديث الفعالية';
+
+  @override
+  String get adminAddPlaceButton => 'إضافة مكان';
+
+  @override
+  String get refreshData => 'تحديث البيانات';
+
+  @override
+  String get businessDashboardTitle => 'لوحة الأعمال';
+
+  @override
+  String get openBusinessDashboard => 'فتح لوحة الأعمال';
+
+  @override
+  String get signInAsAdmin => 'تسجيل الدخول كمسؤول';
+
+  @override
+  String get overview => 'نظرة عامة';
+
+  @override
+  String get businessEditPlace => 'تعديل المكان';
+
+  @override
+  String get businessUpdatePlace => 'تحديث المكان';
+
+  @override
+  String get businessPlaceUpdated => 'تم تحديث المكان بنجاح';
+
+  @override
+  String get imageUploadedAndAdded => 'تم رفع الصورة وإضافتها';
+
+  @override
+  String uploadFailedWithError(String error) {
+    return 'فشل الرفع: $error';
+  }
+
+  @override
+  String get uploadingEllipsis => 'جارٍ الرفع...';
+
+  @override
+  String get uploadImage => 'رفع صورة';
+
+  @override
+  String get mapTapAnyPointRouteStart =>
+      'اضغط على أي نقطة على الخريطة لاختيار بداية المسار';
+
+  @override
+  String get mapRouteCalculationFailed =>
+      'تعذر حساب المسار داخل التطبيق. جرّب وضعاً آخر.';
+
+  @override
+  String get mapSearchDestinationFromMain =>
+      'ابحث عن الوجهة من الخريطة الرئيسية';
+
+  @override
+  String get mapExit => 'خروج';
+
+  @override
+  String get mapDirectionsFullTour => 'الاتجاهات للجولة كاملة';
+
+  @override
+  String get mapStepsAndMore => 'الخطوات والمزيد';
+
+  @override
+  String get mapHideSteps => 'إخفاء الخطوات';
+
+  @override
+  String get mapViewOnMapLowercase => 'عرض على الخريطة';
+
+  @override
+  String get mapPlaceDetails => 'تفاصيل المكان';
+
+  @override
+  String get placeNotFoundTitle => 'المكان غير موجود';
+
+  @override
+  String get placeNotFoundBody => 'لم يتم العثور على المكان';
+
+  @override
+  String placeNewBadge(String names) {
+    return 'شارة جديدة: $names';
+  }
+
+  @override
+  String bookPlaceTitle(String name) {
+    return 'احجز $name';
+  }
+
+  @override
+  String get confirmBooking => 'تأكيد الحجز';
+
+  @override
+  String get placeAddedToTrip => 'تمت إضافة المكان إلى الرحلة';
+
+  @override
+  String get readMore => 'اقرأ المزيد';
+
+  @override
+  String get checkIn => 'تسجيل الدخول';
+
+  @override
+  String get book => 'احجز';
+
+  @override
+  String get howToGetThere => 'كيفية الوصول';
+
+  @override
+  String get deleteReviewTitle => 'حذف التقييم؟';
+
+  @override
+  String get rateThisPlace => 'قيّم هذا المكان';
+
+  @override
+  String get viewAllReviews => 'عرض كل التقييمات';
+
+  @override
+  String get recentReviews => 'أحدث التقييمات';
+
+  @override
+  String get reviewsTitle => 'التقييمات';
+
+  @override
+  String get addReview => 'إضافة تقييم';
+
+  @override
+  String get tourInfoCopied => 'تم نسخ معلومات الجولة';
+
+  @override
+  String get tourNotFoundTitle => 'الجولة غير موجودة';
+
+  @override
+  String get tourNotFoundBody => 'لم يتم العثور على الجولة';
+
+  @override
+  String get tourNoPlaces => 'لا توجد أماكن في هذه الجولة';
+
+  @override
+  String get addTourToTripTitle => 'إضافة الجولة إلى الرحلة';
+
+  @override
+  String get tourStartAddedToTrip => 'تمت إضافة بداية الجولة إلى الرحلة';
+
+  @override
+  String get fullItinerary => 'البرنامج الكامل';
+
+  @override
+  String get viewMap => 'عرض الخريطة';
+
+  @override
+  String get tourStopsTitle => 'محطات الجولة';
+
+  @override
+  String get fullMap => 'خريطة كاملة';
+
+  @override
+  String get shareLinkCreated => 'تم إنشاء رابط المشاركة';
+
+  @override
+  String shareFailedWithError(String error) {
+    return 'فشلت المشاركة: $error';
+  }
+
+  @override
+  String get configureYourPlan => 'اضبط خطتك';
+
+  @override
+  String get placesPerDay => 'أماكن في اليوم';
+
+  @override
+  String placesPerDayExactly(int count) {
+    return 'بالضبط $count أماكن كل يوم';
+  }
+
+  @override
+  String placesAndPeopleSummary(String places, String people) {
+    return '$places أماكن · $people أشخاص';
+  }
+
+  @override
+  String get plannerActivityLogTitle => 'عرض / تعديل سجل النشاط';
+
+  @override
+  String get plannerActivityLogSubtitle =>
+      'آخر 120 إجراءً — احذف عناصر أو امسح';
+
+  @override
+  String get plannerTripAlreadyOnDate => 'لديك بالفعل رحلة في هذا التاريخ.';
+
+  @override
+  String get tripSavedExclamation => 'تم حفظ الرحلة!';
+
+  @override
+  String get plannerCurrentLabel => 'الحالي';
+
+  @override
+  String get plannerTryAgain => 'حاول مجدداً';
+
+  @override
+  String get creatingYourPlan => 'جارٍ إنشاء خطتك...';
+
+  @override
+  String get plannerNoPlacesToChoose => 'لا توجد أماكن للاختيار منها.';
+
+  @override
+  String get editTime => 'تعديل الوقت';
+
+  @override
+  String get ok => 'موافق';
+
+  @override
+  String get reelsEmptyTitle => 'لا يوجد ريلز بعد';
+
+  @override
+  String get reelsEmptySubtitle => 'ستظهر منشورات الفيديو هنا';
+
+  @override
+  String get backToFeed => 'العودة إلى الخلاصة';
+
+  @override
+  String get deleteReelTitle => 'حذف الريل';
+
+  @override
+  String get deleteReelConfirm => 'هل تريد حذف هذا الريل؟ لا يمكن التراجع.';
+
+  @override
+  String get reelsLoginToComment => 'سجّل الدخول للتعليق';
+
+  @override
+  String get reply => 'رد';
+
+  @override
+  String get loadingProfile => 'جارٍ تحميل الملف...';
+
+  @override
+  String get sendResponse => 'إرسال الرد';
+
+  @override
+  String get customerProposalsTitle => 'عروض العملاء';
+
+  @override
+  String get yourResponse => 'ردك';
+
+  @override
+  String get respond => 'ردّ';
+
+  @override
+  String get emailSmtpSetupTitle => 'إعداد البريد / SMTP';
+
+  @override
+  String get scanQrCheckInTitle => 'امسح رمز QR لتسجيل الدخول';
+
+  @override
+  String get videoCouldNotPlay => 'تعذر تشغيل الفيديو';
+
+  @override
+  String get deleteCommentCannotUndo => 'لا يمكن التراجع عن هذا.';
+
+  @override
+  String get commentsTitle => 'التعليقات';
+
+  @override
+  String get emailConfigSave => 'حفظ';
+
+  @override
+  String get submit => 'إرسال';
+
+  @override
+  String get tryAgain => 'حاول مجدداً';
+
+  @override
+  String get deleteTooltip => 'حذف';
+
+  @override
+  String get settingsGeneral => 'عام';
+
+  @override
+  String get settingsTheme => 'المظهر';
+
+  @override
+  String get settingsThemeLight => 'فاتح';
+
+  @override
+  String get settingsNotifications => 'الإشعارات';
+
+  @override
+  String get settingsPushNotifications => 'إشعارات الدفع';
+
+  @override
+  String get settingsEnabled => 'مفعّل';
+
+  @override
+  String get settingsEmailNotifications => 'إشعارات البريد';
+
+  @override
+  String get settingsDisabled => 'معطّل';
+
+  @override
+  String get settingsServerSection => 'الخادم';
+
+  @override
+  String get settingsDefaultCloud => 'افتراضي (السحابة)';
+
+  @override
+  String get settingsEmailSmtpSubtitle =>
+      'اضبط SMTP لإعادة تعيين كلمة المرور ورسائل التحقق';
+
+  @override
+  String get settingsDataPrivacy => 'البيانات والخصوصية';
+
+  @override
+  String get settingsDownloadData => 'تنزيل البيانات';
+
+  @override
+  String get settingsClearCacheMessage =>
+      'سيُمسح كل المحتوى المخزّن مؤقتاً. المتابعة؟';
+
+  @override
+  String get apiServerUrlDialogBody =>
+      'عنوان خادم API. الافتراضي هو السحابة (https://tripoli-explorer-api.onrender.com). غيّره فقط إذا استخدمت خادماً مختلفاً.';
+
+  @override
+  String get serverUrlLabel => 'عنوان الخادم';
+
+  @override
+  String get serverUrlInvalid =>
+      'أدخل عنوان URL صالحاً (مثال https://example.com)';
+
+  @override
+  String get postAddToFavorites => 'إضافة إلى المفضلة';
+
+  @override
+  String get postRemoveFromFavorites => 'إزالة من المفضلة';
+
+  @override
+  String get communityShareTo => 'مشاركة إلى...';
+
+  @override
+  String get postShowLikeCountToOthers => 'إظهار عدد الإعجابات للآخرين';
+
+  @override
+  String get postHideLikeCountToOthers => 'إخفاء عدد الإعجابات عن الآخرين';
+
+  @override
+  String get postLikeCountVisibleSnackbar => 'عدد الإعجابات ظاهر';
+
+  @override
+  String get postLikeCountHiddenSnackbar => 'عدد الإعجابات مخفي';
+
+  @override
+  String get postTurnOnCommenting => 'تشغيل التعليقات';
+
+  @override
+  String get postTurnOffCommenting => 'إيقاف التعليقات';
+
+  @override
+  String get postCommentsOnSnackbar => 'التعليقات مفعّلة';
+
+  @override
+  String get postCommentsOffSnackbar => 'التعليقات معطّلة';
+
+  @override
+  String get viewPlacePosts => 'عرض منشورات المكان';
+
+  @override
+  String get eventOrganizerLabel => 'المنظّم';
+
+  @override
+  String get similarEventsSectionTitle => 'فعاليات مشابهة';
+
+  @override
+  String get errorGenericTitle => 'حدث خطأ ما';
 }

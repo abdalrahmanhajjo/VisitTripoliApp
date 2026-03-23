@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:tripoli_explorer/l10n/app_localizations.dart';
 
 import '../cache/app_cache_manager.dart';
 
@@ -12,6 +13,7 @@ class ReelVideoImpl extends StatefulWidget {
   final bool isActive;
   final bool isMuted;
   final VoidCallback onMuteToggled;
+  final bool showMuteButton;
 
   const ReelVideoImpl({
     super.key,
@@ -21,6 +23,7 @@ class ReelVideoImpl extends StatefulWidget {
     required this.isActive,
     required this.isMuted,
     required this.onMuteToggled,
+    this.showMuteButton = false,
   });
 
   @override
@@ -103,6 +106,10 @@ class _ReelVideoImplState extends State<ReelVideoImpl> with WidgetsBindingObserv
     c?.dispose();
   }
 
+  void _toggleMute() {
+    widget.onMuteToggled();
+  }
+
   void _syncPlayback() {
     final c = _controller;
     if (c == null || !c.value.isInitialized) return;
@@ -115,10 +122,6 @@ class _ReelVideoImplState extends State<ReelVideoImpl> with WidgetsBindingObserv
     } else {
       c.pause();
     }
-  }
-
-  void _toggleMute() {
-    widget.onMuteToggled();
   }
 
   @override
@@ -137,13 +140,16 @@ class _ReelVideoImplState extends State<ReelVideoImpl> with WidgetsBindingObserv
     if (_initFailed) {
       return Container(
         color: const Color(0xFF0D0D0D),
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline_rounded, size: 48, color: Colors.white38),
-              SizedBox(height: 12),
-              Text('Could not play video', style: TextStyle(color: Colors.white54, fontSize: 15)),
+              const Icon(Icons.error_outline_rounded, size: 48, color: Colors.white38),
+              const SizedBox(height: 12),
+              Text(
+                AppLocalizations.of(context)!.videoCouldNotPlay,
+                style: const TextStyle(color: Colors.white54, fontSize: 15),
+              ),
             ],
           ),
         ),
@@ -221,26 +227,27 @@ class _ReelVideoImplState extends State<ReelVideoImpl> with WidgetsBindingObserv
                   minHeight: 2.5,
                 ),
               ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: GestureDetector(
-                onTap: _toggleMute,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: const BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    widget.isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                    color: Colors.white,
-                    size: 20,
+            if (widget.showMuteButton)
+              Positioned(
+                top: 12,
+                right: 12,
+                child: GestureDetector(
+                  onTap: _toggleMute,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      widget.isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         );
       },

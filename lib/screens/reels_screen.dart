@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'dart:async' show unawaited;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -130,7 +130,7 @@ class _ReelsScreenState extends State<ReelsScreen> {
               context.go('/login?redirect=${Uri.encodeComponent('/community/reels')}');
               return;
             }
-            feed.toggleLike(auth.authToken!, post.id);
+            unawaited(feed.toggleLike(auth.authToken!, post.id));
           },
           onComment: () => _openComments(post),
           onShare: () {
@@ -392,7 +392,7 @@ class _ReelPageState extends State<_ReelPage> with TickerProviderStateMixin {
   }
 
   void _onDoubleTap() {
-    AppFeedback.success(context, 'Post liked'); // Double tap burst
+    HapticFeedback.lightImpact();
     widget.onLike();
     setState(() => _showHeart = true);
     _heartCtrl.forward(from: 0).then((_) {
@@ -542,12 +542,21 @@ class _ReelPageState extends State<_ReelPage> with TickerProviderStateMixin {
             ),
           ),
 
-          // ── Right-side action buttons ──
+          // ── Right-side action buttons (sound at top of rail — TikTok-style) ──
           Positioned(
             right: 12,
             bottom: safeBottom + 80,
             child: Column(
               children: [
+                _ReelActionButton(
+                  icon: widget.isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                  label: 'Sound',
+                  onTap: () {
+                    AppFeedback.selection();
+                    widget.onMuteToggled();
+                  },
+                ),
+                const SizedBox(height: 22),
                 _ReelActionButton(
                   icon: post.likedByMe ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                   label: _fmt(post.likeCount),

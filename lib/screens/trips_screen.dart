@@ -18,6 +18,7 @@ import '../utils/app_share.dart';
 import '../utils/responsive_utils.dart';
 import 'trips/trip_details_modal.dart';
 import 'trips/trip_form_modal.dart';
+import 'trips/trip_route_map.dart';
 import 'trips/trips_list_logic.dart';
 
 class _TripsResponsive {
@@ -286,11 +287,12 @@ class _TripsScreenState extends State<TripsScreen> {
         onShare: () => _shareTrip(ctx, trip),
         onOpenMap: () {
           Navigator.pop(ctx);
-          final ids = Provider.of<TripsProvider>(context)
-              .getPlaceIdsForTrip(trip)
-              .join(',');
-          context.push('/map?tripOnly=true&placeIds=$ids');
+          Future.microtask(() {
+            if (!context.mounted) return;
+            openTripRouteOnMap(context, trip);
+          });
         },
+        onOpenPlace: (placeId) => context.push('/place/$placeId'),
       ),
     );
   }
@@ -860,6 +862,54 @@ class _TripsSummary extends StatelessWidget {
   }
 }
 
+class _TripSortChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TripSortChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: selected
+                  ? AppTheme.primaryColor
+                  : AppTheme.surfaceVariant.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected ? AppTheme.primaryColor : AppTheme.borderColor,
+                width: selected ? 2 : 1,
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: selected ? Colors.white : AppTheme.textPrimary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TripsListToolbar extends StatelessWidget {
   final TripSortMode sortMode;
   final ValueChanged<TripSortMode> onSortChanged;
@@ -955,49 +1005,25 @@ class _TripsListToolbar extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              ChoiceChip(
-                label: Text(l10n.tripsSortSmart),
+              _TripSortChip(
+                label: l10n.tripsSortSmart,
                 selected: sortMode == TripSortMode.smart,
-                onSelected: (_) => onSortChanged(TripSortMode.smart),
-                showCheckmark: false,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-                labelPadding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                onTap: () => onSortChanged(TripSortMode.smart),
               ),
-              const SizedBox(width: 6),
-              ChoiceChip(
-                label: Text(l10n.tripsSortStartDate),
+              _TripSortChip(
+                label: l10n.tripsSortStartDate,
                 selected: sortMode == TripSortMode.startSoonest,
-                onSelected: (_) => onSortChanged(TripSortMode.startSoonest),
-                showCheckmark: false,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-                labelPadding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                onTap: () => onSortChanged(TripSortMode.startSoonest),
               ),
-              const SizedBox(width: 6),
-              ChoiceChip(
-                label: Text(l10n.tripsSortRecent),
+              _TripSortChip(
+                label: l10n.tripsSortRecent,
                 selected: sortMode == TripSortMode.recentlyCreated,
-                onSelected: (_) =>
-                    onSortChanged(TripSortMode.recentlyCreated),
-                showCheckmark: false,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-                labelPadding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                onTap: () => onSortChanged(TripSortMode.recentlyCreated),
               ),
-              const SizedBox(width: 6),
-              ChoiceChip(
-                label: Text(l10n.tripsSortName),
+              _TripSortChip(
+                label: l10n.tripsSortName,
                 selected: sortMode == TripSortMode.nameAtoZ,
-                onSelected: (_) => onSortChanged(TripSortMode.nameAtoZ),
-                showCheckmark: false,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-                labelPadding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                onTap: () => onSortChanged(TripSortMode.nameAtoZ),
               ),
             ],
           ),
@@ -1321,6 +1347,7 @@ class _TripCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final narrowCard = MediaQuery.sizeOf(context).width < 360;
     final places = placeIds
         .map((id) => placesProvider.getPlaceById(id))
         .whereType<Place>()
@@ -1378,7 +1405,8 @@ class _TripCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    if (trip.description != null &&
+                    if (!narrowCard &&
+                        trip.description != null &&
                         trip.description!.trim().isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Text(
@@ -1441,76 +1469,78 @@ class _TripCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        if (places.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceVariant,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              AppLocalizations.of(context)!.noPlacesYet,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.textSecondary,
+                    if (!narrowCard) ...[
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          if (places.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: AppTheme.surfaceVariant,
+                                borderRadius: BorderRadius.circular(999),
                               ),
-                            ),
-                          )
-                        else
-                          ...places.take(3).map(
-                                (p) => Container(
-                                  constraints: const BoxConstraints(
-                                    maxWidth: 220,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 5,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primaryColor
-                                        .withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    p.name,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppTheme.textPrimary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                              child: Text(
+                                AppLocalizations.of(context)!.noPlacesYet,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textSecondary,
                                 ),
                               ),
-                        if (places.length > 3)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.surfaceVariant,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              AppLocalizations.of(context)!
-                                  .moreCount(places.length - 3),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: AppTheme.textSecondary,
+                            )
+                          else
+                            ...places.take(3).map(
+                                  (p) => Container(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 220,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryColor
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Text(
+                                      p.name,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                          if (places.length > 3)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.surfaceVariant,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                AppLocalizations.of(context)!
+                                    .moreCount(places.length - 3),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.textSecondary,
+                                ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

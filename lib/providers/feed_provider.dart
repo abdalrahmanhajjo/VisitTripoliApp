@@ -473,12 +473,17 @@ class FeedProvider extends ChangeNotifier {
     try {
       final res = await _service.toggleLike(authToken: authToken, postId: postId);
       final confirmed = old.copyWith(likedByMe: res.liked, likeCount: res.likeCount);
-      _apply(confirmed);
-      // Remove from likedPosts if unliked
+      var needsNotify = false;
+      if (confirmed.likedByMe != optimistic.likedByMe ||
+          confirmed.likeCount != optimistic.likeCount) {
+        _apply(confirmed);
+        needsNotify = true;
+      }
       if (!res.liked && likedIdx >= 0) {
         _likedPosts = _likedPosts.where((p) => p.id != postId).toList();
+        needsNotify = true;
       }
-      notifyListeners();
+      if (needsNotify) notifyListeners();
       return res.liked;
     } catch (_) {
       // Rollback on failure

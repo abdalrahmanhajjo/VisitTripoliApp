@@ -21,6 +21,7 @@ import '../utils/responsive_utils.dart';
 import '../widgets/route_origin_picker.dart';
 import '../map/embedded_maps.dart';
 import '../map/place_coordinates.dart';
+import 'package:tripoli_explorer/l10n/app_localizations.dart';
 
 class TourDetailScreen extends StatefulWidget {
   final String tourId;
@@ -475,8 +476,9 @@ class _TourOverviewTab extends StatelessWidget {
               _TourAudioGuidesSection(tourId: tour.id),
               SizedBox(height: gap * 1.16),
               // Description
-              const _TourSectionHeader(
-                  icon: Icons.article_outlined, title: 'About'),
+              _TourSectionHeader(
+                  icon: Icons.article_outlined,
+                  title: AppLocalizations.of(context)!.about),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -636,8 +638,9 @@ class _TourOverviewTab extends StatelessWidget {
           ],
           // Visitor tips
           const SizedBox(height: 28),
-          const _TourSectionHeader(
-              icon: Icons.lightbulb_outline_rounded, title: 'Visitor Tips'),
+          _TourSectionHeader(
+              icon: Icons.lightbulb_outline_rounded,
+              title: AppLocalizations.of(context)!.sectionVisitorTips),
           const SizedBox(height: 12),
           ..._visitorTips(tour).map(
             (tip) => Padding(

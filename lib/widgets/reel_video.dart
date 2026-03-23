@@ -11,6 +11,9 @@ class ReelVideo extends StatelessWidget {
   final bool isActive;
   final bool isMuted;
   final VoidCallback onMuteToggled;
+  /// When false (default), no mute chip is drawn on the video — use for Reels where mute lives on the action rail.
+  /// Set true for inline/feed/dialog players that need an on-video control.
+  final bool showMuteButton;
 
   const ReelVideo({
     super.key,
@@ -20,6 +23,7 @@ class ReelVideo extends StatelessWidget {
     required this.isActive,
     required this.isMuted,
     required this.onMuteToggled,
+    this.showMuteButton = false,
   });
 
   @override
@@ -31,6 +35,7 @@ class ReelVideo extends StatelessWidget {
       isActive: isActive,
       isMuted: isMuted,
       onMuteToggled: onMuteToggled,
+      showMuteButton: showMuteButton,
     );
   }
 }

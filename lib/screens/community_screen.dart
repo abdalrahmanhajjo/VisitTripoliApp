@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'dart:async' show unawaited;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +16,7 @@ import '../providers/interests_provider.dart';
 import '../services/feed_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/feedback_utils.dart';
 import '../utils/feed_delete_permissions.dart';
 import '../utils/feed_media_precache.dart';
 import '../utils/feed_video_autoplay_controller.dart';
@@ -257,9 +258,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
       barrierDismissible: true,
       barrierColor: Colors.black87,
       builder: (ctx) {
-        bool isLiking = false;
-        bool isSaving = false;
-
         return StatefulBuilder(
           builder: (ctx2, setState) {
             final current = feed.posts
@@ -327,16 +325,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 );
               }
             } else if (current.videoUrl != null && current.videoUrl!.isNotEmpty) {
-              media = StatefulBuilder(
-                builder: (context, setModalState) {
-                  return ReelVideo(
-                    reelId: 'fullpost-${current.id}',
-                    videoUrl: current.videoUrl!,
-                    isActive: true,
-                    isMuted: true, // Start muted for dialog
-                    onMuteToggled: () => setModalState(() {}),
-                  );
-                },
+              media = _DialogReelVideo(
+                reelId: 'fullpost-${current.id}',
+                videoUrl: current.videoUrl!,
+                thumbnailUrl: current.imageUrl,
               );
             } else {
               media = const SizedBox.shrink();
@@ -454,23 +446,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                 count: current.hideLikes && !isLoggedIn
                                     ? null
                                     : current.likeCount,
-                                isLoading: isLiking,
-                                onTap: () async {
+                                onTap: () {
                                   if (authToken == null || authToken.isEmpty) {
                                     Navigator.pop(ctx2);
                                     context.go(
                                         '/login?redirect=${Uri.encodeComponent('/community')}');
                                     return;
                                   }
-                                  if (isLiking) return;
-                                  setState(() => isLiking = true);
-                                  try {
-                                    await feed.toggleLike(authToken, current.id);
-                                  } finally {
-                                    if (ctx2.mounted) {
-                                      setState(() => isLiking = false);
-                                    }
-                                  }
+                                  AppFeedback.selection();
+                                  unawaited(feed.toggleLike(authToken, current.id));
                                 },
                               ),
                               const SizedBox(width: 18),
@@ -499,18 +483,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                   iconColor: current.savedByMe
                                       ? AppTheme.primaryColor
                                       : AppTheme.textSecondary,
-                                  isLoading: isSaving,
-                                  onTap: () async {
-                                    if (isSaving) return;
-                                    setState(() => isSaving = true);
-                                    try {
-                                      await feed.toggleSave(
-                                          authToken, current.id);
-                                    } finally {
-                                      if (ctx2.mounted) {
-                                        setState(() => isSaving = false);
-                                      }
-                                    }
+                                  onTap: () {
+                                    AppFeedback.selection();
+                                    unawaited(feed.toggleSave(authToken, current.id));
                                   },
                                 ),
                             ],
@@ -855,6 +830,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     final postUrl = '${ApiConfig.appBaseUrl}/feed/${post.id}';
     final shareText = text.isNotEmpty ? '$text\n$postUrl' : postUrl;
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -889,22 +865,22 @@ class _CommunityScreenState extends State<CommunityScreen> {
               const SizedBox(height: 6),
               ListTile(
                 leading: const Icon(Icons.share_rounded),
-                title: const Text('Share'),
+                title: Text(l10n.communityShare),
                 onTap: () async {
                   Navigator.pop(ctx);
                   await sharePlainText(
                     shareText,
-                    subject: 'Check out this post from Visit Tripoli',
+                    subject: l10n.sharePostSubject,
                   );
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.link_rounded),
-                title: const Text('Copy link'),
+                title: Text(l10n.communityCopyLink),
                 onTap: () async {
                   Navigator.pop(ctx);
                   await Clipboard.setData(ClipboardData(text: postUrl));
-                  if (mounted) AppSnackBars.showSuccess(context, 'Link copied');
+                  if (mounted) AppSnackBars.showSuccess(context, l10n.linkCopied);
                 },
               ),
             ],
@@ -978,17 +954,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
       context.go('/login?redirect=${Uri.encodeComponent('/community')}');
       return;
     }
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Report post'),
-        content: const Text(
-          'Are you sure you want to report this post? It will be reviewed by our team.',
-        ),
+        title: Text(l10n.communityReportPost),
+        content: Text(l10n.reportPostConfirmBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(AppLocalizations.of(context)!.cancel),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () async {
@@ -998,13 +973,13 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   authToken: auth.authToken!,
                   postId: post.id,
                 );
-                if (context.mounted) AppSnackBars.showSuccess(context, 'Post reported. Thank you.');
+                if (context.mounted) AppSnackBars.showSuccess(context, l10n.postReportedThanks);
               } catch (e) {
                 if (context.mounted) AppSnackBars.showError(context, e.toString());
               }
             },
             style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
-            child: const Text('Report'),
+            child: Text(l10n.communityReport),
           ),
         ],
       ),
@@ -1078,7 +1053,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   },
                 ),
                 PostOptionTile(
-                  label: post.hideLikes ? 'Show like count to others' : 'Hide like count to others',
+                  label: post.hideLikes
+                      ? AppLocalizations.of(context)!.postShowLikeCountToOthers
+                      : AppLocalizations.of(context)!.postHideLikeCountToOthers,
                   icon: Icons.favorite_border_rounded,
                   onTap: () async {
                     Navigator.pop(ctx);
@@ -1089,14 +1066,23 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         hideLikes: !post.hideLikes,
                       );
                       feed.updatePostLocally(updated);
-                      if (context.mounted) AppSnackBars.showSuccess(context, post.hideLikes ? 'Like count visible' : 'Like count hidden');
+                      if (context.mounted) {
+                        AppSnackBars.showSuccess(
+                          context,
+                          post.hideLikes
+                              ? AppLocalizations.of(context)!.postLikeCountVisibleSnackbar
+                              : AppLocalizations.of(context)!.postLikeCountHiddenSnackbar,
+                        );
+                      }
                     } catch (e) {
                       if (context.mounted) AppSnackBars.showError(context, e.toString());
                     }
                   },
                 ),
                 PostOptionTile(
-                  label: post.commentsDisabled ? 'Turn on commenting' : 'Turn off commenting',
+                  label: post.commentsDisabled
+                      ? AppLocalizations.of(context)!.postTurnOnCommenting
+                      : AppLocalizations.of(context)!.postTurnOffCommenting,
                   icon: Icons.chat_bubble_outline_rounded,
                   onTap: () async {
                     Navigator.pop(ctx);
@@ -1107,7 +1093,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
                         commentsDisabled: !post.commentsDisabled,
                       );
                       feed.updatePostLocally(updated);
-                      if (context.mounted) AppSnackBars.showSuccess(context, post.commentsDisabled ? 'Comments on' : 'Comments off');
+                      if (context.mounted) {
+                        AppSnackBars.showSuccess(
+                          context,
+                          post.commentsDisabled
+                              ? AppLocalizations.of(context)!.postCommentsOnSnackbar
+                              : AppLocalizations.of(context)!.postCommentsOffSnackbar,
+                        );
+                      }
                     } catch (e) {
                       if (context.mounted) AppSnackBars.showError(context, e.toString());
                     }
@@ -1116,7 +1109,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               ],
               if (auth.authToken != null && !isOwner) ...[
                 PostOptionTile(
-                  label: 'Report',
+                  label: AppLocalizations.of(context)!.communityReport,
                   icon: Icons.flag_outlined,
                   isDestructive: true,
                   onTap: () {
@@ -1125,7 +1118,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   },
                 ),
                 PostOptionTile(
-                  label: post.savedByMe ? 'Remove from favorites' : 'Add to favorites',
+                  label: post.savedByMe
+                      ? AppLocalizations.of(context)!.postRemoveFromFavorites
+                      : AppLocalizations.of(context)!.postAddToFavorites,
                   icon: post.savedByMe ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
                   onTap: () async {
                     Navigator.pop(ctx);
@@ -1134,7 +1129,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 ),
               ],
               PostOptionTile(
-                label: 'Go to post',
+                label: AppLocalizations.of(context)!.communityGoToPost,
                 icon: Icons.open_in_new_rounded,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -1142,7 +1137,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 },
               ),
               PostOptionTile(
-                label: 'Share to...',
+                label: AppLocalizations.of(context)!.communityShareTo,
                 icon: Icons.share_rounded,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -1150,16 +1145,18 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 },
               ),
               PostOptionTile(
-                label: 'Copy link',
+                label: AppLocalizations.of(context)!.communityCopyLink,
                 icon: Icons.link_rounded,
                 onTap: () async {
                   Navigator.pop(ctx);
                   await Clipboard.setData(ClipboardData(text: postUrl));
-                  if (context.mounted) AppSnackBars.showSuccess(context, 'Link copied');
+                  if (context.mounted) {
+                    AppSnackBars.showSuccess(context, AppLocalizations.of(context)!.linkCopied);
+                  }
                 },
               ),
               PostOptionTile(
-                label: 'Embed',
+                label: AppLocalizations.of(context)!.communityEmbed,
                 icon: Icons.code_rounded,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -1168,7 +1165,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               ),
               if (post.authorPlaceId != null)
                 PostOptionTile(
-                  label: 'View place posts',
+                  label: AppLocalizations.of(context)!.viewPlacePosts,
                   icon: Icons.grid_view_rounded,
                   onTap: () {
                     Navigator.pop(ctx);
@@ -1189,16 +1186,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   void _showEmbedDialog(BuildContext context, String postUrl) {
+    final l10n = AppLocalizations.of(context)!;
     final embedCode = '<iframe src="$postUrl" width="400" height="500" frameborder="0"></iframe>';
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Embed'),
+        title: Text(l10n.communityEmbed),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Copy this code to embed the post on your website:'),
+            Text(l10n.communityEmbedInstructions),
             const SizedBox(height: 12),
             SelectableText(embedCode, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
           ],
@@ -1206,16 +1204,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(AppLocalizations.of(context)!.cancel),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: embedCode));
               if (!ctx.mounted) return;
               Navigator.pop(ctx);
-              if (context.mounted) AppSnackBars.showSuccess(context, 'Embed code copied');
+              if (context.mounted) AppSnackBars.showSuccess(context, l10n.embedCodeCopied);
             },
-            child: const Text('Copy code'),
+            child: Text(l10n.communityCopyCode),
           ),
         ],
       ),
@@ -1243,7 +1241,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   postId: post.id,
                 );
                 feed.removePostLocally(post.id);
-                if (context.mounted) AppSnackBars.showSuccess(context, 'Post deleted');
+                if (context.mounted) {
+                  AppSnackBars.showSuccess(context, AppLocalizations.of(context)!.postDeleted);
+                }
               } catch (e) {
                 if (context.mounted) AppSnackBars.showError(context, e.toString());
               }
@@ -1253,6 +1253,39 @@ class _CommunityScreenState extends State<CommunityScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Full-screen post dialog: owns mute state and shows on-video mute (Reels use the action rail instead).
+class _DialogReelVideo extends StatefulWidget {
+  final String reelId;
+  final String videoUrl;
+  final String? thumbnailUrl;
+
+  const _DialogReelVideo({
+    required this.reelId,
+    required this.videoUrl,
+    this.thumbnailUrl,
+  });
+
+  @override
+  State<_DialogReelVideo> createState() => _DialogReelVideoState();
+}
+
+class _DialogReelVideoState extends State<_DialogReelVideo> {
+  bool _muted = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return ReelVideo(
+      reelId: widget.reelId,
+      videoUrl: widget.videoUrl,
+      thumbnailUrl: widget.thumbnailUrl,
+      isActive: true,
+      isMuted: _muted,
+      onMuteToggled: () => setState(() => _muted = !_muted),
+      showMuteButton: true,
     );
   }
 }

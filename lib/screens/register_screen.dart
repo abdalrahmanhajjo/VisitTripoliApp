@@ -7,6 +7,7 @@ import '../services/social_auth_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/password_validator.dart';
+import 'package:tripoli_explorer/l10n/app_localizations.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -420,7 +421,7 @@ class _RegisterScreenState extends State<RegisterScreen>
             child: OutlinedButton.icon(
               onPressed: _isLoading ? null : _handleGoogleSignUp,
               icon: const FaIcon(FontAwesomeIcons.google, size: 20),
-              label: const Text('Sign up with Google'),
+              label: Text(AppLocalizations.of(context)!.signUpWithGoogle),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.textPrimary,
                 side: const BorderSide(color: AppTheme.borderColor),
@@ -442,7 +443,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                   child: FilledButton.icon(
                     onPressed: _isLoading ? null : _handleAppleSignUp,
                     icon: const FaIcon(FontAwesomeIcons.apple, size: 20),
-                    label: const Text('Sign up with Apple'),
+                    label: Text(AppLocalizations.of(context)!.signUpWithApple),
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,

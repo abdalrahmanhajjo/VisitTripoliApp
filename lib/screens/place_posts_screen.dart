@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -442,6 +443,7 @@ class _PlaceHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -532,7 +534,7 @@ class _PlaceHeader extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            postCount == 1 ? 'Post' : 'Posts',
+                            postCount == 1 ? l10n.feedPostSingular : l10n.feedPostPlural,
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -562,27 +564,33 @@ class _PlaceHeader extends StatelessWidget {
                             const Icon(Icons.sort_rounded, size: 16, color: AppTheme.textSecondary),
                             const SizedBox(width: 6),
                             Text(
-                              currentSort == PostSortOption.newest ? 'Newest' :
-                              currentSort == PostSortOption.oldest ? 'Oldest' : 'Popular',
+                              currentSort == PostSortOption.newest
+                                  ? AppLocalizations.of(context)!.postSortNewest
+                                  : currentSort == PostSortOption.oldest
+                                      ? AppLocalizations.of(context)!.postSortOldest
+                                      : AppLocalizations.of(context)!.postSortPopular,
                               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
                             ),
                           ],
                         ),
                       ),
-                      itemBuilder: (context) => const [
-                        PopupMenuItem(
-                          value: PostSortOption.newest,
-                          child: Text('Newest First', style: TextStyle(fontWeight: FontWeight.w500)),
-                        ),
-                        PopupMenuItem(
-                          value: PostSortOption.popular,
-                          child: Text('Most Popular', style: TextStyle(fontWeight: FontWeight.w500)),
-                        ),
-                        PopupMenuItem(
-                          value: PostSortOption.oldest,
-                          child: Text('Oldest First', style: TextStyle(fontWeight: FontWeight.w500)),
-                        ),
-                      ],
+                      itemBuilder: (context) {
+                        final l10n = AppLocalizations.of(context)!;
+                        return [
+                          PopupMenuItem(
+                            value: PostSortOption.newest,
+                            child: Text(l10n.postSortNewestFirst, style: const TextStyle(fontWeight: FontWeight.w500)),
+                          ),
+                          PopupMenuItem(
+                            value: PostSortOption.popular,
+                            child: Text(l10n.postSortMostPopular, style: const TextStyle(fontWeight: FontWeight.w500)),
+                          ),
+                          PopupMenuItem(
+                            value: PostSortOption.oldest,
+                            child: Text(l10n.postSortOldestFirst, style: const TextStyle(fontWeight: FontWeight.w500)),
+                          ),
+                        ];
+                      },
                     ),
                   ],
                 ),
@@ -781,9 +789,6 @@ class _FullPostDialog extends StatefulWidget {
 }
 
 class _FullPostDialogState extends State<_FullPostDialog> {
-  bool _isLiking = false;
-  bool _isSaving = false;
-
   FeedPost _resolved() {
     for (final p in widget.feed.placePosts) {
       if (p.id == widget.post.id) return p;
@@ -799,7 +804,7 @@ class _FullPostDialogState extends State<_FullPostDialog> {
     return '/community';
   }
 
-  Future<void> _onLike(FeedPost current) async {
+  void _onLike(FeedPost current) {
     final auth = widget.auth;
     if (!auth.isLoggedIn || auth.isGuest) {
       if (!mounted) return;
@@ -808,20 +813,15 @@ class _FullPostDialogState extends State<_FullPostDialog> {
     }
     final token = auth.authToken;
     if (token == null) return;
-    setState(() => _isLiking = true);
-    try {
-      await widget.feed.toggleLike(token, current.id);
-    } finally {
-      if (mounted) setState(() => _isLiking = false);
-    }
+    unawaited(widget.feed.toggleLike(token, current.id));
   }
 
-  Future<void> _onDoubleTapLike(FeedPost current) async {
+  void _onDoubleTapLike(FeedPost current) {
     if (current.likedByMe) return;
-    await _onLike(current);
+    _onLike(current);
   }
 
-  Future<void> _onSave(FeedPost current) async {
+  void _onSave(FeedPost current) {
     final auth = widget.auth;
     if (!auth.isLoggedIn || auth.isGuest) {
       if (!mounted) return;
@@ -830,12 +830,7 @@ class _FullPostDialogState extends State<_FullPostDialog> {
     }
     final token = auth.authToken;
     if (token == null) return;
-    setState(() => _isSaving = true);
-    try {
-      await widget.feed.toggleSave(token, current.id);
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
+    unawaited(widget.feed.toggleSave(token, current.id));
   }
 
   void _openComments(BuildContext context, FeedPost current) {
@@ -845,7 +840,7 @@ class _FullPostDialogState extends State<_FullPostDialog> {
       return;
     }
     if (current.commentsDisabled) {
-      AppSnackBars.showSuccess(context, 'Comments are turned off for this post');
+      AppSnackBars.showSuccess(context, AppLocalizations.of(context)!.commentsDisabledForPost);
       return;
     }
     showModalBottomSheet<void>(
@@ -871,6 +866,7 @@ class _FullPostDialogState extends State<_FullPostDialog> {
 
     if (!canManage) return;
 
+    final l10n = AppLocalizations.of(context)!;
     final result = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -886,7 +882,7 @@ class _FullPostDialogState extends State<_FullPostDialog> {
             Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
             ListTile(
               leading: const Icon(Icons.delete_outline_rounded, color: AppTheme.errorColor),
-              title: const Text('Delete Post', style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.w600)),
+              title: Text(l10n.postDeleteTitle, style: const TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.w600)),
               onTap: () { Navigator.pop(ctx, 'delete'); AppFeedback.tap(); },
             ),
             const SizedBox(height: 12),
@@ -899,14 +895,14 @@ class _FullPostDialogState extends State<_FullPostDialog> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Delete Post'),
-          content: const Text('Are you sure you want to delete this post? This cannot be undone.'),
+          title: Text(l10n.postDeleteTitle),
+          content: Text(l10n.deletePostConfirm),
           actions: [
-            TextButton(onPressed: () { AppFeedback.tap(); Navigator.pop(ctx, false); }, child: const Text('Cancel')),
+            TextButton(onPressed: () { AppFeedback.tap(); Navigator.pop(ctx, false); }, child: Text(l10n.cancel)),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
               onPressed: () { AppFeedback.tap(); Navigator.pop(ctx, true); },
-              child: const Text('Delete'),
+              child: Text(l10n.delete),
             ),
           ],
         ),
@@ -916,7 +912,7 @@ class _FullPostDialogState extends State<_FullPostDialog> {
         try {
           await FeedService.instance.deletePost(authToken: auth.authToken!, postId: current.id);
           if (context.mounted) {
-            AppSnackBars.showSuccess(context, 'Post deleted');
+            AppSnackBars.showSuccess(context, l10n.postDeleted);
             widget.onClose();
             feed.removePostLocally(current.id);
           }
@@ -1024,15 +1020,12 @@ class _FullPostDialogState extends State<_FullPostDialog> {
                                       iconColor: current.likedByMe ? const Color(0xFFE11D48) : AppTheme.textSecondary,
                                       count: canSeeLikes ? current.likeCount : null,
                                       countLabel: canSeeLikes ? null : 'Hidden',
-                                      isLoading: _isLiking,
                                       backgroundColor: current.likedByMe ? const Color(0xFFFFF1F2) : AppTheme.surfaceVariant,
                                       accentColor: current.likedByMe ? const Color(0xFFE11D48) : AppTheme.textPrimary,
-                                      onTap: _isLiking
-                                          ? null
-                                          : () {
-                                              AppFeedback.selection();
-                                              _onLike(current);
-                                            },
+                                      onTap: () {
+                                        AppFeedback.selection();
+                                        _onLike(current);
+                                      },
                                     ),
                                     _PillStat(
                                       label: l10n.comment,
@@ -1077,30 +1070,22 @@ class _FullPostDialogState extends State<_FullPostDialog> {
                               if (auth.isLoggedIn && !auth.isGuest)
                                 Padding(
                                   padding: const EdgeInsets.only(left: 4),
-                                  child: Tooltip(
+                                    child: Tooltip(
                                     message: l10n.save,
                                     child: IconButton(
-                                      onPressed: _isSaving
-                                          ? null
-                                          : () {
-                                              AppFeedback.selection();
-                                              _onSave(current);
-                                            },
+                                      onPressed: () {
+                                        AppFeedback.selection();
+                                        _onSave(current);
+                                      },
                                       style: IconButton.styleFrom(
                                         backgroundColor: AppTheme.surfaceVariant,
                                         padding: const EdgeInsets.all(10),
                                       ),
-                                      icon: _isSaving
-                                          ? const SizedBox(
-                                              width: 22,
-                                              height: 22,
-                                              child: CircularProgressIndicator(strokeWidth: 2),
-                                            )
-                                          : Icon(
-                                              current.savedByMe ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                                              size: 22,
-                                              color: current.savedByMe ? AppTheme.primaryColor : AppTheme.textPrimary,
-                                            ),
+                                      icon: Icon(
+                                        current.savedByMe ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                        size: 22,
+                                        color: current.savedByMe ? AppTheme.primaryColor : AppTheme.textPrimary,
+                                      ),
                                     ),
                                   ),
                                 ),
