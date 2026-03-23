@@ -2142,9 +2142,7 @@ class _ExploreScreenState extends State<ExploreScreen>
     final l10n = AppLocalizations.of(context)!;
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final w = MediaQuery.sizeOf(context).width;
-    final cardHeight = _Responsive.isVerySmallPhone(context)
-        ? 112.0
-        : (w < 320 ? 120.0 : 132.0);
+    final cardHeight = ResponsiveUtils.eventCalendarTicketHeight(context);
     final horizontalPad = _Responsive.horizontalPadding(context);
     final cardWidth = w - horizontalPad * 2 - _ExploreLayout.cardGap(context);
 
@@ -3448,7 +3446,6 @@ class _EventCard extends StatelessWidget {
 
   static const _radius = 18.0;
   static const _accentWidth = 4.0;
-  static const _stubWidth = 74.0;
   static const _notchRadius = 5.0;
 
   static String _formatDateLine(DateTime date, String locale) =>
@@ -3479,21 +3476,23 @@ class _EventCard extends StatelessWidget {
     final isFree = event.price == null || event.price == 0;
     final priceText =
         event.priceDisplay ?? (isFree ? l10n.free : '\$${event.price}');
-    final tight = height < 120;
-    final titleSize = tight ? 13.0 : 14.0;
-    final metaSize = tight ? 11.0 : 12.0;
+    final stubW = ResponsiveUtils.eventTicketStubWidth(context);
+    final tight = height < 132;
+    final titleSize = tight ? 13.5 : 15.0;
+    final metaSize = tight ? 11.5 : 12.5;
+    final locMaxLines = height >= 138 ? 2 : 1;
     final dayNum = '${event.startDate.day}';
     final monthShort = DateFormat('MMM', locale).format(event.startDate);
     final weekdayShort = DateFormat('EEE', locale).format(event.startDate);
 
     return Material(
       color: AppTheme.surfaceColor,
-      elevation: 1.5,
-      shadowColor: AppTheme.textPrimary.withValues(alpha: 0.12),
+      elevation: 2,
+      shadowColor: AppTheme.textPrimary.withValues(alpha: 0.14),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(_radius),
         side: BorderSide(
-          color: AppTheme.borderColor.withValues(alpha: 0.55),
+          color: AppTheme.borderColor.withValues(alpha: 0.7),
         ),
       ),
       clipBehavior: Clip.antiAlias,
@@ -3530,7 +3529,7 @@ class _EventCard extends StatelessWidget {
                         bottomLeft: Radius.circular(0),
                       ),
                       child: SizedBox(
-                        width: _stubWidth,
+                        width: stubW,
                         height: height,
                         child: Stack(
                           fit: StackFit.expand,
@@ -3624,7 +3623,7 @@ class _EventCard extends StatelessWidget {
                         height - 6 - _notchRadius * 2,
                       );
                       return Positioned(
-                        left: _stubWidth - _notchRadius,
+                        left: stubW - _notchRadius,
                         top: top,
                         child: Container(
                           width: _notchRadius * 2,
@@ -3741,78 +3740,97 @@ class _EventCard extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: tight ? 10.5 : 11.5,
                                   color: AppTheme.textSecondary,
-                                  height: 1.2,
+                                  height: 1.25,
                                 ),
-                                maxLines: 1,
+                                maxLines: locMaxLines,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
                         SizedBox(height: tight ? 4 : 8),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: tight ? 6 : 8,
-                                  vertical: tight ? 3 : 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.surfaceVariant
-                                      .withValues(alpha: 0.88),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: AppTheme.borderColor
-                                        .withValues(alpha: 0.65),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final narrowPanel = constraints.maxWidth < 172;
+                            Widget categoryPill() => Container(
+                                  width: narrowPanel ? double.infinity : null,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: tight ? 6 : 8,
+                                    vertical: tight ? 3 : 4,
                                   ),
-                                ),
-                                child: Text(
-                                  event.category,
-                                  style: TextStyle(
-                                    fontSize: tight ? 10.5 : 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.textSecondary,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.surfaceVariant
+                                        .withValues(alpha: 0.92),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: AppTheme.borderColor
+                                          .withValues(alpha: 0.7),
+                                    ),
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: tight ? 8 : 10,
-                                vertical: tight ? 4 : 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isFree
-                                    ? AppTheme.successColor
-                                        .withValues(alpha: 0.14)
-                                    : categoryColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: isFree
-                                      ? AppTheme.successColor
-                                          .withValues(alpha: 0.35)
-                                      : categoryColor.withValues(alpha: 0.28),
-                                ),
-                              ),
-                              child: Text(
-                                priceText,
-                                style: TextStyle(
-                                  fontSize: tight ? 11 : 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: isFree
-                                      ? AppTheme.successColor
-                                      : categoryColor,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
+                                  child: Text(
+                                    event.category,
+                                    style: TextStyle(
+                                      fontSize: tight ? 10.5 : 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                    maxLines: narrowPanel ? 2 : 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                            Widget pricePill() => Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: tight ? 8 : 10,
+                                    vertical: tight ? 4 : 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isFree
+                                        ? AppTheme.successColor
+                                            .withValues(alpha: 0.14)
+                                        : categoryColor.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: isFree
+                                          ? AppTheme.successColor
+                                              .withValues(alpha: 0.4)
+                                          : categoryColor.withValues(alpha: 0.32),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    priceText,
+                                    style: TextStyle(
+                                      fontSize: tight ? 11.5 : 12.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: isFree
+                                          ? AppTheme.successColor
+                                          : categoryColor,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                            if (narrowPanel) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  categoryPill(),
+                                  const SizedBox(height: 6),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: pricePill(),
+                                  ),
+                                ],
+                              );
+                            }
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(child: categoryPill()),
+                                const SizedBox(width: 8),
+                                pricePill(),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -3820,8 +3838,8 @@ class _EventCard extends StatelessWidget {
                 ),
               ],
             ),
-          ),
         ),
+      ),
     );
   }
 }

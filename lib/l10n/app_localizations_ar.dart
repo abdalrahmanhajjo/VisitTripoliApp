@@ -904,12 +904,29 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get addPlacesSubtitle =>
-      'أضف أماكن من الجولات والفعاليات والأماكن المحفوظة. حدد الأوقات ثم رتب حسب الوقت أو المسار.';
+      'أضف أماكن من الجولات والفعاليات والأماكن المحفوظة. اسحب لإعادة الترتيب وحدد أوقات الزيارة.';
 
   @override
   String placesCountSubtitle(Object count) {
-    return '$count مكان(أماكن) — حدد الأوقات ثم رتب 1→ن';
+    return '$count مكان(أماكن) — حدد الأوقات واسحب لإعادة الترتيب';
   }
+
+  @override
+  String get locationForDirectionsTitle => 'استخدام موقعك؟';
+
+  @override
+  String get locationForDirectionsBody =>
+      'اسمح بالوصول إلى موقعك لبدء الاتجاهات من مكانك ومتابعة موقعك أثناء المسار. يمكنك الرفض واختيار نقطة بداية على الخريطة.';
+
+  @override
+  String get locationForDirectionsAllow => 'سماح';
+
+  @override
+  String get locationForDirectionsNotNow => 'ليس الآن';
+
+  @override
+  String get locationUnavailable =>
+      'تعذر الحصول على موقعك. فعّل نظام تحديد المواقع أو اختر نقطة بداية على الخريطة.';
 
   @override
   String get arrangeByTime => 'ترتيب حسب الوقت';

@@ -19,7 +19,7 @@ class AppImage extends StatelessWidget {
     this.errorWidget,
     this.cacheWidth,
     this.cacheHeight,
-    this.fadeInDuration = const Duration(milliseconds: 100),
+    this.fadeInDuration = Duration.zero,
   });
 
   final String src;

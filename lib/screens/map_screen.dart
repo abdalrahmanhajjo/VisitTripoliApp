@@ -1463,9 +1463,6 @@ class _MapScreenState extends State<MapScreen> {
     PlacesProvider placesProvider,
   ) async {
     if (places.isEmpty) return;
-    if (mapProvider.currentPosition == null) {
-      await mapProvider.getCurrentLocation();
-    }
     final myCoords = mapProvider.currentPosition != null
         ? (
             mapProvider.currentPosition!.latitude,
@@ -2439,9 +2436,6 @@ class _PlaceInfoSheet extends StatelessWidget {
   });
 
   Future<void> _showRoutePicker(BuildContext context) async {
-    if (mapProvider.currentPosition == null) {
-      await mapProvider.getCurrentLocation();
-    }
     final myCoords = mapProvider.currentPosition != null
         ? (
             mapProvider.currentPosition!.latitude,

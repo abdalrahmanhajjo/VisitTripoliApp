@@ -96,10 +96,6 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
 
   Future<void> _showDirectionsPicker(BuildContext context, Place place) async {
     final mapProvider = Provider.of<MapProvider>(context, listen: false);
-
-    if (mapProvider.currentPosition == null) {
-      await mapProvider.getCurrentLocation();
-    }
     final myCoords = mapProvider.currentPosition != null
         ? (
             mapProvider.currentPosition!.latitude,
@@ -108,12 +104,6 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
         : null;
 
     if (!context.mounted) return;
-
-    // In-app map: default route always uses live GPS (no stale URL coordinates).
-    if (myCoords != null && place.hasMapCoordinates) {
-      context.push('/map?placeId=${place.id}&travelMode=driving');
-      return;
-    }
 
     final result = await showModalBottomSheet<RouteOriginResult?>(
       context: context,

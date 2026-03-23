@@ -171,4 +171,23 @@ class ResponsiveUtils {
     if (isCompact(context)) return 12;
     return 14;
   }
+
+  /// Event "boarding pass" row height in the Explore calendar sheet — tall enough for title, time, location, chips.
+  static double eventCalendarTicketHeight(BuildContext context) {
+    final w = width(context);
+    if (w < 300) return 158;
+    if (w < 340) return 150;
+    if (w < 380) return 142;
+    if (w < 420) return 136;
+    return 130;
+  }
+
+  /// Left image/date stub width on event tickets (scales slightly with screen).
+  static double eventTicketStubWidth(BuildContext context) {
+    final w = width(context);
+    if (w < 300) return 86;
+    if (w < 340) return 80;
+    if (w < 400) return 76;
+    return 74;
+  }
 }

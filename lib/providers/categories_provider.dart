@@ -1,12 +1,12 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/category.dart' as models;
 import '../services/api_service.dart';
+import '../utils/locale_data_cache.dart';
 import '../utils/network_error.dart';
 
-const String _categoriesCacheKey = 'categories_list_cache';
+const String _categoriesCachePrefix = 'categories_list_cache';
 
 class CategoriesProvider extends ChangeNotifier {
   List<models.Category> _categories = [];
@@ -26,8 +26,10 @@ class CategoriesProvider extends ChangeNotifier {
   /// Load categories from disk so Explore works offline after first load.
   Future<void> _loadFromDiskCache() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_categoriesCacheKey);
+      final raw = await readLocaleScopedJson(
+        legacyKey: _categoriesCachePrefix,
+        scopedPrefix: _categoriesCachePrefix,
+      );
       if (raw == null || raw.isEmpty) return;
       final list = json.decode(raw) as List<dynamic>?;
       if (list == null || list.isEmpty) return;
@@ -58,8 +60,10 @@ class CategoriesProvider extends ChangeNotifier {
           .map((e) => models.Category.fromJson(e as Map<String, dynamic>))
           .toList();
       try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_categoriesCacheKey, json.encode(list));
+        await writeLocaleScopedJson(
+          scopedPrefix: _categoriesCachePrefix,
+          json: json.encode(list),
+        );
       } catch (_) {}
     } catch (e) {
       debugPrint('Error loading categories: $e');

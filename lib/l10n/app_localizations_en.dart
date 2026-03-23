@@ -907,12 +907,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addPlacesSubtitle =>
-      'Add places from tours, events & saved spots. Set times, then arrange by time or route.';
+      'Add places from tours, events & saved spots. Drag to reorder and set visit times.';
 
   @override
   String placesCountSubtitle(Object count) {
-    return '$count place(s) — set times, then arrange 1→n';
+    return '$count place(s) — set times and drag to reorder';
   }
+
+  @override
+  String get locationForDirectionsTitle => 'Use your location?';
+
+  @override
+  String get locationForDirectionsBody =>
+      'Allow access to your location to start directions from where you are and follow your position along the route. You can decline and pick a start point on the map instead.';
+
+  @override
+  String get locationForDirectionsAllow => 'Allow';
+
+  @override
+  String get locationForDirectionsNotNow => 'Not now';
+
+  @override
+  String get locationUnavailable =>
+      'Could not get your location. Enable GPS and try again, or pick a start point on the map.';
 
   @override
   String get arrangeByTime => 'Arrange by time';

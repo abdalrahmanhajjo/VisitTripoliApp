@@ -1,11 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/interest.dart';
 import '../services/api_service.dart';
+import '../utils/locale_data_cache.dart';
 
-const String _interestsCacheKey = 'interests_list_cache';
+const String _interestsCachePrefix = 'interests_list_cache';
 
 class InterestsProvider extends ChangeNotifier {
   List<Interest> _interests = [];
@@ -27,8 +27,10 @@ class InterestsProvider extends ChangeNotifier {
   /// Load interests from disk so Explore works offline after first load.
   Future<void> _loadFromDiskCache() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_interestsCacheKey);
+      final raw = await readLocaleScopedJson(
+        legacyKey: _interestsCachePrefix,
+        scopedPrefix: _interestsCachePrefix,
+      );
       if (raw == null || raw.isEmpty) return;
       final list = json.decode(raw) as List<dynamic>?;
       if (list == null || list.isEmpty) return;
@@ -58,8 +60,10 @@ class InterestsProvider extends ChangeNotifier {
           .map((e) => Interest.fromJson(e as Map<String, dynamic>))
           .toList();
       try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_interestsCacheKey, json.encode(list));
+        await writeLocaleScopedJson(
+          scopedPrefix: _interestsCachePrefix,
+          json: json.encode(list),
+        );
       } catch (_) {}
     } catch (e) {
       debugPrint('Error loading interests: $e');

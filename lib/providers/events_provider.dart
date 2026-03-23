@@ -3,8 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/event.dart';
 import '../services/api_service.dart';
+import '../utils/locale_data_cache.dart';
 
-const String _eventsCacheKey = 'events_list_cache';
+const String _eventsCachePrefix = 'events_list_cache';
 
 class EventsProvider extends ChangeNotifier {
   List<Event> _events = [];
@@ -29,8 +30,10 @@ class EventsProvider extends ChangeNotifier {
   /// Load events from disk so Explore works offline after first load.
   Future<void> _loadFromDiskCache() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_eventsCacheKey);
+      final raw = await readLocaleScopedJson(
+        legacyKey: _eventsCachePrefix,
+        scopedPrefix: _eventsCachePrefix,
+      );
       if (raw == null || raw.isEmpty) return;
       final list = json.decode(raw) as List<dynamic>?;
       if (list == null || list.isEmpty) return;
@@ -58,8 +61,10 @@ class EventsProvider extends ChangeNotifier {
       _events =
           list.map((e) => Event.fromJson(e as Map<String, dynamic>)).toList();
       try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_eventsCacheKey, json.encode(list));
+        await writeLocaleScopedJson(
+          scopedPrefix: _eventsCachePrefix,
+          json: json.encode(list),
+        );
       } catch (_) {}
     } catch (e, st) {
       debugPrint('Error loading events: $e');

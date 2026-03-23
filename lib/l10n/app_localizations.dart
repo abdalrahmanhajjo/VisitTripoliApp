@@ -1783,14 +1783,44 @@ abstract class AppLocalizations {
   /// No description provided for @addPlacesSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Add places from tours, events & saved spots. Set times, then arrange by time or route.'**
+  /// **'Add places from tours, events & saved spots. Drag to reorder and set visit times.'**
   String get addPlacesSubtitle;
 
   /// No description provided for @placesCountSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'{count} place(s) — set times, then arrange 1→n'**
+  /// **'{count} place(s) — set times and drag to reorder'**
   String placesCountSubtitle(Object count);
+
+  /// No description provided for @locationForDirectionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your location?'**
+  String get locationForDirectionsTitle;
+
+  /// No description provided for @locationForDirectionsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow access to your location to start directions from where you are and follow your position along the route. You can decline and pick a start point on the map instead.'**
+  String get locationForDirectionsBody;
+
+  /// No description provided for @locationForDirectionsAllow.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow'**
+  String get locationForDirectionsAllow;
+
+  /// No description provided for @locationForDirectionsNotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get locationForDirectionsNotNow;
+
+  /// No description provided for @locationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not get your location. Enable GPS and try again, or pick a start point on the map.'**
+  String get locationUnavailable;
 
   /// No description provided for @arrangeByTime.
   ///

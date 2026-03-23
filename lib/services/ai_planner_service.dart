@@ -646,6 +646,11 @@ $chatTraining
         : lang == 'fr'
             ? 'You must reply ONLY in French (Français). Write all your messages in French.'
             : 'You must reply ONLY in English. Write all your messages in English.';
+    final dbLocaleNote = lang == 'ar'
+        ? 'The place names and categories in the list below come from the app database in Arabic—use those exact names in your explanations and in each slot\'s "reason" field.'
+        : lang == 'fr'
+            ? 'Les noms des lieux et les catégories viennent de la base en français : utilisez exactement ces libellés dans le texte et dans chaque "reason".'
+            : 'Place names and categories in the list are in English from the database—use those exact names in your text and in each slot\'s "reason" field.';
     final placeIds = places.map((p) => p.id).toSet();
     // Keep payload small so n8n/Groq don't time out or hit limits (id + name + category only; max 40 places)
     final placesContext = places.take(40).map((p) => {
@@ -709,6 +714,7 @@ When the user asks to add a place, remove one, reorder, or "do the plan again", 
     final systemPrompt = '''You are a friendly Tripoli, Lebanon trip planner.
 
 $languageInstruction
+$dbLocaleNote
 $tripoliOnly
 
 You MUST never say the user "didn't ask a question" or "haven't shared any information"—treat "hello", "plan trip", "start", "plan", "i want a plan" as valid. The user has already set their number of days and places per day (see Trip context below). Reply by asking about interests (food, culture, history, shopping) or suggest a plan using the places list.

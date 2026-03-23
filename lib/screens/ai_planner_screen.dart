@@ -65,8 +65,6 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
   List<String> _selectedInterests = [];
   int? _preferredPlaceCount;
   int? _groupSize;
-  /// AI response language: follows app language (no selector).
-  String _aiLanguage = 'en';
   final List<_ChatMessage> _chatMessages = [];
   /// Last user message that led to an error; used for "Try again".
   String? _lastFailedUserMessage;
@@ -314,19 +312,13 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
     _selectedDate = DateTime.now().add(const Duration(days: 1));
     _preferredPlaceCount = 5;
     _groupSize = 2;
-    if (_chatMessages.isEmpty) {
-      _chatMessages.add(const _ChatMessage(
-        isUser: false,
-        text: 'Hi! I can help you plan your trip to Tripoli. Tell me how many days you have, what you like (food, history, culture, shopping), or just say what you want to do—I’ll suggest a plan.',
-      ));
-    }
     // Ensure places are loaded from the database (via backend) so the planner has data.
     final placesProvider = Provider.of<PlacesProvider>(context, listen: false);
+    final langCode =
+        Provider.of<LanguageProvider>(context, listen: false).currentLanguage.code;
     if (placesProvider.places.isEmpty) {
-      placesProvider.loadPlaces();
+      placesProvider.loadPlaces(locale: langCode);
     }
-    final langProvider = Provider.of<LanguageProvider>(context, listen: false);
-    _aiLanguage = langProvider.currentLanguage.code;
     _loadPlannerPrefs();
   }
 
@@ -449,7 +441,9 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
     if (places.isEmpty) places = placesProvider.places;
 
     if (places.isEmpty) {
-      await placesProvider.loadPlaces();
+      final langCode =
+          Provider.of<LanguageProvider>(context, listen: false).currentLanguage.code;
+      await placesProvider.loadPlaces(locale: langCode);
       if (!mounted) return;
       places = placesProvider.places.where((p) => p.latitude != null && p.longitude != null).toList();
       if (places.isEmpty) places = placesProvider.places;
@@ -482,6 +476,9 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
         .map((m) => {'role': m.isUser ? 'user' : 'assistant', 'content': m.text})
         .toList();
 
+    final responseLang =
+        Provider.of<LanguageProvider>(context, listen: false).currentLanguage.code;
+
     try {
       var result = await AIPlannerService.chatForTripPlan(
         conversationHistory: history,
@@ -493,7 +490,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
         selectedDate: _selectedDate,
         userInterests: userInterests.isNotEmpty ? userInterests : null,
         activityContext: activityContext.isNotEmpty ? activityContext : null,
-        responseLanguage: _aiLanguage,
+        responseLanguage: responseLang,
         previousSlots: _lastPlanSlots,
         previousPlaces: _lastPlanPlaces,
       );
@@ -822,7 +819,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
             onDateTap: _pickDate,
           ),
           Expanded(
-            child: _chatMessages.length <= 1
+            child: _chatMessages.isEmpty
                 ? _WelcomeHero(
                     inputController: _inputController,
                     isGenerating: _isGenerating,
@@ -833,7 +830,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
                       _sendMessage();
                     },
                     onPlanFromInterestsAndActivity: _requestPlanFromInterestsAndActivity,
-                    welcomeText: _chatMessages.isEmpty ? null : _chatMessages.first.text,
+                    welcomeText: null,
                   )
                 : ListView.builder(
                     controller: _scrollController,
@@ -881,7 +878,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
                     },
                   ),
           ),
-          if (_chatMessages.length > 1)
+          if (_chatMessages.isNotEmpty)
             Padding(
               padding: EdgeInsets.fromLTRB(20, 8, 20, 12 + MediaQuery.of(context).padding.bottom),
               child: SafeArea(
@@ -3172,6 +3169,145 @@ class _PlanRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isModified = _isModificationReason(slot.reason);
+    final narrow = MediaQuery.sizeOf(context).width < 400;
+
+    Widget reasonChip() {
+      if (slot.reason == null || slot.reason!.trim().isEmpty) {
+        return const SizedBox.shrink();
+      }
+      return Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: isModified
+                ? AppTheme.primaryColor.withValues(alpha: 0.08)
+                : AppTheme.surfaceVariant,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            slot.reason!,
+            style: TextStyle(
+              fontSize: 11,
+              color: isModified ? AppTheme.primaryColor : AppTheme.textTertiary,
+              fontStyle: FontStyle.italic,
+              fontWeight: isModified ? FontWeight.w600 : FontWeight.normal,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      );
+    }
+
+    final timePill = GestureDetector(
+      onTap: onTimeTap,
+      child: Container(
+        width: narrow ? 44 : 48,
+        height: narrow ? 34 : 36,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppTheme.primaryColor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: AppTheme.primaryColor.withValues(alpha: 0.25),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          slot.suggestedTime,
+          style: TextStyle(
+            fontSize: narrow ? 11 : 12,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.primaryColor,
+          ),
+        ),
+      ),
+    );
+
+    if (narrow) {
+      return Material(
+        key: key,
+        color: Colors.transparent,
+        child: ReorderableDragStartListener(
+          index: reorderIndex,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      timePill,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          place.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            letterSpacing: -0.2,
+                            height: 1.25,
+                            color: AppTheme.textPrimary,
+                          ),
+                          maxLines: 4,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        icon: Icon(
+                          Icons.more_vert_rounded,
+                          color: AppTheme.textTertiary.withValues(alpha: 0.95),
+                          size: 22,
+                        ),
+                        onSelected: (v) {
+                          if (v == 'replace') onReplace?.call();
+                          if (v == 'remove') onRemove();
+                        },
+                        itemBuilder: (ctx) => [
+                          if (onReplace != null)
+                            const PopupMenuItem(
+                              value: 'replace',
+                              child: Text('Change place'),
+                            ),
+                          const PopupMenuItem(
+                            value: 'remove',
+                            child: Text('Remove'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  if (place.location.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 54, top: 2),
+                      child: Text(
+                        place.location,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textSecondary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: reasonChip(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Material(
       key: key,
       color: Colors.transparent,
@@ -3190,30 +3326,7 @@ class _PlanRow extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      GestureDetector(
-                        onTap: onTimeTap,
-                        child: Container(
-                          width: 48,
-                          height: 36,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: AppTheme.primaryColor.withValues(alpha: 0.25),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            slot.suggestedTime,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                        ),
-                      ),
+                      timePill,
                       if (showConnector)
                         Padding(
                           padding: const EdgeInsets.only(top: 6),
@@ -3254,7 +3367,7 @@ class _PlanRow extends StatelessWidget {
                                 letterSpacing: -0.2,
                                 color: AppTheme.textPrimary,
                               ),
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -3274,29 +3387,7 @@ class _PlanRow extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
-                      if (slot.reason != null && slot.reason!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isModified
-                                ? AppTheme.primaryColor.withValues(alpha: 0.08)
-                                : AppTheme.surfaceVariant,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            slot.reason!,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isModified ? AppTheme.primaryColor : AppTheme.textTertiary,
-                              fontStyle: FontStyle.italic,
-                              fontWeight: isModified ? FontWeight.w600 : FontWeight.normal,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                      reasonChip(),
                     ],
                   ),
                 ),

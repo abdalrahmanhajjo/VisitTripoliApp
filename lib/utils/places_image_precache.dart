@@ -2,9 +2,22 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../cache/app_cache_manager.dart';
+import '../config/api_config.dart';
 import '../models/place.dart';
 
-/// Warms disk + memory cache for the first image of each place (Explore cards, lists).
+/// Same URL resolution as [AppImage] so relative paths cache correctly.
+String _resolvePlaceImageUrl(String raw) {
+  if (raw.isEmpty) return raw;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  if (raw.startsWith('/')) {
+    final base = ApiConfig.effectiveBaseUrl.replaceAll(RegExp(r'/$'), '');
+    return '$base$raw';
+  }
+  final base = ApiConfig.effectiveBaseUrl.replaceAll(RegExp(r'/$'), '');
+  return '$base/$raw';
+}
+
+/// Warms disk + memory cache for place thumbnails (Explore cards, lists).
 void schedulePlacesImagePrecache(BuildContext context, List<Place> places) {
   if (!context.mounted || places.isEmpty) return;
   final mq = MediaQuery.of(context);
@@ -17,20 +30,23 @@ void schedulePlacesImagePrecache(BuildContext context, List<Place> places) {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     if (!context.mounted) return;
     var count = 0;
-    const maxImages = 28;
+    const maxImages = 64;
     for (final place in places) {
       if (count >= maxImages) break;
       if (place.images.isEmpty) continue;
-      final raw = place.images.first;
-      if (raw.isEmpty) continue;
-      final uri = AppImageCacheManager.resolveNetworkImageUrl(raw);
-      if (uri.isEmpty) continue;
-      precacheImage(
-        CachedNetworkImageProvider(uri, cacheManager: cm),
-        context,
-        size: size,
-      );
-      count++;
+      for (final raw in place.images.take(2)) {
+        if (count >= maxImages) break;
+        if (raw.isEmpty) continue;
+        final uri =
+            AppImageCacheManager.resolveNetworkImageUrl(_resolvePlaceImageUrl(raw));
+        if (uri.isEmpty) continue;
+        precacheImage(
+          CachedNetworkImageProvider(uri, cacheManager: cm),
+          context,
+          size: size,
+        );
+        count++;
+      }
     }
   });
 }

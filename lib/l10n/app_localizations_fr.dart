@@ -918,12 +918,29 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get addPlacesSubtitle =>
-      'Ajoutez des lieux depuis les visites, événements et favoris. Définissez les horaires, puis ordonnez par temps ou itinéraire.';
+      'Ajoutez des lieux depuis les visites, événements et favoris. Faites glisser pour réorganiser et définir les horaires.';
 
   @override
   String placesCountSubtitle(Object count) {
-    return '$count lieu(x) — définissez les horaires, puis ordonnez 1→n';
+    return '$count lieu(x) — définissez les horaires et faites glisser pour réorganiser';
   }
+
+  @override
+  String get locationForDirectionsTitle => 'Utiliser votre position ?';
+
+  @override
+  String get locationForDirectionsBody =>
+      'Autorisez l’accès à votre position pour partir de votre emplacement et suivre votre trajet sur la carte. Vous pouvez refuser et choisir un point de départ sur la carte.';
+
+  @override
+  String get locationForDirectionsAllow => 'Autoriser';
+
+  @override
+  String get locationForDirectionsNotNow => 'Pas maintenant';
+
+  @override
+  String get locationUnavailable =>
+      'Impossible d’obtenir votre position. Activez le GPS ou choisissez un point de départ sur la carte.';
 
   @override
   String get arrangeByTime => 'Ordonner par heure';

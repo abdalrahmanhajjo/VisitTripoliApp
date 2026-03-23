@@ -79,9 +79,6 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     }
     final mapProvider = Provider.of<MapProvider>(context, listen: false);
 
-    if (mapProvider.currentPosition == null) {
-      await mapProvider.getCurrentLocation();
-    }
     final myCoords = mapProvider.currentPosition != null
         ? (
             mapProvider.currentPosition!.latitude,

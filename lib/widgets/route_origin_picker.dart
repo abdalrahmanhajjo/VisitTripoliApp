@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../l10n/app_localizations.dart';
+import '../providers/map_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/map_launcher.dart';
 
@@ -186,12 +190,52 @@ class _RouteOriginPickerState extends State<RouteOriginPicker> {
               title: 'My current location',
               subtitle: widget.myLocationCoords != null
                   ? 'Uses live GPS & direction when you start navigation'
-                  : 'We’ll request your location when you continue',
-              onTap: () {
-                final c = widget.myLocationCoords;
+                  : 'We’ll ask before using your location',
+              onTap: () async {
+                final l10n = AppLocalizations.of(context)!;
+                final consent = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text(l10n.locationForDirectionsTitle),
+                    content: Text(l10n.locationForDirectionsBody),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: Text(l10n.locationForDirectionsNotNow),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: Text(l10n.locationForDirectionsAllow),
+                      ),
+                    ],
+                  ),
+                );
+                if (!context.mounted) return;
+                if (consent != true) return;
+
+                final mapProvider =
+                    Provider.of<MapProvider>(context, listen: false);
+                await mapProvider.getCurrentLocation();
+                if (!context.mounted) return;
+
+                final pos = mapProvider.currentPosition;
+                if (pos == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        mapProvider.lastLocationError != null &&
+                                mapProvider.lastLocationError!.isNotEmpty
+                            ? mapProvider.lastLocationError!
+                            : l10n.locationUnavailable,
+                      ),
+                    ),
+                  );
+                  return;
+                }
+
                 _pop(
-                  c?.$1 ?? 0,
-                  c?.$2 ?? 0,
+                  pos.latitude,
+                  pos.longitude,
                   'My Location',
                   fromMyLocation: true,
                   chooseStartOnMap: false,

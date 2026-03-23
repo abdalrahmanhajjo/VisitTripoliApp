@@ -6,9 +6,11 @@ import '../models/place.dart';
 import '../map/place_coordinates.dart';
 import '../services/api_service.dart';
 import '../services/geocoding_service.dart';
+import '../utils/locale_data_cache.dart';
 import '../utils/network_error.dart';
 
-const String _placesCacheKey = 'places_list_cache';
+/// Disk cache prefix: `places_list_cache_en` / `_ar` / `_fr` (see [readLocaleScopedJson]).
+const String _placesCachePrefix = 'places_list_cache';
 
 class PlacesProvider extends ChangeNotifier {
   List<Place> _places = [];
@@ -32,8 +34,10 @@ class PlacesProvider extends ChangeNotifier {
   /// Load places from disk cache immediately so UI can show in msec; then API refresh updates.
   Future<void> _loadFromDiskCache() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_placesCacheKey);
+      final raw = await readLocaleScopedJson(
+        legacyKey: _placesCachePrefix,
+        scopedPrefix: _placesCachePrefix,
+      );
       if (raw == null || raw.isEmpty) return;
       final list = json.decode(raw) as List<dynamic>?;
       if (list == null || list.isEmpty) return;
@@ -66,8 +70,10 @@ class PlacesProvider extends ChangeNotifier {
           .toList();
 
       try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_placesCacheKey, json.encode(list));
+        await writeLocaleScopedJson(
+          scopedPrefix: _placesCachePrefix,
+          json: json.encode(list),
+        );
       } catch (_) {}
 
       if (_places.any((p) => !p.hasMapCoordinates)) {

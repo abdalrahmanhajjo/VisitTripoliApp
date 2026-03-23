@@ -4,9 +4,10 @@ import 'package:flutter/scheduler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/tour.dart';
 import '../services/api_service.dart';
+import '../utils/locale_data_cache.dart';
 import '../utils/network_error.dart';
 
-const String _toursCacheKey = 'tours_list_cache';
+const String _toursCachePrefix = 'tours_list_cache';
 
 class ToursProvider extends ChangeNotifier {
   List<Tour> _tours = [];
@@ -31,8 +32,10 @@ class ToursProvider extends ChangeNotifier {
   /// Load tours from disk so Explore works offline after first load.
   Future<void> _loadFromDiskCache() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_toursCacheKey);
+      final raw = await readLocaleScopedJson(
+        legacyKey: _toursCachePrefix,
+        scopedPrefix: _toursCachePrefix,
+      );
       if (raw == null || raw.isEmpty) return;
       final list = json.decode(raw) as List<dynamic>?;
       if (list == null || list.isEmpty) return;
@@ -61,8 +64,10 @@ class ToursProvider extends ChangeNotifier {
       _tours =
           list.map((e) => Tour.fromJson(e as Map<String, dynamic>)).toList();
       try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_toursCacheKey, json.encode(list));
+        await writeLocaleScopedJson(
+          scopedPrefix: _toursCachePrefix,
+          json: json.encode(list),
+        );
       } catch (_) {}
     } catch (e, st) {
       debugPrint('Error loading tours: $e');
