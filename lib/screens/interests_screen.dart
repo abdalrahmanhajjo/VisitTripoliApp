@@ -10,7 +10,10 @@ import '../theme/app_theme.dart';
 import '../l10n/app_localizations.dart';
 
 class InterestsScreen extends StatefulWidget {
-  const InterestsScreen({super.key});
+  /// When true (opened from Profile), shows back + Done and does not complete onboarding.
+  const InterestsScreen({super.key, this.profileEditMode = false});
+
+  final bool profileEditMode;
 
   @override
   State<InterestsScreen> createState() => _InterestsScreenState();
@@ -34,7 +37,7 @@ class _InterestsScreenState extends State<InterestsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Header section
-                      _buildHeader(provider),
+                      _buildHeader(context),
                       // Content section
                       Expanded(
                         child: SingleChildScrollView(
@@ -52,7 +55,7 @@ class _InterestsScreenState extends State<InterestsScreen> {
                         ),
                       ),
                       // Bottom action bar
-                      _buildBottomBar(provider),
+                      _buildBottomBar(context, provider),
                     ],
                   ),
           ),
@@ -107,12 +110,27 @@ class _InterestsScreenState extends State<InterestsScreen> {
     );
   }
 
-  Widget _buildHeader(InterestsProvider provider) {
+  Widget _buildHeader(BuildContext context) {
+    final edit = widget.profileEditMode;
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (edit)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: IconButton(
+                onPressed: () => context.pop(),
+                icon: const Icon(Icons.arrow_back_rounded),
+                color: AppTheme.textPrimary,
+                style: IconButton.styleFrom(
+                  backgroundColor: AppTheme.surfaceColor.withValues(alpha: 0.9),
+                  padding: const EdgeInsets.all(10),
+                ),
+              ),
+            ),
+          if (edit) const SizedBox(height: 8),
           Text(
             AppLocalizations.of(context)!.yourInterests,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -248,8 +266,54 @@ class _InterestsScreenState extends State<InterestsScreen> {
     if (mounted) context.go('/explore?welcome=1');
   }
 
-  Widget _buildBottomBar(InterestsProvider provider) {
+  Widget _buildBottomBar(BuildContext context, InterestsProvider provider) {
     final selected = provider.selectedIds.length;
+
+    if (widget.profileEditMode) {
+      return Container(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          20,
+          24,
+          20 + MediaQuery.of(context).padding.bottom,
+        ),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor.withValues(alpha: 0.95),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: FilledButton(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              context.pop();
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              elevation: 0,
+            ),
+            child: Text(
+              AppLocalizations.of(context)!.done,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Container(
       padding: EdgeInsets.fromLTRB(

@@ -1216,6 +1216,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get session => 'Session';
 
   @override
+  String get developerCredit => 'Développé par Abdalrahman Hajjo';
+
+  @override
   String get profileStoredLocally =>
       'Ce profil est stocké localement. Vous pouvez l\'effacer à tout moment.';
 

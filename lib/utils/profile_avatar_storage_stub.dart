@@ -2,7 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 /// Stub: no local file storage (e.g. on web). Always use network.
-Future<String?> saveProfileAvatarToDevice(List<int> bytes) async => null;
+Future<String?> saveProfileAvatarToDevice(List<int> bytes, {String? userId}) async =>
+    null;
 void clearProfileAvatarFromDevice(String? path) {}
 
 Widget buildProfileAvatarImage({

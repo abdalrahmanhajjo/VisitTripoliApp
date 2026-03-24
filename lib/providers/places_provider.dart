@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/place.dart';
 import '../map/place_coordinates.dart';
+import '../models/place.dart';
+import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/geocoding_service.dart';
 import '../utils/locale_data_cache.dart';
@@ -11,6 +11,9 @@ import '../utils/network_error.dart';
 
 /// Disk cache prefix: `places_list_cache_en` / `_ar` / `_fr` (see [readLocaleScopedJson]).
 const String _placesCachePrefix = 'places_list_cache';
+
+/// Legacy guest-only storage key (signed-in users use server [saved_places]).
+const String _savedPlacesPrefsKey = 'savedPlaces';
 
 class PlacesProvider extends ChangeNotifier {
   List<Place> _places = [];
@@ -27,8 +30,76 @@ class PlacesProvider extends ChangeNotifier {
   PlacesProvider() {
     _loadFromDiskCache(); // non-blocking: fills _places from disk so UI can paint in msec
     loadPlaces();
-    // Defer saved-places load to after first frame so initial paint is not delayed.
-    SchedulerBinding.instance.addPostFrameCallback((_) => loadSavedPlaces());
+  }
+
+  /// Call when account changes (see [main] `_ProfileAccountSync`).
+  /// Signed-in users: loads from `GET /api/user/saved-places` (DB). Guests: local prefs only.
+  Future<void> loadSavedPlacesForCurrentUser({
+    required String? authToken,
+    required bool isGuest,
+  }) async {
+    final loggedIn =
+        authToken != null && authToken.isNotEmpty && !isGuest;
+    if (loggedIn) {
+      await _migrateLocalSavedToServer(authToken);
+      await _loadSavedPlacesFromApi(authToken);
+      return;
+    }
+    await _loadSavedPlacesFromPrefs();
+  }
+
+  Future<void> _migrateLocalSavedToServer(String authToken) async {
+    final prefs = await SharedPreferences.getInstance();
+    final s = prefs.getString(_savedPlacesPrefsKey);
+    if (s == null || s.isEmpty) return;
+    try {
+      final List<dynamic> jsonData = json.decode(s);
+      for (final item in jsonData) {
+        final id = (item as Map<String, dynamic>)['id']?.toString();
+        if (id == null || id.isEmpty) continue;
+        try {
+          await ApiService.instance.saveUserPlace(authToken, id);
+        } catch (_) {
+          // Place removed from DB or network blip — skip
+        }
+      }
+      await prefs.remove(_savedPlacesPrefsKey);
+    } catch (e) {
+      debugPrint('migrate saved places: $e');
+    }
+  }
+
+  Future<void> _loadSavedPlacesFromApi(String authToken) async {
+    try {
+      final list = await ApiService.instance.getSavedPlaces(
+        authToken: authToken,
+        locale: ApiService.instance.currentLocale,
+      );
+      _savedPlaces = list
+          .map((item) => _placeFromJson(item as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error loading saved places from server: $e');
+    }
+  }
+
+  Future<void> _loadSavedPlacesFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final s = prefs.getString(_savedPlacesPrefsKey);
+    if (s != null && s.isNotEmpty) {
+      try {
+        final List<dynamic> jsonData = json.decode(s);
+        _savedPlaces =
+            jsonData.map((json) => Place.fromJson(json as Map<String, dynamic>)).toList();
+        notifyListeners();
+      } catch (e) {
+        debugPrint('Error loading saved places: $e');
+      }
+    } else {
+      _savedPlaces = [];
+      notifyListeners();
+    }
   }
 
   /// Load places from disk cache immediately so UI can show in msec; then API refresh updates.
@@ -184,22 +255,29 @@ class PlacesProvider extends ChangeNotifier {
     return _places.where((place) => place.category == category).toList();
   }
 
-  Future<void> loadSavedPlaces() async {
-    final prefs = await SharedPreferences.getInstance();
-    final s = prefs.getString('savedPlaces');
-    if (s != null && s.isNotEmpty) {
-      try {
-        final List<dynamic> jsonData = json.decode(s);
-        _savedPlaces = jsonData.map((json) => Place.fromJson(json)).toList();
-        notifyListeners();
-      } catch (e) {
-        debugPrint('Error loading saved places: $e');
-      }
-    }
-  }
+  /// Toggles saved state: **database** for signed-in users, **SharedPreferences** for guests only.
+  Future<void> toggleSavePlace(Place place, {required AuthProvider auth}) async {
+    final token = auth.authToken;
+    final loggedIn = auth.isAuthenticated &&
+        !auth.isGuest &&
+        token != null &&
+        token.isNotEmpty;
 
-  /// Toggles place in saved list (local only). Throws on storage failure.
-  Future<void> toggleSavePlace(Place place) async {
+    if (loggedIn) {
+      final isSaved = _savedPlaces.any((p) => p.id == place.id);
+      if (isSaved) {
+        await ApiService.instance.unsaveUserPlace(token, place.id);
+        _savedPlaces.removeWhere((p) => p.id == place.id);
+      } else {
+        await ApiService.instance.saveUserPlace(token, place.id);
+        if (!_savedPlaces.any((p) => p.id == place.id)) {
+          _savedPlaces.add(place);
+        }
+      }
+      notifyListeners();
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final isSaved = _savedPlaces.any((p) => p.id == place.id);
 
@@ -210,7 +288,7 @@ class PlacesProvider extends ChangeNotifier {
     }
 
     final savedJson = json.encode(_savedPlaces.map((p) => p.toJson()).toList());
-    await prefs.setString('savedPlaces', savedJson);
+    await prefs.setString(_savedPlacesPrefsKey, savedJson);
     notifyListeners();
   }
 

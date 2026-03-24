@@ -61,7 +61,10 @@ CREATE TABLE IF NOT EXISTS places (
   rating DOUBLE PRECISION,
   review_count INT,
   hours JSONB,
-  tags JSONB
+  tags JSONB,
+  checkin_token VARCHAR(64) NOT NULL UNIQUE DEFAULT (
+    lower(replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''))
+  )
 );
 
 -- Place reviews (per user, per place)
@@ -203,3 +206,11 @@ CREATE TABLE IF NOT EXISTS phone_otp_codes (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_phone_otp_phone ON phone_otp_codes(phone);
+
+-- FCM / push notification tokens (one row per user)
+CREATE TABLE IF NOT EXISTS user_push_tokens (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL,
+  platform VARCHAR(32) DEFAULT 'android',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);

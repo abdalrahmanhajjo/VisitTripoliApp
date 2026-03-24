@@ -6,12 +6,61 @@ const { OAuth2Client } = require('google-auth-library');
 const verifyAppleToken = require('verify-apple-id-token').default || require('verify-apple-id-token');
 const { query } = require('../db');
 const { validatePassword } = require('../utils/passwordValidator');
+const { validateUsername } = require('../utils/username');
 const { sendPasswordResetCode, sendVerificationCode, RESET_LINK_EXPIRY_MINUTES, VERIFICATION_LINK_EXPIRY_MINUTES } = require('../services/emailService');
 
 const router = express.Router();
 const googleClient = process.env.GOOGLE_CLIENT_ID
   ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
   : null;
+
+/** JWT `aud` differs: iOS/macOS use App ID (bundle id); Android/web use Services ID. Try each. */
+async function verifyAppleIdTokenFlexible(idToken) {
+  const raw =
+    process.env.APPLE_CLIENT_IDS ||
+    process.env.APPLE_CLIENT_ID ||
+    process.env.APPLE_SERVICE_ID ||
+    '';
+  const clientIds = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  if (clientIds.length === 0) {
+    throw new Error('Apple not configured');
+  }
+  let lastErr;
+  for (const clientId of clientIds) {
+    try {
+      return await verifyAppleToken({ idToken, clientId });
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
+/**
+ * GET/POST — Apple OAuth return URL for Flutter Android (Chrome Custom Tab).
+ * Redirects into the app via intent:// (see sign_in_with_apple README).
+ */
+function appleAndroidReturn(req, res) {
+  try {
+    const merged = { ...req.query };
+    if (req.body && typeof req.body === 'object') {
+      Object.assign(merged, req.body);
+    }
+    const u = new URLSearchParams();
+    for (const [k, v] of Object.entries(merged)) {
+      if (v != null && String(v) !== '') {
+        u.append(k, String(v));
+      }
+    }
+    const qs = u.toString();
+    const pkg = (process.env.ANDROID_PACKAGE_NAME || 'com.example.tripoli_explorer').trim();
+    const intent = `intent://callback?${qs}#Intent;package=${pkg};scheme=signinwithapple;end`;
+    res.redirect(302, intent);
+  } catch (err) {
+    console.error('Apple android return redirect', err);
+    res.status(500).send('Redirect failed');
+  }
+}
 
 /** When true (non-production only), forgot-password includes devResetCode in JSON for local testing without SMTP. */
 function isDevResetCodeEnabled() {
@@ -82,7 +131,7 @@ function recordForgotAttempt(ip) {
 }
 
 function sanitizeAuthInput(req, res, next) {
-  const { email, password, name } = req.body || {};
+  const { email, password, name, username } = req.body || {};
   if (typeof email !== 'string' || email.length > 254) {
     return res.status(400).json({ error: 'Invalid email' });
   }
@@ -92,19 +141,36 @@ function sanitizeAuthInput(req, res, next) {
   if (name != null && (typeof name !== 'string' || name.length > 150)) {
     return res.status(400).json({ error: 'Invalid name' });
   }
+  if (username != null && (typeof username !== 'string' || username.length > 64)) {
+    return res.status(400).json({ error: 'Invalid username' });
+  }
   next();
 }
 
 // POST /api/auth/register - Email signup (requires verification)
 router.post('/register', sanitizeAuthInput, async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, username: usernameRaw } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password required' });
     }
     const pv = validatePassword(password);
     if (!pv.valid) {
       return res.status(400).json({ error: pv.error });
+    }
+    const uv = validateUsername(usernameRaw);
+    if (!uv.ok) {
+      return res.status(400).json({ error: uv.error });
+    }
+    const username = uv.normalized;
+    const taken = await query(
+      `SELECT u.id FROM profiles p
+       JOIN users u ON u.id = p.user_id
+       WHERE LOWER(REGEXP_REPLACE(TRIM(p.username), '^@+', '')) = $1`,
+      [username]
+    );
+    if (taken.rows.length > 0) {
+      return res.status(400).json({ error: 'This username is already taken' });
     }
     const hash = await bcrypt.hash(password, 12);
     const result = await query(
@@ -115,8 +181,10 @@ router.post('/register', sanitizeAuthInput, async (req, res) => {
     );
     const user = result.rows[0];
     await query(
-      'INSERT INTO profiles (user_id, onboarding_completed) VALUES ($1, false) ON CONFLICT (user_id) DO NOTHING',
-      [user.id]
+      `INSERT INTO profiles (user_id, username, onboarding_completed)
+       VALUES ($1, $2, false)
+       ON CONFLICT (user_id) DO UPDATE SET username = COALESCE(EXCLUDED.username, profiles.username)`,
+      [user.id, username]
     );
 
     const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -138,6 +206,7 @@ router.post('/register', sanitizeAuthInput, async (req, res) => {
       user: {
         id: user.id,
         name: user.name || email.split('@')[0],
+        username,
         email: user.email,
         emailVerified: false,
         onboardingCompleted: false,
@@ -146,7 +215,10 @@ router.post('/register', sanitizeAuthInput, async (req, res) => {
     });
   } catch (err) {
     if (err.code === '23505') {
-      return res.status(400).json({ error: 'Email already registered' });
+      const msg = (err.constraint || '').includes('username') || (err.detail || '').includes('username')
+        ? 'This username is already taken'
+        : 'Email already registered';
+      return res.status(400).json({ error: msg });
     }
     console.error(err);
     res.status(500).json({ error: 'Registration failed' });
@@ -293,6 +365,14 @@ router.post('/google', async (req, res) => {
   }
 });
 
+// Return URL for Sign in with Apple on Android (register exact URL in Apple Developer → Services ID).
+router.get('/apple/android-return', appleAndroidReturn);
+router.post(
+  '/apple/android-return',
+  express.urlencoded({ extended: true, limit: '32kb' }),
+  appleAndroidReturn,
+);
+
 // POST /api/auth/apple - Sign in/up with Apple ID token
 router.post('/apple', async (req, res) => {
   try {
@@ -300,15 +380,19 @@ router.post('/apple', async (req, res) => {
     if (!idToken || typeof idToken !== 'string' || idToken.length > 5000) {
       return res.status(400).json({ error: 'Invalid token' });
     }
-    const clientId = process.env.APPLE_CLIENT_ID || process.env.APPLE_SERVICE_ID;
-    if (!clientId) {
-      return res.status(503).json({ error: 'Apple Sign-In not configured. Set APPLE_CLIENT_ID or APPLE_SERVICE_ID.' });
+    const configured =
+      (process.env.APPLE_CLIENT_IDS ||
+        process.env.APPLE_CLIENT_ID ||
+        process.env.APPLE_SERVICE_ID ||
+        '').trim();
+    if (!configured) {
+      return res.status(503).json({
+        error:
+          'Apple Sign-In not configured. Set APPLE_CLIENT_IDS (recommended: iOS bundle id and Android Services id, comma-separated) or APPLE_CLIENT_ID.',
+      });
     }
 
-    const payload = await verifyAppleToken({
-      idToken,
-      clientId,
-    });
+    const payload = await verifyAppleIdTokenFlexible(idToken);
     const sub = payload.sub;
     const email = payload.email || appleEmail || `${sub}@privaterelay.appleid.apple.com`;
     const name = appleName || payload.name || email.split('@')[0];

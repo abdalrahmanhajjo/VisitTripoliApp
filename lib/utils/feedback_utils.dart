@@ -1,39 +1,84 @@
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:vibration/vibration.dart';
 
 import '../theme/app_theme.dart';
 import 'snackbar_utils.dart';
 
-/// Central feedback for every user action: haptic + optional message.
-/// Use so the user always feels the app responded.
+/// Central feedback for user actions: haptics, short vibration on Android, optional snackbars.
 class AppFeedback {
   AppFeedback._();
 
-  /// Light haptic for any tap (buttons, list items, chips).
+  /// Light feedback for taps (buttons, list tiles, chips).
   static void tap() {
-    HapticFeedback.lightImpact();
+    if (kIsWeb) {
+      HapticFeedback.lightImpact();
+      return;
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        Future(() async {
+          final has = await Vibration.hasVibrator();
+          if (has == true) {
+            await Vibration.vibrate(duration: 12);
+          } else {
+            HapticFeedback.lightImpact();
+          }
+        });
+        break;
+      default:
+        HapticFeedback.lightImpact();
+    }
   }
 
-  /// Selection-style haptic (e.g. tab change, picker).
+  /// Selection / toggle (tabs, segments, pickers).
   static void selection() {
     HapticFeedback.selectionClick();
   }
 
-  /// Success feedback: haptic + short success snackbar.
+  static void _successHaptic() {
+    HapticFeedback.mediumImpact();
+    if (kIsWeb) return;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      Future(() async {
+        final has = await Vibration.hasVibrator();
+        if (has == true) {
+          await Vibration.vibrate(duration: 38);
+        }
+      });
+    }
+  }
+
+  static void _errorHaptic() {
+    HapticFeedback.heavyImpact();
+    if (kIsWeb) return;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      Future(() async {
+        final has = await Vibration.hasVibrator();
+        if (has == true) {
+          await Vibration.vibrate(duration: 55);
+        }
+      });
+    }
+  }
+
+  /// Success: haptic + short success snackbar.
   static void success(BuildContext context, String message) {
-    HapticFeedback.lightImpact();
+    _successHaptic();
     AppSnackBars.showSuccess(context, message);
   }
 
-  /// Error feedback: haptic + error snackbar.
+  /// Error: stronger haptic + error snackbar.
   static void error(BuildContext context, String message, {SnackBarAction? action}) {
-    HapticFeedback.mediumImpact();
+    _errorHaptic();
     AppSnackBars.showError(context, message, action: action);
   }
 
-  /// Info feedback: haptic + neutral snackbar (optional; use success/error when possible).
+  /// Info: light tap + neutral snackbar.
   static void info(BuildContext context, String message) {
-    HapticFeedback.lightImpact();
+    tap();
     final m = ScaffoldMessenger.of(context);
     m.hideCurrentSnackBar();
     m.showSnackBar(

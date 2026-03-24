@@ -1,9 +1,31 @@
+const crypto = require('crypto');
 const express = require('express');
 const { query } = require('../db');
 const adminAuth = require('../middleware/adminAuth');
+const { getRequestLang } = require('../utils/requestLang');
+const { invalidateByPrefix } = require('../middleware/responseCache');
 
 const router = express.Router();
 router.use(adminAuth);
+
+function newCheckinToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+/** Same format as the mobile app — print this string as the door QR. */
+function buildCheckinQrPayload(placeId, checkinToken) {
+  return `tripoli-explorer://checkin?p=${encodeURIComponent(placeId)}&token=${encodeURIComponent(checkinToken)}`;
+}
+
+/** Legacy rows may lack a token; assign one per place so a door QR always exists. */
+async function backfillMissingCheckinTokens() {
+  const { rows } = await query(
+    `SELECT id FROM places WHERE checkin_token IS NULL OR TRIM(checkin_token) = ''`
+  );
+  for (const row of rows) {
+    await query('UPDATE places SET checkin_token = $1 WHERE id = $2', [newCheckinToken(), row.id]);
+  }
+}
 
 // --- Categories ---
 router.get('/categories', async (req, res) => {
@@ -57,6 +79,7 @@ router.delete('/categories/:id', async (req, res) => {
 // --- Places ---
 router.get('/places', async (req, res) => {
   try {
+    await backfillMissingCheckinTokens();
     const r = await query('SELECT * FROM places ORDER BY name');
     res.json(r.rows);
   } catch (err) {
@@ -69,18 +92,24 @@ router.post('/places', async (req, res) => {
   try {
     const p = req.body;
     const images = Array.isArray(p.images) ? p.images : (p.image ? [p.image] : []);
+    const checkinToken = newCheckinToken();
     await query(
-      `INSERT INTO places (id, name, description, location, latitude, longitude, images, category, category_id, duration, price, best_time, rating, review_count, tags) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+      `INSERT INTO places (id, name, description, location, latitude, longitude, images, category, category_id, duration, price, best_time, rating, review_count, tags, checkin_token) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
       [
         p.id, p.name || '', p.description || '', p.location || '',
         p.latitude ?? p.coordinates?.lat ?? null, p.longitude ?? p.coordinates?.lng ?? null,
         JSON.stringify(images), p.category || '', p.categoryId || p.category_id || '',
         p.duration || '', String(p.price ?? ''), p.bestTime || p.best_time || '',
-        p.rating ?? null, p.reviewCount ?? p.review_count ?? null, JSON.stringify(p.tags || [])
+        p.rating ?? null, p.reviewCount ?? p.review_count ?? null, JSON.stringify(p.tags || []),
+        checkinToken,
       ]
     );
-    res.status(201).json({ id: p.id });
+    res.status(201).json({
+      id: p.id,
+      checkinToken,
+      qrPayload: buildCheckinQrPayload(p.id, checkinToken),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -122,6 +151,49 @@ router.delete('/places/:id', async (req, res) => {
   try {
     await query('DELETE FROM places WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/places/:id/ensure-checkin-token — create token + QR payload if missing (does not rotate existing)
+router.post('/places/:id/ensure-checkin-token', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const row = (await query('SELECT id, checkin_token FROM places WHERE id = $1', [id])).rows[0];
+    if (!row) return res.status(404).json({ error: 'Place not found' });
+    let token = row.checkin_token;
+    if (!token || !String(token).trim()) {
+      token = newCheckinToken();
+      await query('UPDATE places SET checkin_token = $1 WHERE id = $2', [token, id]);
+    }
+    res.json({
+      id,
+      checkinToken: token,
+      qrPayload: buildCheckinQrPayload(id, token),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/places/:id/regenerate-checkin-token — new door QR (invalidates old prints)
+router.post('/places/:id/regenerate-checkin-token', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const checkinToken = newCheckinToken();
+    const r = await query(
+      'UPDATE places SET checkin_token = $1 WHERE id = $2 RETURNING id',
+      [checkinToken, id]
+    );
+    if (r.rows.length === 0) return res.status(404).json({ error: 'Place not found' });
+    res.json({
+      id: r.rows[0].id,
+      checkinToken,
+      qrPayload: buildCheckinQrPayload(id, checkinToken),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -408,6 +480,61 @@ router.delete('/place-owners/:userId/:placeId', async (req, res) => {
     if (remain.rows.length === 0) {
       await query('UPDATE users SET is_business_owner = false WHERE id = $1', [req.params.userId]);
     }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Feed moderation (discoverer posts pending review) ---
+router.get('/feed/pending', async (req, res) => {
+  try {
+    const lang = getRequestLang(req);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+    const result = await query(
+      `SELECT p.id, p.user_id, p.author_name, p.place_id, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.author_role, p.moderation_status,
+              COALESCE(pt.name, pl.name) AS place_name, u.email AS author_email
+       FROM feed_posts p
+       LEFT JOIN places pl ON pl.id = p.place_id
+       LEFT JOIN place_translations pt ON pt.place_id = pl.id AND pt.lang = $1
+       LEFT JOIN users u ON u.id = p.user_id
+       WHERE p.moderation_status = 'pending' AND p.author_role = 'discoverer'
+       ORDER BY p.created_at ASC
+       LIMIT $2`,
+      [lang, limit],
+    );
+    res.json({ posts: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/feed/:postId/moderate', async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const action = (req.body?.action || '').toString().trim().toLowerCase();
+    if (action === 'approve') {
+      const r = await query(
+        `UPDATE feed_posts SET moderation_status = 'approved' WHERE id = $1 AND author_role = 'discoverer' AND moderation_status = 'pending' RETURNING id`,
+        [postId],
+      );
+      if (r.rows.length === 0) {
+        return res.status(404).json({ error: 'Pending discoverer post not found' });
+      }
+    } else if (action === 'reject') {
+      const r = await query(
+        `UPDATE feed_posts SET moderation_status = 'rejected' WHERE id = $1 AND author_role = 'discoverer' AND moderation_status = 'pending' RETURNING id`,
+        [postId],
+      );
+      if (r.rows.length === 0) {
+        return res.status(404).json({ error: 'Pending discoverer post not found' });
+      }
+    } else {
+      return res.status(400).json({ error: 'body.action must be "approve" or "reject"' });
+    }
+    invalidateByPrefix('feed:');
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

@@ -4,13 +4,14 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
-const String _avatarFileName = 'profile_avatar.jpg';
-
 /// Saves avatar bytes to app documents directory. Returns the file path or null.
-Future<String?> saveProfileAvatarToDevice(List<int> bytes) async {
+/// [userId] scopes the filename per account (avoids one shared file for all users).
+Future<String?> saveProfileAvatarToDevice(List<int> bytes, {String? userId}) async {
   try {
+    final safe = (userId ?? 'guest').replaceAll(RegExp(r'[^\w\-]'), '');
+    final fileName = 'profile_avatar_$safe.jpg';
     final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/$_avatarFileName');
+    final file = File('${dir.path}/$fileName');
     await file.writeAsBytes(bytes);
     return file.path;
   } catch (e) {

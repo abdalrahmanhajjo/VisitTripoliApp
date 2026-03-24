@@ -7,6 +7,7 @@ import '../services/social_auth_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/password_validator.dart';
+import '../utils/username_validator.dart';
 import 'package:tripoli_explorer/l10n/app_localizations.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -41,6 +43,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   void dispose() {
     _backgroundController.dispose();
     _nameController.dispose();
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -57,6 +60,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       _nameController.text.trim(),
       _emailController.text.trim(),
       _passwordController.text,
+      UsernameValidator.normalize(_usernameController.text) ?? '',
     );
 
     setState(() => _isLoading = false);
@@ -499,6 +503,16 @@ class _RegisterScreenState extends State<RegisterScreen>
                 ),
                 const SizedBox(height: 16),
                 _buildInput(
+                  controller: _usernameController,
+                  label: 'Username',
+                  hint: 'your_handle (3–20 chars)',
+                  icon: Icons.alternate_email_rounded,
+                  autocorrect: false,
+                  textCapitalization: TextCapitalization.none,
+                  validator: UsernameValidator.validate,
+                ),
+                const SizedBox(height: 16),
+                _buildInput(
                   controller: _emailController,
                   label: 'Email',
                   hint: 'you@example.com',
@@ -605,6 +619,8 @@ class _RegisterScreenState extends State<RegisterScreen>
     required IconData icon,
     TextInputType? keyboardType,
     bool obscureText = false,
+    bool autocorrect = true,
+    TextCapitalization textCapitalization = TextCapitalization.sentences,
     Widget? suffixIcon,
     String? Function(String?)? validator,
   }) {
@@ -612,6 +628,8 @@ class _RegisterScreenState extends State<RegisterScreen>
       controller: controller,
       keyboardType: keyboardType,
       obscureText: obscureText,
+      autocorrect: autocorrect,
+      textCapitalization: textCapitalization,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

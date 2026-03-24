@@ -99,6 +99,20 @@ int _timeStringToMinutes(String s) {
   return h * 60 + m;
 }
 
+/// Normalizes model output like "9:00", "09:5", "14:30" to HH:MM.
+String _normalizeSuggestedTime(String raw) {
+  final s = raw.trim();
+  final m = RegExp(r'^(\d{1,2})\s*:\s*(\d{1,2})$').firstMatch(s);
+  if (m != null) {
+    final h = int.tryParse(m.group(1) ?? '') ?? 9;
+    final min = int.tryParse(m.group(2) ?? '') ?? 0;
+    final hc = h.clamp(0, 23);
+    final mc = min.clamp(0, 59);
+    return '${hc.toString().padLeft(2, '0')}:${mc.toString().padLeft(2, '0')}';
+  }
+  return s;
+}
+
 /// Calls backend which forwards to n8n webhook for trip planning.
 /// Configure N8N_WEBHOOK_URL in backend .env.
 class AIPlannerService {
@@ -603,13 +617,13 @@ Return JSON: {"alternativesMessage": null or "text", "places": [{"placeId":"exac
 
 $chatTraining
 
-**Style:** Natural, warm, concise (usually 2–6 sentences). Match the user's tone. No JSON or bullet lists unless asked. Understand typos and short messages. Be helpful and engaging—you're a companion, not a rigid bot.''';
+**Style:** Natural, warm, concise (usually 2–6 sentences). Match the user's tone. No JSON or bullet lists unless asked. Understand typos and short messages. Be helpful and engaging—you're a companion, not a rigid bot. Prefer accurate, specific answers; if a fact is uncertain, say so briefly instead of guessing.''';
 
     final fullPrompt =
         '$prompt\n\n---\n**Verified Tripoli history facts (use when relevant):**\n$tripoliHistoryKnowledge\n\n---\nUser: $userMessage\n\nReply:';
 
     try {
-      final result = await _callLLM(fullPrompt, temperature: 0.5, maxTokens: 768);
+      final result = await _callLLM(fullPrompt, temperature: 0.45, maxTokens: 896);
       return result.text;
     } on AIPlannerApiException {
       rethrow;
@@ -639,6 +653,8 @@ $chatTraining
     String responseLanguage = 'en',
     List<AIPlannerSlot>? previousSlots,
     List<Place>? previousPlaces,
+    /// When set, user is replacing only this index in the flat plan array; model must keep all other slots identical.
+    int? singleReplaceSlotIndex,
   }) async {
     final lang = supportedResponseLanguages.contains(responseLanguage) ? responseLanguage : 'en';
     final languageInstruction = lang == 'ar'
@@ -658,6 +674,9 @@ $chatTraining
       'name': p.name,
       'category': p.category,
     }).toList();
+
+    final fewShot = AiPlannerTrainingData.buildFewShotPrompt(userMessage, maxExamples: 10);
+    const qualityRules = AiPlannerTrainingData.plannerQualityRules;
 
     final historyStr = conversationHistory.isEmpty
         ? ''
@@ -704,19 +723,40 @@ You ONLY help with Tripoli, Lebanon. Answer only about Tripoli—trip planning, 
           lines.add('  ${s.suggestedTime} $name');
         }
       }
+      var replaceOneStopNote = '''
+When the user asks to add a place, remove one, reorder, or "do the plan again", output an updated PLAN_JSON that applies their requested change and adjusts times/order as needed. Keep as much of the current plan as they did not ask to change.
+If the user asks to change or replace ONLY ONE stop (they name one place, time, or day), output a full PLAN_JSON array where every slot is identical to the current plan except that single slot: only that slot's placeId (and reason) may change to a different place from the list. Keep the same suggestedTime and dayIndex for all slots unless they explicitly asked to change a time. Preserve order and count.''';
+
+      if (singleReplaceSlotIndex != null &&
+          singleReplaceSlotIndex >= 0 &&
+          singleReplaceSlotIndex < previousSlots.length) {
+        replaceOneStopNote = '''
+
+MANDATORY — SINGLE SLOT REPLACE (app-enforced):
+- The user is replacing ONLY the stop at slot index $singleReplaceSlotIndex (0-based) in the plan array above.
+- Your PLAN_JSON MUST contain EXACTLY ${previousSlots.length} slots — the same count as the current plan.
+- For every index i where i ≠ $singleReplaceSlotIndex: copy the current plan exactly — same placeId, suggestedTime, dayIndex, and reason as in the current plan (no changes).
+- Only index $singleReplaceSlotIndex may use a new placeId from the list (and an updated reason). Keep suggestedTime and dayIndex for that slot the same as the current plan unless the user explicitly asked to change the time.
+- Do not reorder slots. Do not add or remove slots.''';
+      }
+
       currentPlanBlock = '''
 
 CURRENT PLAN (user may have edited it; they want you to update it):
 ${lines.join('\n')}
-When the user asks to add a place, remove one, reorder, or "do the plan again", output an updated PLAN_JSON that applies their requested change and adjusts times/order as needed. Keep as much of the current plan as they did not ask to change.
-If the user asks to change or replace ONLY ONE stop (they name one place, time, or day), output a full PLAN_JSON array where every slot is identical to the current plan except that single slot: only that slot's placeId (and reason) may change to a different place from the list. Keep the same suggestedTime and dayIndex for all slots unless they explicitly asked to change a time. Preserve order and count.''';
+$replaceOneStopNote''';
     }
 
-    final systemPrompt = '''You are a friendly Tripoli, Lebanon trip planner.
+    final systemPrompt = '''You are an expert Tripoli, Lebanon trip planner—accurate, helpful, and concise.
 
 $languageInstruction
 $dbLocaleNote
 $tripoliOnly
+
+$qualityRules
+
+**Intent examples (match user wording loosely):**
+$fewShot
 
 You MUST never say the user "didn't ask a question" or "haven't shared any information"—treat "hello", "plan trip", "start", "plan", "i want a plan" as valid. The user has already set their number of days and places per day (see Trip context below). Reply by asking about interests (food, culture, history, shopping) or suggest a plan using the places list.
 
@@ -733,10 +773,15 @@ ${activityContext != null && activityContext.isNotEmpty ? '\n$activityContext\n'
         ? 'User: $userMessage\n\nAssistant:'
         : '$historyStr\n\nUser: $userMessage\n\nAssistant:';
 
+    // Lower temperature when structure matters (refine / single-slot) to reduce hallucinations and JSON errors.
+    final plannerTemperature = singleReplaceSlotIndex != null
+        ? 0.32
+        : (previousSlots != null && previousSlots.isNotEmpty ? 0.42 : 0.52);
+
     try {
       final result = await _callLLM(
         '', // not used when system+user provided
-        temperature: 0.6,
+        temperature: plannerTemperature,
         maxTokens: 2048,
         system: systemPrompt,
         user: userPrompt,
@@ -788,7 +833,9 @@ ${activityContext != null && activityContext.isNotEmpty ? '\n$activityContext\n'
                 final timeStr = (map['suggestedTime'] ?? map['suggested_time']) as String?;
                 slots.add(AIPlannerSlot(
                   placeId: placeId,
-                  suggestedTime: (timeStr != null && timeStr.isNotEmpty) ? timeStr : '9:00',
+                  suggestedTime: _normalizeSuggestedTime(
+                    (timeStr != null && timeStr.isNotEmpty) ? timeStr : '9:00',
+                  ),
                   reason: (map['reason'] as String?),
                   dayIndex: dayIndex,
                 ));

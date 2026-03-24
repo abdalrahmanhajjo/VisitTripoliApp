@@ -12,6 +12,7 @@ import '../config/api_config.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
 import '../providers/feed_provider.dart';
+import '../providers/places_provider.dart';
 import '../providers/interests_provider.dart';
 import '../services/feed_service.dart';
 import '../theme/app_theme.dart';
@@ -246,11 +247,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Future<void> _openFullPost(
     BuildContext context,
     FeedPost post,
-    FeedProvider feed,
     AuthProvider auth,
   ) async {
     final authToken = auth.authToken;
-    final isLoggedIn = auth.isLoggedIn && !auth.isGuest;
     if (post.displayImageUrls.isEmpty && post.videoUrl == null) return;
 
     await showDialog(
@@ -258,13 +257,10 @@ class _CommunityScreenState extends State<CommunityScreen> {
       barrierDismissible: true,
       barrierColor: Colors.black87,
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx2, setState) {
-            final current = feed.posts
-                    .where((p) => p.id == post.id)
-                    .isNotEmpty
-                ? feed.posts.firstWhere((p) => p.id == post.id)
-                : post;
+        return Consumer<FeedProvider>(
+          builder: (ctx2, feed, _) {
+            final current = feed.postById(post.id) ?? post;
+            final isOwner = _isPostOwner(current, auth);
 
             final l10n = AppLocalizations.of(ctx2)!;
             final authorName =
@@ -443,9 +439,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                 iconColor: current.likedByMe
                                     ? const Color(0xFFE11D48)
                                     : AppTheme.textSecondary,
-                                count: current.hideLikes && !isLoggedIn
-                                    ? null
-                                    : current.likeCount,
+                                count: (!current.hideLikes || isOwner)
+                                    ? current.likeCount
+                                    : null,
                                 onTap: () {
                                   if (authToken == null || authToken.isEmpty) {
                                     Navigator.pop(ctx2);
@@ -540,7 +536,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
 
     // Mark as "seen" once the user has opened the full post viewer.
-    feed.markPostSeen(post.id);
+    if (context.mounted) {
+      context.read<FeedProvider>().markPostSeen(post.id);
+    }
   }
 
   Future<void> _retryFeedLoad() async {
@@ -655,12 +653,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
               onReels: () => context.push('/community/reels'),
             ),
           ),
-          if (!showSaved)
-            SliverToBoxAdapter(
-              child: CommunityPullToRefreshHint(
-                onRefreshTap: () => unawaited(_refreshFeedForCurrentTab()),
-              ),
-            ),
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.only(top: 12, bottom: 8),
@@ -693,12 +685,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
               onReels: () => context.push('/community/reels'),
             ),
           ),
-          if (!showSaved)
-            SliverToBoxAdapter(
-              child: CommunityPullToRefreshHint(
-                onRefreshTap: () => unawaited(_refreshFeedForCurrentTab()),
-              ),
-            ),
           const SliverToBoxAdapter(
             child: Padding(
               padding: EdgeInsets.only(top: 12, bottom: 8),
@@ -758,12 +744,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
             onReels: () => context.push('/community/reels'),
           ),
         ),
-        if (!showSaved)
-          SliverToBoxAdapter(
-            child: CommunityPullToRefreshHint(
-              onRefreshTap: () => unawaited(_refreshFeedForCurrentTab()),
-            ),
-          ),
         const SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.only(top: 12, bottom: 8),
@@ -806,7 +786,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 onEdit: () => _openEditPost(context, post, feed, auth),
                 onDelete: () => _confirmDelete(context, post, feed, auth),
                 onReport: () => _reportPost(context, post, auth),
-                onImageTap: (_) => _openFullPost(context, post, feed, auth),
+                onImageTap: (_) => _openFullPost(context, post, auth),
                 onShowOptions: () => _showPostOptionsMenu(context, post, feed, auth),
               );
             },
@@ -911,26 +891,56 @@ class _CommunityScreenState extends State<CommunityScreen> {
       BuildContext context, FeedProvider feed, AuthProvider auth) async {
     final canPost = feed.canPost;
     if (canPost == null || !canPost.canPost) return;
-    if (canPost.ownedPlaces.isEmpty && !canPost.isAdmin) {
-      if (mounted) {
-        AppSnackBars.showError(context, AppLocalizations.of(context)!.selectPlaceToPost);
+
+    final placesProvider = Provider.of<PlacesProvider>(context, listen: false);
+    final List<OwnedPlace> placeOptions;
+    if (canPost.isDiscoverableContributor) {
+      placeOptions = placesProvider.places
+          .map((p) => OwnedPlace(id: p.id, name: p.name))
+          .toList();
+      if (placeOptions.isEmpty) {
+        if (mounted) {
+          AppSnackBars.showError(
+            context,
+            'Places are still loading. Open Explore briefly, then try again.',
+          );
+        }
+        return;
       }
-      return;
+    } else {
+      placeOptions = canPost.ownedPlaces;
+      if (placeOptions.isEmpty && !canPost.isAdmin) {
+        if (mounted) {
+          AppSnackBars.showError(
+            context,
+            AppLocalizations.of(context)!.selectPlaceToPost,
+          );
+        }
+        return;
+      }
     }
 
     final result = await Navigator.push<FeedPost?>(
       context,
       MaterialPageRoute(
         builder: (ctx) => CreatePostSheet(
-          ownedPlaces: canPost.ownedPlaces,
+          ownedPlaces: placeOptions,
           isAdmin: canPost.isAdmin,
+          isDiscoverableContributor: canPost.isDiscoverableContributor,
           authToken: auth.authToken!,
           userName: auth.userName,
         ),
       ),
     );
     if (result != null && mounted) {
-      feed.prependPost(result);
+      if (result.moderationStatus == 'pending') {
+        AppSnackBars.showSuccess(
+          context,
+          'Your post was submitted for review. It will appear in Discover after an admin approves it.',
+        );
+      } else {
+        feed.prependPost(result);
+      }
     }
   }
 

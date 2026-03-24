@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart'
+    show debugPrint, kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -72,15 +73,45 @@ class SocialAuthService {
     }
   }
 
+  /// Android needs a [Services ID](https://developer.apple.com/account/resources/identifiers/list/serviceId)
+  /// and HTTPS redirect URL registered in Apple Developer (see README_FLUTTER.md).
+  WebAuthenticationOptions? _appleWebAuthOptionsForPlatform() {
+    if (kIsWeb) return null;
+    if (defaultTargetPlatform != TargetPlatform.android) return null;
+    final serviceId = ApiConfig.appleServiceId.trim();
+    if (serviceId.isEmpty) return null;
+    final rawRedirect = ApiConfig.appleRedirectUri.trim();
+    final fallback = '${ApiConfig.effectiveBaseUrl}/api/auth/apple/android-return';
+    final redirectStr = rawRedirect.isNotEmpty ? rawRedirect : fallback;
+    final redirectUri = Uri.tryParse(redirectStr);
+    if (redirectUri == null || redirectUri.scheme != 'https') {
+      return null;
+    }
+    return WebAuthenticationOptions(
+      clientId: serviceId,
+      redirectUri: redirectUri,
+    );
+  }
+
   /// Sign in with Apple. Returns idToken for backend, or error.
-  /// On iOS/macOS, use AuthorizationAppleIDProvider.
+  /// On iOS/macOS uses native flow; on Android uses web OAuth (requires [ApiConfig.appleServiceId]).
   Future<SocialAuthResult> signInWithApple() async {
     try {
+      final webAuth = _appleWebAuthOptionsForPlatform();
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        if (webAuth == null) {
+          return const SocialAuthResult(
+            error: 'Apple Sign-In on Android needs APPLE_SERVICE_ID and an HTTPS '
+                'redirect URL (see README_FLUTTER.md).',
+          );
+        }
+      }
       final credential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
           AppleIDAuthorizationScopes.fullName,
         ],
+        webAuthenticationOptions: webAuth,
       );
       final idToken = credential.identityToken;
       if (idToken == null || idToken.isEmpty) {
@@ -109,8 +140,21 @@ class SocialAuthService {
   }
 
   /// Whether Apple Sign-In is available on this platform.
+  /// On Android, [ApiConfig.appleServiceId] and a valid HTTPS redirect are also required.
   static Future<bool> get isAppleSignInAvailable async {
-    return SignInWithApple.isAvailable();
+    final native = await SignInWithApple.isAvailable();
+    if (!native) return false;
+    if (kIsWeb) return false;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final serviceId = ApiConfig.appleServiceId.trim();
+      if (serviceId.isEmpty) return false;
+      final raw = ApiConfig.appleRedirectUri.trim();
+      final url = raw.isNotEmpty
+          ? raw
+          : '${ApiConfig.effectiveBaseUrl}/api/auth/apple/android-return';
+      if (!url.startsWith('https://')) return false;
+    }
+    return true;
   }
 
   static String _toUserMessage(Object e) {
@@ -127,6 +171,9 @@ class SocialAuthService {
     }
     if (s.contains('invalid_grant') || s.contains('token')) {
       return 'Sign-in expired or invalid. Try again.';
+    }
+    if (s.contains('apple') && (s.contains('aud') || s.contains('audience'))) {
+      return 'Apple Sign-In audience mismatch. Set APPLE_CLIENT_IDS on the server to your iOS bundle ID and Android Services ID (comma-separated).';
     }
     // Include actual error for debugging (truncate if long)
     final detail = e

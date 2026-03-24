@@ -6,7 +6,9 @@ import 'package:tripoli_explorer/main.dart';
 import 'package:tripoli_explorer/providers/app_state.dart';
 import 'package:tripoli_explorer/providers/auth_provider.dart';
 import 'package:tripoli_explorer/providers/categories_provider.dart';
+import 'package:tripoli_explorer/providers/connectivity_provider.dart';
 import 'package:tripoli_explorer/providers/events_provider.dart';
+import 'package:tripoli_explorer/providers/feed_provider.dart';
 import 'package:tripoli_explorer/providers/interests_provider.dart';
 import 'package:tripoli_explorer/providers/language_provider.dart';
 import 'package:tripoli_explorer/providers/map_provider.dart';
@@ -20,6 +22,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final authProvider = AuthProvider(prefs);
+    final profile = ProfileProvider(prefs);
+    await profile.initializeForAuth(
+        userId: authProvider.userId, isGuest: authProvider.isGuest);
 
     await tester.pumpWidget(
       MultiProvider(
@@ -31,11 +36,13 @@ void main() {
           ChangeNotifierProvider(
               create: (_) => TripsProvider(prefs, authProvider)),
           ChangeNotifierProvider(create: (_) => MapProvider()),
+          ChangeNotifierProvider(create: (_) => FeedProvider()),
           ChangeNotifierProvider(create: (_) => CategoriesProvider()),
           ChangeNotifierProvider(create: (_) => ToursProvider()),
           ChangeNotifierProvider(create: (_) => EventsProvider()),
           ChangeNotifierProvider(create: (_) => InterestsProvider()),
-          ChangeNotifierProvider(create: (_) => ProfileProvider(prefs)),
+          ChangeNotifierProvider.value(value: profile),
+          ChangeNotifierProvider(create: (_) => ConnectivityNotifier()),
         ],
         child: TripoliExplorerApp(authProvider: authProvider),
       ),

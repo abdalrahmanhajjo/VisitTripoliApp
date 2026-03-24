@@ -289,7 +289,10 @@ CREATE TABLE IF NOT EXISTS "places" (
   "rating" DOUBLE PRECISION,
   "review_count" INTEGER,
   "hours" JSONB,
-  "tags" JSONB
+  "tags" JSONB,
+  "checkin_token" VARCHAR(64) NOT NULL UNIQUE DEFAULT (
+    lower(replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''))
+  )
 );
 
 CREATE TABLE IF NOT EXISTS "profiles" (

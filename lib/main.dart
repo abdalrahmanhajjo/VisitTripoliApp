@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +22,7 @@ import 'providers/connectivity_provider.dart';
 import 'config/api_config.dart';
 import 'routes/app_router.dart';
 import 'services/api_service.dart';
+import 'services/push_notification_service.dart';
 import 'theme/app_theme.dart';
 import 'package:showcaseview/showcaseview.dart';
 import 'utils/app_text_scale.dart';
@@ -29,6 +31,7 @@ import 'utils/places_image_precache.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   // Tune image cache: limit count and bytes for smooth lists without excessive memory.
   PaintingBinding.instance.imageCache
     ..maximumSize = 200
@@ -47,6 +50,12 @@ void main() async {
   final events = EventsProvider();
   final interests = InterestsProvider();
 
+  final profile = ProfileProvider(prefs);
+  await profile.initializeForAuth(userId: auth.userId, isGuest: auth.isGuest);
+
+  bindAuthForPushNotifications(auth);
+  await initializePushNotifications();
+
   runApp(
     MultiProvider(
       providers: [
@@ -63,13 +72,50 @@ void main() async {
         ChangeNotifierProvider.value(value: tours),
         ChangeNotifierProvider.value(value: events),
         ChangeNotifierProvider.value(value: interests),
-        ChangeNotifierProvider(create: (_) => ProfileProvider(prefs)),
+        ChangeNotifierProvider.value(value: profile),
         ChangeNotifierProvider(create: (_) => ActivityLogProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityNotifier()),
       ],
-      child: TripoliExplorerApp(authProvider: auth),
+      child: _ProfileAccountSync(
+        child: TripoliExplorerApp(authProvider: auth),
+      ),
     ),
   );
+}
+
+/// Keeps [ProfileProvider] in sync with the signed-in account so avatars and prefs are per-user.
+class _ProfileAccountSync extends StatefulWidget {
+  const _ProfileAccountSync({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_ProfileAccountSync> createState() => _ProfileAccountSyncState();
+}
+
+class _ProfileAccountSyncState extends State<_ProfileAccountSync> {
+  String? _lastAccountKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final key = '${auth.isGuest}:${auth.userId ?? ''}';
+    if (_lastAccountKey != key) {
+      _lastAccountKey = key;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<ProfileProvider>().setAccountContext(
+              userId: auth.userId,
+              isGuest: auth.isGuest,
+            );
+        context.read<PlacesProvider>().loadSavedPlacesForCurrentUser(
+              authToken: auth.authToken,
+              isGuest: auth.isGuest,
+            );
+      });
+    }
+    return widget.child;
+  }
 }
 
 class TripoliExplorerApp extends StatefulWidget {
@@ -89,6 +135,24 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
   void initState() {
     super.initState();
     _router = AppRouter.createRouter(widget.authProvider);
+    widget.authProvider.addListener(_onAuthChangedForPush);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      syncPushTokenWithAuth(widget.authProvider);
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.authProvider.removeListener(_onAuthChangedForPush);
+    super.dispose();
+  }
+
+  void _onAuthChangedForPush() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      syncPushTokenWithAuth(widget.authProvider);
+    });
   }
 
   @override
@@ -119,6 +183,10 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
               context
                   .read<InterestsProvider>()
                   .loadInterests(forceRefresh: true, locale: code);
+              context.read<PlacesProvider>().loadSavedPlacesForCurrentUser(
+                    authToken: auth.authToken,
+                    isGuest: auth.isGuest,
+                  );
               // Feed/reels: place names come from DB translations; reload so UI matches language.
               context.read<FeedProvider>().loadFeed(
                     authToken: auth.authToken,

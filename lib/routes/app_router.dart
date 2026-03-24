@@ -61,6 +61,7 @@ class AppRouter {
       '/interests',
       '/explore',
       '/profile',
+      '/profile/interests',
       '/trips',
       '/community',
       '/map',
@@ -232,6 +233,11 @@ class AppRouter {
         GoRoute(
           path: '/ai-planner',
           builder: (context, state) => const AIPlannerScreen(),
+        ),
+        GoRoute(
+          path: '/profile/interests',
+          builder: (context, state) =>
+              const InterestsScreen(profileEditMode: true),
         ),
         GoRoute(
           path: '/profile',

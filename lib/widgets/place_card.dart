@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../models/place.dart';
 import 'app_image.dart';
 import '../providers/activity_log_provider.dart';
+import '../providers/auth_provider.dart';
 import '../providers/places_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/feedback_utils.dart';
@@ -23,6 +24,7 @@ class PlaceCard extends StatelessWidget {
       selector: (_, p) => p.isPlaceSaved(place.id),
       builder: (context, isSaved, _) {
         final placesProvider = Provider.of<PlacesProvider>(context, listen: false);
+        final auth = Provider.of<AuthProvider>(context, listen: false);
         return GestureDetector(
       onTap: onTap,
       child: Card(
@@ -83,7 +85,7 @@ class PlaceCard extends StatelessWidget {
                       onPressed: () async {
                         AppFeedback.tap();
                         try {
-                          await placesProvider.toggleSavePlace(place);
+                          await placesProvider.toggleSavePlace(place, auth: auth);
                           if (context.mounted) {
                             final saved = placesProvider.isPlaceSaved(place.id);
                             if (saved) {

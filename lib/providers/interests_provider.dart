@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/interest.dart';
 import '../services/api_service.dart';
 import '../utils/locale_data_cache.dart';
 
 const String _interestsCachePrefix = 'interests_list_cache';
+const String _prefsKeySelectedInterestIds = 'selected_interest_ids';
 
 class InterestsProvider extends ChangeNotifier {
   List<Interest> _interests = [];
@@ -21,7 +23,45 @@ class InterestsProvider extends ChangeNotifier {
 
   InterestsProvider() {
     _loadFromDiskCache();
+    _loadSelectedIdsFromPrefs();
     loadInterests();
+  }
+
+  Future<void> _loadSelectedIdsFromPrefs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_prefsKeySelectedInterestIds);
+      if (raw == null || raw.isEmpty) return;
+      final list = json.decode(raw) as List<dynamic>?;
+      if (list == null) return;
+      _selectedIds
+        ..clear()
+        ..addAll(list.map((e) => e.toString()));
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  void _persistSelectedIds() {
+    Future(() async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+          _prefsKeySelectedInterestIds,
+          json.encode(List<String>.from(_selectedIds)),
+        );
+      } catch (_) {}
+    });
+  }
+
+  void _pruneSelectedToKnownInterests() {
+    if (_interests.isEmpty) return;
+    final valid = _interests.map((e) => e.id).toSet();
+    final before = _selectedIds.length;
+    _selectedIds.removeWhere((id) => !valid.contains(id));
+    if (before != _selectedIds.length) {
+      notifyListeners();
+      _persistSelectedIds();
+    }
   }
 
   /// Load interests from disk so Explore works offline after first load.
@@ -72,6 +112,7 @@ class InterestsProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       _loadInProgress = false;
+      _pruneSelectedToKnownInterests();
       notifyListeners();
     }
   }
@@ -83,12 +124,14 @@ class InterestsProvider extends ChangeNotifier {
       _selectedIds.add(id);
     }
     notifyListeners();
+    _persistSelectedIds();
   }
 
   void setSelected(List<String> ids) {
     _selectedIds.clear();
     _selectedIds.addAll(ids);
     notifyListeners();
+    _persistSelectedIds();
   }
 
   bool isSelected(String id) => _selectedIds.contains(id);

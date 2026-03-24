@@ -450,10 +450,19 @@ class FeedProvider extends ChangeNotifier {
 
   Future<bool> toggleLike(String authToken, String postId) async {
     final idx = _posts.indexWhere((p) => p.id == postId);
+    final savedIdx = _savedPosts.indexWhere((p) => p.id == postId);
+    final likedIdx = _likedPosts.indexWhere((p) => p.id == postId);
     final placeIdx = _placePosts.indexWhere((p) => p.id == postId);
     final reelIdx = _reels.indexWhere((p) => p.id == postId);
-    final likedIdx = _likedPosts.indexWhere((p) => p.id == postId);
-    final old = idx >= 0 ? _posts[idx] : (placeIdx >= 0 ? _placePosts[placeIdx] : (reelIdx >= 0 ? _reels[reelIdx] : (likedIdx >= 0 ? _likedPosts[likedIdx] : null)));
+    final old = idx >= 0
+        ? _posts[idx]
+        : (savedIdx >= 0
+            ? _savedPosts[savedIdx]
+            : (likedIdx >= 0
+                ? _likedPosts[likedIdx]
+                : (placeIdx >= 0
+                    ? _placePosts[placeIdx]
+                    : (reelIdx >= 0 ? _reels[reelIdx] : null))));
     if (old == null) return false;
 
     // ── Optimistic update: flip instantly in UI ──
@@ -463,6 +472,7 @@ class FeedProvider extends ChangeNotifier {
     );
     void _apply(FeedPost p) {
       if (idx >= 0) { _posts = List.from(_posts); _posts[idx] = p; }
+      if (savedIdx >= 0) { _savedPosts = List.from(_savedPosts); _savedPosts[savedIdx] = p; }
       if (placeIdx >= 0) { _placePosts = List.from(_placePosts); _placePosts[placeIdx] = p; }
       if (reelIdx >= 0) { _reels = List.from(_reels); _reels[reelIdx] = p; }
       if (likedIdx >= 0) { _likedPosts = List.from(_likedPosts); _likedPosts[likedIdx] = p; }
@@ -582,6 +592,7 @@ class FeedProvider extends ChangeNotifier {
   }
 
   void prependPost(FeedPost post) {
+    if (post.moderationStatus == 'pending') return;
     _posts = [post, ..._posts];
     if (post.type == 'video') {
       _reels = [post, ..._reels];

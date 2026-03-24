@@ -4,11 +4,23 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
-const String _keyProfile = 'profile';
-const String _keyAvatarLocalPath = 'profileAvatarLocalPath';
+/// Legacy single-user keys (pre–per-account storage).
+const String _legacyProfileKey = 'profile';
+const String _legacyAvatarLocalPathKey = 'profileAvatarLocalPath';
+
+String _profileKeyForBucket(String bucket) => 'profile_$bucket';
+String _avatarPathKeyForBucket(String bucket) => 'profileAvatarLocalPath_$bucket';
+
+String _bucketFor({String? userId, required bool isGuest}) {
+  if (isGuest) return 'guest';
+  if (userId != null && userId.isNotEmpty) return userId;
+  return 'unknown_user';
+}
 
 class ProfileProvider extends ChangeNotifier {
   final SharedPreferences _prefs;
+
+  String _accountBucket = 'guest';
 
   String _name = '';
   String _username = '';
@@ -26,11 +38,52 @@ class ProfileProvider extends ChangeNotifier {
   bool _syncedFromApiThisSession = false;
 
   ProfileProvider(this._prefs) {
-    _loadProfile();
+    _loadProfileIntoMemory();
+    notifyListeners();
+  }
+
+  /// Call once after [AuthProvider] is ready so the correct account bucket loads before first frame.
+  Future<void> initializeForAuth({String? userId, required bool isGuest}) async {
+    final bucket = _bucketFor(userId: userId, isGuest: isGuest);
+    await _applyAccountBucket(bucket);
+  }
+
+  /// Call when [AuthProvider] user id or guest mode changes (login, logout, account switch).
+  void setAccountContext({String? userId, required bool isGuest}) {
+    final bucket = _bucketFor(userId: userId, isGuest: isGuest);
+    if (_accountBucket == bucket) return;
+    Future(() async {
+      await _applyAccountBucket(bucket);
+    });
+  }
+
+  Future<void> _applyAccountBucket(String bucket) async {
+    if (_accountBucket != bucket) {
+      _accountBucket = bucket;
+      _syncedFromApiThisSession = false;
+    }
+    await _migrateLegacyIfNeeded();
+    _loadProfileIntoMemory();
+    notifyListeners();
+  }
+
+  /// One-time copy from legacy global keys into this account's keys, then remove legacy.
+  Future<void> _migrateLegacyIfNeeded() async {
+    final named = _prefs.getString(_profileKeyForBucket(_accountBucket));
+    if (named != null) return;
+    final legacy = _prefs.getString(_legacyProfileKey);
+    if (legacy == null || legacy.isEmpty) return;
+    await _prefs.setString(_profileKeyForBucket(_accountBucket), legacy);
+    await _prefs.remove(_legacyProfileKey);
+    final legacyPath = _prefs.getString(_legacyAvatarLocalPathKey);
+    if (legacyPath != null && legacyPath.isNotEmpty) {
+      await _prefs.setString(_avatarPathKeyForBucket(_accountBucket), legacyPath);
+      await _prefs.remove(_legacyAvatarLocalPathKey);
+    }
   }
 
   /// Call when app starts or when user is logged in so profile (including avatar) is loaded from database.
-  /// Safe to call repeatedly; only fetches once per app session.
+  /// Safe to call repeatedly; only fetches once per app session per account bucket.
   Future<void> syncFromApiIfNeeded(String? authToken) async {
     if (authToken == null || authToken.isEmpty) return;
     if (_syncedFromApiThisSession) return;
@@ -53,31 +106,43 @@ class ProfileProvider extends ChangeNotifier {
   DateTime get createdAt => _createdAt ?? DateTime.now();
   String get memberSince => '${createdAt.year}';
 
-  void _loadProfile() {
-    final raw = _prefs.getString(_keyProfile);
+  void _loadProfileIntoMemory() {
+    final raw = _prefs.getString(_profileKeyForBucket(_accountBucket));
     if (raw != null) {
       try {
         final map = json.decode(raw) as Map<String, dynamic>;
-        _name = map['name'] as String? ?? _name;
-        _username = map['username'] as String? ?? _username;
-        _email = map['email'] as String? ?? _email;
+        _name = map['name'] as String? ?? '';
+        _username = map['username'] as String? ?? '';
+        _email = map['email'] as String? ?? '';
         final savedAvatar = (map['avatarUrl']?.toString() ?? '').trim();
-        if (savedAvatar.isNotEmpty) _avatarUrl = savedAvatar;
-        _city = map['city'] as String? ?? _city;
-        _bio = map['bio'] as String? ?? _bio;
-        _mood = map['mood'] as String? ?? _mood;
-        _pace = map['pace'] as String? ?? _pace;
-        _analytics = map['analytics'] as bool? ?? _analytics;
-        _showTips = map['showTips'] as bool? ?? _showTips;
-        _appRating = map['appRating'] as int? ?? _appRating;
+        _avatarUrl = savedAvatar;
+        _city = map['city'] as String? ?? '';
+        _bio = map['bio'] as String? ?? '';
+        _mood = map['mood'] as String? ?? 'mixed';
+        _pace = map['pace'] as String? ?? 'normal';
+        _analytics = map['analytics'] as bool? ?? true;
+        _showTips = map['showTips'] as bool? ?? true;
+        _appRating = map['appRating'] as int? ?? 0;
         final created = map['createdAt'] as String?;
         _createdAt = created != null ? DateTime.tryParse(created) : null;
       } catch (e) {
         debugPrint('Error loading profile: $e');
       }
+    } else {
+      _name = '';
+      _username = '';
+      _email = '';
+      _avatarUrl = '';
+      _city = '';
+      _bio = '';
+      _mood = 'mixed';
+      _pace = 'normal';
+      _analytics = true;
+      _showTips = true;
+      _appRating = 0;
+      _createdAt = null;
     }
-    _avatarLocalPath = _prefs.getString(_keyAvatarLocalPath) ?? '';
-    notifyListeners();
+    _avatarLocalPath = _prefs.getString(_avatarPathKeyForBucket(_accountBucket)) ?? '';
   }
 
   Future<void> _saveProfile() async {
@@ -95,17 +160,18 @@ class ProfileProvider extends ChangeNotifier {
       'appRating': _appRating,
       'createdAt': createdAt.toIso8601String(),
     };
-    await _prefs.setString(_keyProfile, json.encode(map));
+    await _prefs.setString(_profileKeyForBucket(_accountBucket), json.encode(map));
     notifyListeners();
   }
 
-  /// Saves the profile image to device storage. Call after successful upload.
+  /// Optional local cache path for the **current account** only (network [avatarUrl] remains the source of truth).
   Future<void> setAvatarLocalPath(String? path) async {
     _avatarLocalPath = path ?? '';
-    if (path != null) {
-      await _prefs.setString(_keyAvatarLocalPath, path);
+    final key = _avatarPathKeyForBucket(_accountBucket);
+    if (path != null && path.isNotEmpty) {
+      await _prefs.setString(key, path);
     } else {
-      await _prefs.remove(_keyAvatarLocalPath);
+      await _prefs.remove(key);
     }
     notifyListeners();
   }
@@ -121,7 +187,7 @@ class ProfileProvider extends ChangeNotifier {
     _saveProfile();
   }
 
-  /// Load profile from API for logged-in users. Merges with local, saves to prefs.
+  /// Load profile from API for logged-in users. Merges with local, saves to prefs for this account.
   Future<bool> loadFromApi(String? authToken) async {
     if (authToken == null || authToken.isEmpty) return false;
     try {
@@ -244,7 +310,7 @@ class ProfileProvider extends ChangeNotifier {
 
   Future<void> clearProfile() async {
     _avatarLocalPath = '';
-    await _prefs.remove(_keyAvatarLocalPath);
+    await _prefs.remove(_avatarPathKeyForBucket(_accountBucket));
     _name = '';
     _username = '';
     _email = '';
@@ -257,7 +323,7 @@ class ProfileProvider extends ChangeNotifier {
     _showTips = true;
     _appRating = 0;
     _createdAt = null;
-    await _prefs.remove(_keyProfile);
+    await _prefs.remove(_profileKeyForBucket(_accountBucket));
     notifyListeners();
   }
 }

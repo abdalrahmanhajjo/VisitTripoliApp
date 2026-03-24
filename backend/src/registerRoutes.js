@@ -14,6 +14,7 @@ const feedRoutes = require('./routes/feed');
 const interestsRoutes = require('./routes/interests');
 const placesRoutes = require('./routes/places');
 const profileRoutes = require('./routes/profile');
+const savedPlacesRoutes = require('./routes/saved_places');
 const toursRoutes = require('./routes/tours');
 const tripsRoutes = require('./routes/trips');
 const tripSharesRoutes = require('./routes/trip_shares');
@@ -36,6 +37,7 @@ function registerRoutes(app) {
   app.use('/api/events', eventsRoutes);
   app.use('/api/interests', interestsRoutes);
   app.use('/api/user', profileRoutes);
+  app.use('/api/user', savedPlacesRoutes);
   app.use('/api/user', tripsRoutes);
   app.use('/api/trip-shares', tripSharesRoutes);
   app.use('/api/audio-guides', audioGuidesRoutes);

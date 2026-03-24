@@ -15,6 +15,20 @@ class ApiConfig {
         '242387458983-tskrr34n29hcrhom0ud5045aqd0s4dm0.apps.googleusercontent.com',
   );
 
+  /// Apple Services ID (e.g. `com.company.app.signin`) — required for Sign in with Apple on **Android**.
+  /// Create under Apple Developer → Identifiers → Services IDs; enable Sign in with Apple.
+  static const String appleServiceId = String.fromEnvironment(
+    'APPLE_SERVICE_ID',
+    defaultValue: '',
+  );
+
+  /// Optional. Must exactly match a Return URL in the Services ID (HTTPS).
+  /// If empty on Android, `${effectiveBaseUrl}/api/auth/apple/android-return` is used.
+  static const String appleRedirectUri = String.fromEnvironment(
+    'APPLE_REDIRECT_URI',
+    defaultValue: '',
+  );
+
   static String? _override;
 
   /// Runtime override (e.g. http://192.168.1.5:3000) so the phone can reach your PC. Load with [loadOverride].

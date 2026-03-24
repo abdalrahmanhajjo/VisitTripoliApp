@@ -205,6 +205,58 @@ class ApiService {
     return json.decode(response.body) as Map<String, dynamic>?;
   }
 
+  /// GET /api/user/saved-places — requires auth; returns same shape as places list items.
+  Future<List<dynamic>> getSavedPlaces({
+    required String authToken,
+    String? locale,
+  }) async {
+    final headers = Map<String, String>.from(_headers(authToken: authToken));
+    if (locale != null && locale.isNotEmpty) {
+      headers['Accept-Language'] = locale;
+    }
+    final response = await _requestWithRetry(
+      () => _client.get(
+        Uri.parse(_urlWithLang('$_baseUrl/api/user/saved-places', locale)),
+        headers: headers,
+      ),
+      maxRetries: _maxRetriesListGet,
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, _parseError(response.body));
+    }
+    final decoded = json.decode(response.body);
+    if (decoded is! Map<String, dynamic>) return [];
+    return (decoded['places'] as List<dynamic>?) ?? [];
+  }
+
+  /// PUT /api/user/saved-places/:placeId — idempotent save
+  Future<void> saveUserPlace(String authToken, String placeId) async {
+    final encoded = Uri.encodeComponent(placeId);
+    final response = await _requestWithRetry(
+      () => _client.put(
+        Uri.parse('$_baseUrl/api/user/saved-places/$encoded'),
+        headers: _headers(authToken: authToken),
+      ),
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw ApiException(response.statusCode, _parseError(response.body));
+    }
+  }
+
+  /// DELETE /api/user/saved-places/:placeId
+  Future<void> unsaveUserPlace(String authToken, String placeId) async {
+    final encoded = Uri.encodeComponent(placeId);
+    final response = await _requestWithRetry(
+      () => _client.delete(
+        Uri.parse('$_baseUrl/api/user/saved-places/$encoded'),
+        headers: _headers(authToken: authToken),
+      ),
+    );
+    if (response.statusCode != 200 && response.statusCode != 204) {
+      throw ApiException(response.statusCode, _parseError(response.body));
+    }
+  }
+
   /// GET /api/categories - Returns categories (translated when lang set). Cached in memory.
   Future<List<dynamic>> getCategories({
     String? authToken,
@@ -543,12 +595,18 @@ class ApiService {
     String name,
     String email,
     String password,
+    String username,
   ) async {
     final response = await _requestWithRetry(
       () => _client.post(
         Uri.parse('$_baseUrl/api/auth/register'),
         headers: _headers(),
-        body: json.encode({'name': name, 'email': email, 'password': password}),
+        body: json.encode({
+          'name': name,
+          'email': email,
+          'password': password,
+          'username': username,
+        }),
       ),
       maxRetries: 2,
     );
@@ -786,12 +844,16 @@ class ApiService {
     return (decoded is Map && decoded['audioGuides'] != null) ? decoded['audioGuides'] as List : [];
   }
 
-  /// POST /api/badges/check-in
-  Future<Map<String, dynamic>> checkIn(String authToken, String placeId) async {
+  /// POST /api/badges/check-in — [checkinToken] comes from the official door QR only (not public APIs).
+  Future<Map<String, dynamic>> checkIn(
+    String authToken,
+    String placeId, {
+    required String checkinToken,
+  }) async {
     final response = await _requestWithRetry(() => _client.post(
           Uri.parse('$_baseUrl/api/badges/check-in'),
           headers: _headers(authToken: authToken),
-          body: json.encode({'placeId': placeId}),
+          body: json.encode({'placeId': placeId, 'checkinToken': checkinToken}),
         ));
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw ApiException(response.statusCode, _parseError(response.body));
@@ -805,6 +867,22 @@ class ApiService {
       return m?['error']?.toString() ?? body;
     } catch (_) {
       return body;
+    }
+  }
+
+  /// POST /api/user/push-token — register FCM token (logged-in users)
+  Future<void> registerPushToken(
+    String authToken,
+    String fcmToken, {
+    String platform = 'android',
+  }) async {
+    final response = await _requestWithRetry(() => _client.post(
+          Uri.parse('$_baseUrl/api/user/push-token'),
+          headers: _headers(authToken: authToken),
+          body: json.encode({'token': fcmToken, 'platform': platform}),
+        ));
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, _parseError(response.body));
     }
   }
 
@@ -1033,6 +1111,34 @@ class ApiService {
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, _parseError(response.body));
     }
+  }
+
+  /// POST /api/admin/places/:id/ensure-checkin-token — creates a token if the place had none.
+  Future<Map<String, dynamic>> adminEnsurePlaceCheckinToken(String placeId,
+      {required String adminKey}) async {
+    final response = await _requestWithRetry(() => _client.post(
+          Uri.parse(
+              '$_baseUrl/api/admin/places/${Uri.encodeComponent(placeId)}/ensure-checkin-token'),
+          headers: {..._headers(), 'X-Admin-Key': adminKey},
+        ));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, _parseError(response.body));
+    }
+    return json.decode(response.body) as Map<String, dynamic>;
+  }
+
+  /// POST /api/admin/places/:id/regenerate-checkin-token — invalidates previous door QR prints.
+  Future<Map<String, dynamic>> adminRegeneratePlaceCheckinToken(String placeId,
+      {required String adminKey}) async {
+    final response = await _requestWithRetry(() => _client.post(
+          Uri.parse(
+              '$_baseUrl/api/admin/places/${Uri.encodeComponent(placeId)}/regenerate-checkin-token'),
+          headers: {..._headers(), 'X-Admin-Key': adminKey},
+        ));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, _parseError(response.body));
+    }
+    return json.decode(response.body) as Map<String, dynamic>;
   }
 
   // --- Tours Admin ---

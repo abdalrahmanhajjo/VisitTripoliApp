@@ -35,6 +35,41 @@ flutter run -d chrome
      ```
    - **Android:** Requires JDK 17 or 21 (see Troubleshooting if you have JDK 25).
 
+### Sign in with Apple (required setup)
+
+Apple Sign-In needs a [paid Apple Developer Program](https://developer.apple.com/programs/) account.
+
+**Backend (Render / `.env`)**
+
+- Set `APPLE_CLIENT_IDS` to a **comma-separated** list of JWT audiences:
+  - **iOS:** your App ID / bundle identifier (e.g. `com.yourcompany.tripoli_explorer`).
+  - **Android:** your **Services ID** (e.g. `com.yourcompany.tripoli_explorer.signin`) — create under Identifiers → Services IDs, enable Sign in with Apple, and add **Return URLs**:
+    - `https://<your-api-host>/api/auth/apple/android-return`  
+    (must match exactly; use HTTPS, not a LAN IP).
+- Set `ANDROID_PACKAGE_NAME` to the same value as `applicationId` in `android/app/build.gradle.kts` (default `com.example.tripoli_explorer`).
+- `APPLE_CLIENT_ID` or `APPLE_SERVICE_ID` alone still works for a **single** audience, but two values need `APPLE_CLIENT_IDS`.
+
+**Flutter Android build**
+
+Pass your Services ID (and optional redirect override):
+
+```bash
+flutter run --dart-define=APPLE_SERVICE_ID=com.yourcompany.tripoli_explorer.signin
+# optional if the default API URL is wrong for the registered Return URL:
+flutter run --dart-define=APPLE_REDIRECT_URI=https://your-api.onrender.com/api/auth/apple/android-return
+```
+
+If `APPLE_REDIRECT_URI` is omitted, the app uses `{API_BASE_URL or override}/api/auth/apple/android-return` — it must be **HTTPS** and registered in Apple’s Return URLs.
+
+**Flutter iOS (Xcode)**
+
+- Add the **Sign in with Apple** capability to the Runner target.
+- Bundle ID must be one of the values in `APPLE_CLIENT_IDS` on the server.
+
+**Web**
+
+- Add Apple’s JS to `web/index.html` as described in the [`sign_in_with_apple`](https://pub.dev/packages/sign_in_with_apple) package; register your web domain and return URLs in the Services ID.
+
 ## Project Structure
 
 ```

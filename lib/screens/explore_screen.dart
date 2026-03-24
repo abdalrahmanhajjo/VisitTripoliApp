@@ -799,6 +799,7 @@ class _ExploreScreenState extends State<ExploreScreen>
       _categoryFilterId; // null = all categories, else filter Places by category
   bool _categoryFilterExpanded = false; // tap icon to show filter pills
   bool _profileSyncScheduled = false;
+  String? _lastProfileSyncAccountKey;
   bool _searchBarVisible = false;
   Timer? _searchLogTimer;
   bool _showGoToTop = false;
@@ -1164,7 +1165,13 @@ class _ExploreScreenState extends State<ExploreScreen>
     final profileProvider =
         Provider.of<ProfileProvider>(context, listen: false);
 
-    // Sync profile (including avatar) from database once per app session so it persists after reload
+    final accountKey = '${authProvider.isGuest}:${authProvider.userId ?? ''}';
+    if (_lastProfileSyncAccountKey != accountKey) {
+      _lastProfileSyncAccountKey = accountKey;
+      _profileSyncScheduled = false;
+    }
+
+    // Sync profile (including avatar) from database once per session per account
     if (!_profileSyncScheduled &&
         authProvider.authToken != null &&
         authProvider.authToken!.isNotEmpty &&
@@ -5169,6 +5176,7 @@ class _ExplorePlaceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     final isSaved = placesProvider.isPlaceSaved(place.id);
     final imageUrl = place.images.isNotEmpty ? place.images.first : null;
     final isFree = place.price == null || place.price == '0';
@@ -5289,7 +5297,7 @@ class _ExplorePlaceCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     onTap: () async {
                       try {
-                        await placesProvider.toggleSavePlace(place);
+                        await placesProvider.toggleSavePlace(place, auth: auth);
                         if (context.mounted) {
                           AppSnackBars.showSuccess(
                               context,

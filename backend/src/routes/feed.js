@@ -18,6 +18,27 @@ const isProd = process.env.NODE_ENV === 'production';
 function absUrl(baseUrl, url) {
   return url && (url.startsWith('http') ? url : `${baseUrl}${url}`);
 }
+
+function mapCommentRow(r, baseUrl) {
+  const u = (r.profile_username || '').trim().replace(/^@+/u, '');
+  return {
+    id: r.id,
+    postId: r.post_id,
+    userId: r.user_id != null ? String(r.user_id) : null,
+    authorName: r.author_name,
+    authorUsername: u || null,
+    authorAvatarUrl: absUrl(baseUrl, r.user_avatar_url) || null,
+    authorFullName: r.user_full_name || null,
+    body: r.body,
+    createdAt: r.created_at,
+    parentCommentId: r.parent_comment_id,
+    parentAuthorName: r.parent_author_name,
+    parentAuthorUsername: r.parent_username ? String(r.parent_username) : null,
+    updatedAt: r.updated_at,
+    likeCount: r.like_count || 0,
+    likedByMe: r.liked_by_me || false,
+  };
+}
 async function getLikeCount(postId) {
   const r = await query('SELECT COUNT(*)::int AS c FROM feed_likes WHERE post_id = $1', [postId]);
   return r.rows[0]?.c ?? 0;
@@ -86,6 +107,7 @@ function rowToPost(row, baseUrl, extras = {}) {
     savedByMe: extras.savedByMe ?? false,
     hideLikes: row.hide_likes === true,
     commentsDisabled: row.comments_disabled === true,
+    moderationStatus: row.moderation_status || 'approved',
   };
 }
 
@@ -95,15 +117,34 @@ function getBaseUrl(req) {
   return `${proto}://${host}`;
 }
 
-// GET /api/feed/can-post - Auth required. Returns whether user can post (admin or business owner).
+// GET /api/feed/can-post - Auth required. Admin, business owners, or discoverable users (15+ check-ins).
 router.get('/can-post', authMiddleware, async (req, res) => {
   try {
     const userId = req.user?.userId;
-    const user = (await query('SELECT is_admin, is_business_owner FROM users WHERE id = $1', [userId])).rows[0];
-    const payload = { canPost: false, isAdmin: false, isBusinessOwner: false, ownedPlaces: [] };
+    const user = (await query(
+      'SELECT is_admin, is_business_owner, COALESCE(feed_discoverable, false) AS feed_discoverable FROM users WHERE id = $1',
+      [userId],
+    )).rows[0];
+    const payload = {
+      canPost: false,
+      isAdmin: false,
+      isBusinessOwner: false,
+      isDiscoverableContributor: false,
+      requiresModeration: false,
+      ownedPlaces: [],
+    };
     if (!user) return res.json(payload);
     if (user.is_admin) return res.json({ ...payload, canPost: true, isAdmin: true });
-    if (!user.is_business_owner) return res.json(payload);
+    if (!user.is_business_owner && !user.feed_discoverable) return res.json(payload);
+    if (!user.is_business_owner && user.feed_discoverable) {
+      return res.json({
+        ...payload,
+        canPost: true,
+        isDiscoverableContributor: true,
+        requiresModeration: true,
+        ownedPlaces: [],
+      });
+    }
     try {
       const lang = getRequestLang(req);
       const placesRow = await query(
@@ -135,7 +176,14 @@ const FEED_TRENDING_MAX_OFFSET = 800;
 
 /** $1 = lang (en|ar|fr) — resolves place display name from place_translations when present. */
 const FEED_PLACE_NAME = 'COALESCE((SELECT name FROM place_translations WHERE place_id = pl.id AND lang = $1 LIMIT 1), pl.name) AS place_name';
-const FEED_POST_SELECT = `p.id, p.user_id, p.author_name, p.place_id, ${FEED_PLACE_NAME}, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled`;
+const FEED_POST_SELECT = `p.id, p.user_id, p.author_name, p.place_id, ${FEED_PLACE_NAME}, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled, p.moderation_status`;
+
+/** Public feed / reels: only approved posts; includes discoverer posts once approved. */
+const FEED_PUBLIC_VISIBLE = `(COALESCE(p.moderation_status, 'approved') = 'approved' AND (
+  p.author_role IN ('admin', 'business_owner') OR
+  (p.author_role = 'discoverer' AND p.place_id IS NOT NULL) OR
+  (p.author_role IS NULL AND p.place_id IS NOT NULL)
+))`;
 
 router.get('/', optionalAuthMiddleware, responseCache(30 * 1000, {
   key: (req) => `feed:${getRequestLang(req)}:${req.user?.userId || 'anon'}:${req.query.sort || 'recent'}:${req.query.limit || FEED_LIMIT_DEFAULT}:${req.query.before || ''}:${req.query.offset || '0'}`,
@@ -150,8 +198,6 @@ router.get('/', optionalAuthMiddleware, responseCache(30 * 1000, {
     const baseUrl = getBaseUrl(req);
     const userId = req.user?.userId || null;
 
-    const baseWhere = `(p.author_role IN ('admin', 'business_owner') OR (p.author_role IS NULL AND p.place_id IS NOT NULL))`;
-
     let result;
     if (sort === 'trending') {
       result = await query(
@@ -162,7 +208,7 @@ router.get('/', optionalAuthMiddleware, responseCache(30 * 1000, {
           ) AS engagement_score
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
-         WHERE ${baseWhere}
+         WHERE ${FEED_PUBLIC_VISIBLE}
          ORDER BY engagement_score DESC, p.created_at DESC, p.id DESC
          LIMIT $2 OFFSET $3`,
         [lang, limit, offset]
@@ -173,7 +219,7 @@ router.get('/', optionalAuthMiddleware, responseCache(30 * 1000, {
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
          CROSS JOIN (SELECT created_at AS ref_created_at, id AS ref_id FROM feed_posts WHERE id = $2 LIMIT 1) ref
-         WHERE ${baseWhere}
+         WHERE ${FEED_PUBLIC_VISIBLE}
            AND (p.created_at, p.id) < (ref.ref_created_at, ref.ref_id)
          ORDER BY p.created_at DESC, p.id DESC
          LIMIT $3`,
@@ -184,7 +230,7 @@ router.get('/', optionalAuthMiddleware, responseCache(30 * 1000, {
         `SELECT ${FEED_POST_SELECT}
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
-         WHERE ${baseWhere}
+         WHERE ${FEED_PUBLIC_VISIBLE}
          ORDER BY p.created_at DESC
          LIMIT $2`,
         [lang, limit]
@@ -247,10 +293,10 @@ router.get('/reels', optionalAuthMiddleware, async (req, res) => {
     const limitNum = Math.min(parseInt(limit, 10) || 20, 50);
     const userId = req.user?.userId || null;
 
-    let queryStr = `SELECT p.id, p.user_id, p.author_name, p.place_id, ${FEED_PLACE_NAME}, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled
+    let queryStr = `SELECT ${FEED_POST_SELECT}
                     FROM feed_posts p
                     LEFT JOIN places pl ON pl.id = p.place_id
-                    WHERE p.type = 'video'`;
+                    WHERE p.type = 'video' AND ${FEED_PUBLIC_VISIBLE}`;
     const params = [lang];
     if (before) {
       queryStr += ` AND p.created_at < $2`;
@@ -313,7 +359,8 @@ router.get('/saved', authMiddleware, async (req, res) => {
          LEFT JOIN places pl ON pl.id = p.place_id
          INNER JOIN feed_saves s ON s.post_id = p.id AND s.user_id = $2
          CROSS JOIN (SELECT created_at AS ref_created_at, id AS ref_id FROM feed_posts WHERE id = $3 LIMIT 1) ref
-         WHERE (p.created_at, p.id) < (ref.ref_created_at, ref.ref_id)
+         WHERE ${FEED_PUBLIC_VISIBLE}
+           AND (p.created_at, p.id) < (ref.ref_created_at, ref.ref_id)
          ORDER BY p.created_at DESC, p.id DESC
          LIMIT $4`,
         [lang, userId, before, limit]
@@ -324,6 +371,7 @@ router.get('/saved', authMiddleware, async (req, res) => {
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
          INNER JOIN feed_saves s ON s.post_id = p.id AND s.user_id = $2
+         WHERE ${FEED_PUBLIC_VISIBLE}
          ORDER BY p.created_at DESC, p.id DESC
          LIMIT $3`,
         [lang, userId, limit]
@@ -377,7 +425,8 @@ router.get('/liked', authMiddleware, async (req, res) => {
          LEFT JOIN places pl ON pl.id = p.place_id
          INNER JOIN feed_likes l ON l.post_id = p.id AND l.user_id = $2
          CROSS JOIN (SELECT created_at AS ref_created_at, id AS ref_id FROM feed_posts WHERE id = $3 LIMIT 1) ref
-         WHERE (p.created_at, p.id) < (ref.ref_created_at, ref.ref_id)
+         WHERE ${FEED_PUBLIC_VISIBLE}
+           AND (p.created_at, p.id) < (ref.ref_created_at, ref.ref_id)
          ORDER BY p.created_at DESC, p.id DESC
          LIMIT $4`,
         [lang, userId, before, limit]
@@ -388,6 +437,7 @@ router.get('/liked', authMiddleware, async (req, res) => {
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
          INNER JOIN feed_likes l ON l.post_id = p.id AND l.user_id = $2
+         WHERE ${FEED_PUBLIC_VISIBLE}
          ORDER BY p.created_at DESC, p.id DESC
          LIMIT $3`,
         [lang, userId, limit]
@@ -458,7 +508,7 @@ router.get('/place/:placeId', optionalAuthMiddleware, responseCache(30 * 1000, {
          LEFT JOIN places pl ON pl.id = p.place_id
          CROSS JOIN (SELECT created_at AS ref_created_at, id AS ref_id FROM feed_posts WHERE id = $2 LIMIT 1) ref
          WHERE p.place_id = $3
-           AND (p.author_role IN ('admin', 'business_owner') OR (p.author_role IS NULL AND p.place_id IS NOT NULL))
+           AND ${FEED_PUBLIC_VISIBLE}
            AND (p.created_at, p.id) < (ref.ref_created_at, ref.ref_id)
          ORDER BY p.created_at DESC, p.id DESC
          LIMIT $4`,
@@ -470,7 +520,7 @@ router.get('/place/:placeId', optionalAuthMiddleware, responseCache(30 * 1000, {
          FROM feed_posts p
          LEFT JOIN places pl ON pl.id = p.place_id
          WHERE p.place_id = $2
-           AND (p.author_role IN ('admin', 'business_owner') OR (p.author_role IS NULL AND p.place_id IS NOT NULL))
+           AND ${FEED_PUBLIC_VISIBLE}
          ORDER BY p.created_at DESC, p.id DESC
          LIMIT $3`,
         [lang, placeId, limit]
@@ -509,32 +559,57 @@ router.get('/place/:placeId', optionalAuthMiddleware, responseCache(30 * 1000, {
 });
 
 const postLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, message: { error: 'Post limit exceeded. Try again later.' }, standardHeaders: true });
-// POST /api/feed - Auth required. Only admins and business owners can post.
+
+async function assertFeedPostApprovedForInteraction(postId) {
+  const r = (await query('SELECT moderation_status FROM feed_posts WHERE id = $1', [postId])).rows[0];
+  if (!r) return { ok: false, code: 404, message: 'Post not found' };
+  const st = r.moderation_status || 'approved';
+  if (st === 'pending') return { ok: false, code: 403, message: 'Post is not public yet' };
+  if (st === 'rejected') return { ok: false, code: 403, message: 'Post is not available' };
+  return { ok: true };
+}
+
+// POST /api/feed - Auth required. Admins, business owners, or discoverable users (15+ check-ins; posts pending review).
 router.post('/', postLimiter, authMiddleware, sanitizeFeedBody, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
   try {
     const lang = getRequestLang(req);
     const userId = req.user?.userId;
     const placeId = req.body?.placeId && isValidPlaceId(req.body.placeId) ? req.body.placeId : null;
 
-    const userRow = await query('SELECT id, name, is_admin, is_business_owner FROM users WHERE id = $1', [userId]);
+    const userRow = await query(
+      'SELECT id, name, is_admin, is_business_owner, COALESCE(feed_discoverable, false) AS feed_discoverable FROM users WHERE id = $1',
+      [userId],
+    );
     const user = userRow.rows[0];
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
     }
 
     let authorRole = null;
+    let moderationStatus = 'approved';
     if (user.is_admin) {
       authorRole = 'admin';
-    } else if (!user.is_business_owner) {
-      return res.status(403).json({ error: 'Only business owners can post to the feed. Regular users cannot post.' });
-    } else if (placeId) {
+    } else if (user.is_business_owner) {
+      if (!placeId) {
+        return res.status(403).json({ error: 'Business owners must select a place to post to.' });
+      }
       const own = await query('SELECT 1 FROM place_owners WHERE user_id = $1 AND place_id = $2', [userId, placeId]);
       if (own.rows.length === 0) {
         return res.status(403).json({ error: 'Only admins and business owners can post. You must own this place to post.' });
       }
       authorRole = 'business_owner';
+    } else if (user.feed_discoverable) {
+      if (!placeId) {
+        return res.status(403).json({ error: 'Select a place for your post.' });
+      }
+      const placeOk = (await query('SELECT 1 FROM places WHERE id = $1', [placeId])).rows.length > 0;
+      if (!placeOk) {
+        return res.status(404).json({ error: 'Place not found' });
+      }
+      authorRole = 'discoverer';
+      moderationStatus = 'pending';
     } else {
-      return res.status(403).json({ error: 'Business owners must select a place to post to.' });
+      return res.status(403).json({ error: 'Only business owners can post to the feed. Regular users cannot post.' });
     }
 
     const authorName = req.body?.authorName || user.name || 'User';
@@ -561,10 +636,10 @@ router.post('/', postLimiter, authMiddleware, sanitizeFeedBody, upload.fields([{
     }
 
     const result = await query(
-      `INSERT INTO feed_posts (user_id, author_name, place_id, caption, image_url, video_url, type, author_role) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-       RETURNING id, user_id, author_name, place_id, author_role, caption, image_url, video_url, type, created_at`,
-      [userId, authorName, placeId || null, caption || null, imageUrl, videoUrl, type, authorRole]
+      `INSERT INTO feed_posts (user_id, author_name, place_id, caption, image_url, video_url, type, author_role, moderation_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, user_id, author_name, place_id, author_role, caption, image_url, video_url, type, created_at, moderation_status`,
+      [userId, authorName, placeId || null, caption || null, imageUrl, videoUrl, type, authorRole, moderationStatus],
     );
     let row = result.rows[0];
     if (placeId) {
@@ -593,6 +668,8 @@ router.post('/:id/like', authMiddleware, async (req, res) => {
     const { id: postId } = req.params;
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Authentication required' });
+    const vis = await assertFeedPostApprovedForInteraction(postId);
+    if (!vis.ok) return res.status(vis.code).json({ error: vis.message });
     const exists = (await query('SELECT 1 FROM feed_likes WHERE post_id = $1 AND user_id = $2', [postId, userId])).rows.length > 0;
     if (exists) {
       await query('DELETE FROM feed_likes WHERE post_id = $1 AND user_id = $2', [postId, userId]);
@@ -610,6 +687,10 @@ router.post('/:id/like', authMiddleware, async (req, res) => {
 // GET /api/feed/:id/comments - List comments for a post (public). Paginated: limit + offset (max 200).
 router.get('/:id/comments', async (req, res) => {
   try {
+    const postId = req.params.id;
+    const vis = await assertFeedPostApprovedForInteraction(postId);
+    if (!vis.ok) return res.status(vis.code).json({ error: vis.message });
+
     let userId = null;
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -624,13 +705,24 @@ router.get('/:id/comments', async (req, res) => {
     const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
     const order = (req.query.order || 'desc').toString().toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
+    const baseUrl = `${req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http')}://${req.get('x-forwarded-host') || req.get('host') || 'localhost:3000'}`;
+
     const result = await query(
       `SELECT c.id, c.post_id, c.user_id, c.author_name, c.body, c.created_at, c.parent_comment_id, c.updated_at,
+        u.name AS user_full_name,
+        u.avatar_url AS user_avatar_url,
+        NULLIF(TRIM(REGEXP_REPLACE(COALESCE(p.username, ''), '^@+', '')), '') AS profile_username,
         (SELECT author_name FROM feed_comments pc WHERE pc.id = c.parent_comment_id) AS parent_author_name,
+        (SELECT NULLIF(TRIM(REGEXP_REPLACE(COALESCE(pp.username, ''), '^@+', '')), '')
+         FROM feed_comments pc2
+         LEFT JOIN profiles pp ON pp.user_id = pc2.user_id
+         WHERE pc2.id = c.parent_comment_id) AS parent_username,
         (SELECT COUNT(*)::int FROM feed_comment_likes l WHERE l.comment_id = c.id) as like_count,
         EXISTS(SELECT 1 FROM feed_comment_likes l WHERE l.comment_id = c.id AND l.user_id = $2) as liked_by_me
-       FROM feed_comments c 
-       WHERE c.post_id = $1 
+       FROM feed_comments c
+       JOIN users u ON u.id = c.user_id
+       LEFT JOIN profiles p ON p.user_id = c.user_id
+       WHERE c.post_id = $1
        ORDER BY c.created_at ${order}, c.id ${order}
        LIMIT $3 OFFSET $4`,
       [req.params.id, userId, limit, offset]
@@ -643,11 +735,7 @@ router.get('/:id/comments', async (req, res) => {
     const nextOffset = offset + result.rows.length;
     const hasMore = nextOffset < total;
 
-    const comments = result.rows.map(r => ({
-      id: r.id, postId: r.post_id, userId: r.user_id, authorName: r.author_name, body: r.body, createdAt: r.created_at,
-      parentCommentId: r.parent_comment_id, parentAuthorName: r.parent_author_name, updatedAt: r.updated_at,
-      likeCount: r.like_count || 0, likedByMe: r.liked_by_me || false
-    }));
+    const comments = result.rows.map((r) => mapCommentRow(r, baseUrl));
     res.json({ comments, total, nextOffset: hasMore ? nextOffset : null, hasMore });
   } catch (err) {
     console.error(err);
@@ -659,13 +747,31 @@ router.get('/:id/comments', async (req, res) => {
 router.post('/:id/comments', authMiddleware, async (req, res) => {
   try {
     const postId = req.params.id;
-    const postRow = (await query('SELECT comments_disabled, user_id FROM feed_posts WHERE id = $1', [postId])).rows[0];
+    const postRow = (await query(
+      'SELECT comments_disabled, user_id, moderation_status FROM feed_posts WHERE id = $1',
+      [postId],
+    )).rows[0];
     if (!postRow) return res.status(404).json({ error: 'Post not found' });
+    const mod = postRow.moderation_status || 'approved';
+    if (mod === 'pending') return res.status(403).json({ error: 'Post is not public yet' });
+    if (mod === 'rejected') return res.status(403).json({ error: 'Post is not available' });
     if (postRow.comments_disabled) return res.status(403).json({ error: 'Comments are turned off for this post' });
     const body = (req.body?.body ?? req.body?.text ?? '').toString().trim();
     if (!body || body.length > 2000) return res.status(400).json({ error: 'Comment must be 1–2000 characters' });
     const userId = req.user?.userId;
-    const authorName = (await query('SELECT name FROM users WHERE id = $1', [userId])).rows[0]?.name || 'User';
+    const baseUrl = `${req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http')}://${req.get('x-forwarded-host') || req.get('host') || 'localhost:3000'}`;
+    const urow = (await query(
+      `SELECT u.name, u.avatar_url,
+        NULLIF(TRIM(REGEXP_REPLACE(COALESCE(p.username, ''), '^@+', '')), '') AS profile_username
+       FROM users u
+       LEFT JOIN profiles p ON p.user_id = u.id
+       WHERE u.id = $1`,
+      [userId]
+    )).rows[0];
+    const uname = (urow?.profile_username || '').trim();
+    const authorName = uname
+      ? `@${uname}`
+      : (urow?.name && String(urow.name).trim()) || 'User';
     let parentCommentId = (req.body?.parentCommentId ?? req.body?.parent_comment_id ?? '').toString().trim() || null;
     if (parentCommentId) {
       const parentRow = (await query('SELECT id, post_id FROM feed_comments WHERE id = $1', [parentCommentId])).rows[0];
@@ -680,13 +786,29 @@ router.post('/:id/comments', authMiddleware, async (req, res) => {
       [postId, userId, authorName, body, parentCommentId]
     )).rows[0];
     let parentAuthorName = null;
+    let parentUsername = null;
     if (r.parent_comment_id) {
       parentAuthorName = (await query('SELECT author_name FROM feed_comments WHERE id = $1', [r.parent_comment_id])).rows[0]?.author_name || null;
+      const pr = (await query(
+        `SELECT NULLIF(TRIM(REGEXP_REPLACE(COALESCE(pp.username, ''), '^@+', '')), '') AS u
+         FROM feed_comments pc2
+         LEFT JOIN profiles pp ON pp.user_id = pc2.user_id
+         WHERE pc2.id = $1`,
+        [r.parent_comment_id]
+      )).rows[0];
+      parentUsername = pr?.u || null;
     }
-    res.status(201).json({
-      id: r.id, postId: r.post_id, userId: r.user_id, authorName: r.author_name, body: r.body, createdAt: r.created_at,
-      parentCommentId: r.parent_comment_id, parentAuthorName,
-    });
+    const createdRow = {
+      ...r,
+      user_full_name: urow?.name || null,
+      user_avatar_url: urow?.avatar_url || null,
+      profile_username: uname || null,
+      parent_author_name: parentAuthorName,
+      parent_username: parentUsername,
+      like_count: 0,
+      liked_by_me: false,
+    };
+    res.status(201).json(mapCommentRow(createdRow, baseUrl));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to add comment' });
@@ -778,6 +900,8 @@ router.post('/:id/save', authMiddleware, async (req, res) => {
     const { id: postId } = req.params;
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Authentication required' });
+    const vis = await assertFeedPostApprovedForInteraction(postId);
+    if (!vis.ok) return res.status(vis.code).json({ error: vis.message });
     const exists = (await query('SELECT 1 FROM feed_saves WHERE post_id = $1 AND user_id = $2', [postId, userId])).rows.length > 0;
     if (exists) {
       await query('DELETE FROM feed_saves WHERE post_id = $1 AND user_id = $2', [postId, userId]);

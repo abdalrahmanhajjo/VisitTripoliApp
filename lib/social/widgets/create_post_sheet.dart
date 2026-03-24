@@ -11,12 +11,15 @@ import '../feed_image_utils.dart';
 class CreatePostSheet extends StatefulWidget {
   final List<OwnedPlace> ownedPlaces;
   final bool isAdmin;
+  /// True when user earned feed access via 15+ check-ins (posts are moderated).
+  final bool isDiscoverableContributor;
   final String authToken;
   final String? userName;
 
   const CreatePostSheet({super.key, 
     required this.ownedPlaces,
     required this.isAdmin,
+    this.isDiscoverableContributor = false,
     required this.authToken,
     this.userName,
   });
@@ -288,14 +291,20 @@ class CreatePostSheetState extends State<CreatePostSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Instagram-like: show a clean "Business" selector for business owners.
+            // Place selector for business owners; all places for discoverable contributors (15+ check-ins).
             if (!widget.isAdmin) ...[
               Row(
                 children: [
-                  const Icon(Icons.store_rounded, size: 20, color: AppTheme.primaryColor),
+                  Icon(
+                    widget.isDiscoverableContributor
+                        ? Icons.place_rounded
+                        : Icons.store_rounded,
+                    size: 20,
+                    color: AppTheme.primaryColor,
+                  ),
                   const SizedBox(width: 10),
                   Text(
-                    'Business',
+                    widget.isDiscoverableContributor ? 'Place' : 'Business',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: AppTheme.textSecondary,

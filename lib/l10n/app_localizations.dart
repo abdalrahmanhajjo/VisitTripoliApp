@@ -2308,6 +2308,12 @@ abstract class AppLocalizations {
   /// **'Session'**
   String get session;
 
+  /// No description provided for @developerCredit.
+  ///
+  /// In en, this message translates to:
+  /// **'Developed by Abdalrahman Hajjo'**
+  String get developerCredit;
+
   /// No description provided for @profileStoredLocally.
   ///
   /// In en, this message translates to:

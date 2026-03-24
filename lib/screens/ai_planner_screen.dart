@@ -28,6 +28,55 @@ const _keyPlannerDays = 'planner_days';
 const _keyPlannerPlacesPerDay = 'planner_places_per_day';
 const _keyPlannerPrefsSet = 'planner_prefs_set';
 
+/// After AI returns a plan, keep every stop the same except [flatIndex] (client-side guarantee).
+(List<AIPlannerSlot>, List<Place>)? _mergeSingleStopReplace({
+  required List<AIPlannerSlot> previousSlots,
+  required List<Place> previousPlaces,
+  required List<AIPlannerSlot> aiSlots,
+  required List<Place> aiPlaces,
+  required int flatIndex,
+  required Map<String, Place> idToPlace,
+}) {
+  if (previousSlots.length != previousPlaces.length) return null;
+  if (flatIndex < 0 || flatIndex >= previousSlots.length) return null;
+  if (aiSlots.isEmpty || aiPlaces.isEmpty) return null;
+
+  AIPlannerSlot? pickSlot;
+
+  if (aiSlots.length == previousSlots.length && aiPlaces.length == previousSlots.length) {
+    pickSlot = aiSlots[flatIndex];
+  } else if (flatIndex < aiSlots.length && flatIndex < aiPlaces.length) {
+    pickSlot = aiSlots[flatIndex];
+  } else {
+    final oldId = previousSlots[flatIndex].placeId;
+    for (var i = 0; i < aiSlots.length && i < aiPlaces.length; i++) {
+      if (aiSlots[i].placeId != oldId) {
+        pickSlot = aiSlots[i];
+        break;
+      }
+    }
+    if (pickSlot == null && flatIndex < aiSlots.length) {
+      pickSlot = aiSlots[flatIndex];
+    }
+  }
+
+  if (pickSlot == null) return null;
+  final resolved = idToPlace[pickSlot.placeId];
+  if (resolved == null) return null;
+
+  final prev = previousSlots[flatIndex];
+  final mergedSlots = List<AIPlannerSlot>.from(previousSlots);
+  final mergedPlaces = List<Place>.from(previousPlaces);
+  mergedSlots[flatIndex] = AIPlannerSlot(
+    placeId: pickSlot.placeId,
+    suggestedTime: prev.suggestedTime,
+    reason: pickSlot.reason ?? prev.reason,
+    dayIndex: prev.dayIndex,
+  );
+  mergedPlaces[flatIndex] = resolved;
+  return (mergedSlots, mergedPlaces);
+}
+
 /// One message in the chat (user or assistant; assistant may include a plan).
 class _ChatMessage {
   final bool isUser;
@@ -71,6 +120,8 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
   /// Last plan (from AI or after user edits) so "do the plan again with X" uses it.
   List<AIPlannerSlot>? _lastPlanSlots;
   List<Place>? _lastPlanPlaces;
+  /// Set only when user uses "Ask AI to change this stop"; merged after response so other stops stay fixed.
+  int? _pendingSingleReplaceFlatIndex;
 
   String _greetingL10n(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -423,6 +474,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
 
   /// After a plan exists: user describes how to replace one stop; AI returns an updated plan.
   Future<void> _showAskAiReplaceStopSheet({
+    required int flatIndex,
     required int dayIndex,
     required Place place,
     required AIPlannerSlot slot,
@@ -534,6 +586,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
       slot.suggestedTime,
       result,
     );
+    _pendingSingleReplaceFlatIndex = flatIndex;
     _inputController.text = msg;
     _sendMessage();
   }
@@ -541,6 +594,11 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
   Future<void> _sendMessage() async {
     final text = _inputController.text.trim();
     if (text.isEmpty || _isGenerating) return;
+
+    final singleReplaceFlatIndex = _pendingSingleReplaceFlatIndex;
+    _pendingSingleReplaceFlatIndex = null;
+    final snapshotSlots = _lastPlanSlots;
+    final snapshotPlaces = _lastPlanPlaces;
 
     HapticFeedback.lightImpact();
     _inputController.clear();
@@ -597,6 +655,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
         Provider.of<LanguageProvider>(context, listen: false).currentLanguage.code;
 
     try {
+      final idToPlace = {for (var p in places) p.id: p};
       var result = await AIPlannerService.chatForTripPlan(
         conversationHistory: history,
         userMessage: text,
@@ -608,15 +667,19 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
         userInterests: userInterests.isNotEmpty ? userInterests : null,
         activityContext: activityContext.isNotEmpty ? activityContext : null,
         responseLanguage: responseLang,
-        previousSlots: _lastPlanSlots,
-        previousPlaces: _lastPlanPlaces,
+        previousSlots: snapshotSlots ?? _lastPlanSlots,
+        previousPlaces: snapshotPlaces ?? _lastPlanPlaces,
+        singleReplaceSlotIndex: singleReplaceFlatIndex,
       );
 
       List<Place>? resolvedPlaces;
       List<AIPlannerSlot>? slots = result.slots;
       if (slots != null && slots.isNotEmpty) {
         var slotList = slots;
-        if (_duration > 1 && slotList.every((s) => s.dayIndex == null || s.dayIndex == 0)) {
+        // Single-stop replace: keep slot order/count aligned with snapshot for merge (no reorder).
+        if (singleReplaceFlatIndex == null &&
+            _duration > 1 &&
+            slotList.every((s) => s.dayIndex == null || s.dayIndex == 0)) {
           final perDay = (slotList.length / _duration).ceil().clamp(1, slotList.length);
           slotList = <AIPlannerSlot>[];
           for (var i = 0; i < slots.length; i++) {
@@ -630,10 +693,9 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
             ));
           }
         }
-        final idToPlace = {for (var p in places) p.id: p};
         // Enforce exact count: duration × placesPerDay
         final expectedCount = _duration * _placesPerDay;
-        if (slotList.length != expectedCount) {
+        if (singleReplaceFlatIndex == null && slotList.length != expectedCount) {
           slotList = _enforceExactSlotCount(
             slotList: slotList,
             places: places,
@@ -657,6 +719,29 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
         } else {
           slots = null;
           resolvedPlaces = null;
+        }
+      }
+
+      if (singleReplaceFlatIndex != null &&
+          snapshotSlots != null &&
+          snapshotPlaces != null &&
+          snapshotSlots.isNotEmpty &&
+          snapshotSlots.length == snapshotPlaces.length &&
+          slots != null &&
+          resolvedPlaces != null &&
+          slots.isNotEmpty &&
+          singleReplaceFlatIndex < snapshotSlots.length) {
+        final merged = _mergeSingleStopReplace(
+          previousSlots: snapshotSlots,
+          previousPlaces: snapshotPlaces,
+          aiSlots: slots,
+          aiPlaces: resolvedPlaces,
+          flatIndex: singleReplaceFlatIndex,
+          idToPlace: idToPlace,
+        );
+        if (merged != null) {
+          slots = merged.$1;
+          resolvedPlaces = merged.$2;
         }
       }
 
@@ -1944,6 +2029,7 @@ class _ChatBubble extends StatelessWidget {
   final void Function(List<Place> places, List<AIPlannerSlot> slots)? onSaveTrip;
   final void Function(List<AIPlannerSlot> slots, List<Place> places)? onPlanChanged;
   final Future<void> Function({
+    required int flatIndex,
     required int dayIndex,
     required Place place,
     required AIPlannerSlot slot,
@@ -2806,6 +2892,7 @@ class _EditableItineraryCard extends StatefulWidget {
   final void Function(List<Place> places, List<AIPlannerSlot> slots)? onSaveTrip;
   final void Function(List<AIPlannerSlot> slots, List<Place> places)? onPlanChanged;
   final Future<void> Function({
+    required int flatIndex,
     required int dayIndex,
     required Place place,
     required AIPlannerSlot slot,
@@ -2840,6 +2927,15 @@ class _EditableItineraryCardState extends State<_EditableItineraryCard> {
       _initFromProps();
     }
     super.didUpdateWidget(oldWidget);
+  }
+
+  /// Flat index in the parallel slots/places list (same order as [_getCurrentSlotsAndPlaces]).
+  int _flatIndexForDayEntry(int dayIndex, int entryIndex) {
+    var k = 0;
+    for (var d = 0; d < dayIndex; d++) {
+      k += _days[d].length;
+    }
+    return k + entryIndex;
   }
 
   void _initFromProps() {
@@ -3261,6 +3357,7 @@ class _EditableItineraryCardState extends State<_EditableItineraryCard> {
                         onReplace: () => _showReplacePlacePicker(context, dayIndex, index, entry.place),
                         onAskAiChange: widget.onAskAiReplaceStop != null
                             ? () => widget.onAskAiReplaceStop!(
+                                  flatIndex: _flatIndexForDayEntry(dayIndex, index),
                                   dayIndex: dayIndex,
                                   place: entry.place,
                                   slot: entry.slot,

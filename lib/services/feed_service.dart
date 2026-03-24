@@ -569,6 +569,8 @@ class FeedPost {
   final bool savedByMe;
   final bool hideLikes;
   final bool commentsDisabled;
+  /// `pending` until admin approves (discoverer posts); `approved` / `rejected` otherwise.
+  final String moderationStatus;
 
   FeedPost({
     required this.id,
@@ -590,6 +592,7 @@ class FeedPost {
     this.savedByMe = false,
     this.hideLikes = false,
     this.commentsDisabled = false,
+    this.moderationStatus = 'approved',
   });
 
   /// Ordered list of image URLs to show (carousel or single).
@@ -652,6 +655,7 @@ class FeedPost {
       savedByMe: json['savedByMe'] as bool? ?? false,
       hideLikes: json['hideLikes'] as bool? ?? false,
       commentsDisabled: json['commentsDisabled'] as bool? ?? false,
+      moderationStatus: json['moderationStatus'] as String? ?? 'approved',
     );
   }
 
@@ -662,6 +666,7 @@ class FeedPost {
     bool? savedByMe,
     bool? hideLikes,
     bool? commentsDisabled,
+    String? moderationStatus,
     String? caption,
     String? imageUrl,
     List<String>? imageUrls,
@@ -687,8 +692,11 @@ class FeedPost {
       savedByMe: savedByMe ?? this.savedByMe,
       hideLikes: hideLikes ?? this.hideLikes,
       commentsDisabled: commentsDisabled ?? this.commentsDisabled,
+      moderationStatus: moderationStatus ?? this.moderationStatus,
     );
   }
+
+  bool get isPendingModeration => moderationStatus == 'pending';
 }
 
 class FeedComment {
@@ -696,10 +704,15 @@ class FeedComment {
   final String postId;
   final String? userId;
   final String authorName;
+  /// Public handle without `@` when set.
+  final String? authorUsername;
+  final String? authorAvatarUrl;
+  final String? authorFullName;
   final String body;
   final String createdAt;
   final String? parentCommentId;
   final String? parentAuthorName;
+  final String? parentAuthorUsername;
   final int likeCount;
   final bool likedByMe;
 
@@ -708,23 +721,55 @@ class FeedComment {
     required this.postId,
     this.userId,
     required this.authorName,
+    this.authorUsername,
+    this.authorAvatarUrl,
+    this.authorFullName,
     required this.body,
     required this.createdAt,
     this.parentCommentId,
     this.parentAuthorName,
+    this.parentAuthorUsername,
     this.likeCount = 0,
     this.likedByMe = false,
   });
+
+  /// Full name when present; otherwise `@username` or [authorName].
+  String get displayAuthorName {
+    final full = authorFullName?.trim();
+    if (full != null && full.isNotEmpty) return full;
+    final u = authorUsername?.trim();
+    if (u != null && u.isNotEmpty) return '@$u';
+    return authorName;
+  }
+
+  String get displayAuthorInitial {
+    final n = displayAuthorName;
+    if (n.isEmpty) return '?';
+    if (n.startsWith('@') && n.length > 1) {
+      return n.substring(1, 2).toUpperCase();
+    }
+    return n[0].toUpperCase();
+  }
+
+  String get parentDisplayLabel {
+    final u = parentAuthorUsername?.trim();
+    if (u != null && u.isNotEmpty) return '@$u';
+    return parentAuthorName ?? 'comment';
+  }
 
   factory FeedComment.fromJson(Map<String, dynamic> json) => FeedComment(
         id: json['id']?.toString() ?? '',
         postId: json['postId']?.toString() ?? '',
         userId: json['userId']?.toString(),
         authorName: json['authorName'] as String? ?? 'User',
+        authorUsername: json['authorUsername']?.toString(),
+        authorAvatarUrl: json['authorAvatarUrl']?.toString(),
+        authorFullName: json['authorFullName']?.toString(),
         body: json['body'] as String? ?? '',
         createdAt: json['createdAt'] as String? ?? '',
         parentCommentId: json['parentCommentId']?.toString(),
         parentAuthorName: json['parentAuthorName'] as String?,
+        parentAuthorUsername: json['parentAuthorUsername']?.toString(),
         likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
         likedByMe: json['likedByMe'] as bool? ?? false,
       );
@@ -818,12 +863,17 @@ class CanPostResponse {
   final bool canPost;
   final bool isAdmin;
   final bool isBusinessOwner;
+  /// User has 15+ distinct check-ins; posts go to admin review first.
+  final bool isDiscoverableContributor;
+  final bool requiresModeration;
   final List<OwnedPlace> ownedPlaces;
 
   CanPostResponse({
     required this.canPost,
     this.isAdmin = false,
     this.isBusinessOwner = false,
+    this.isDiscoverableContributor = false,
+    this.requiresModeration = false,
     this.ownedPlaces = const [],
   });
 
@@ -832,6 +882,9 @@ class CanPostResponse {
         canPost: json['canPost'] as bool? ?? false,
         isAdmin: json['isAdmin'] as bool? ?? false,
         isBusinessOwner: json['isBusinessOwner'] as bool? ?? false,
+        isDiscoverableContributor:
+            json['isDiscoverableContributor'] as bool? ?? false,
+        requiresModeration: json['requiresModeration'] as bool? ?? false,
         ownedPlaces: (json['ownedPlaces'] as List<dynamic>?)
                 ?.map((e) => OwnedPlace.fromJson(e as Map<String, dynamic>))
                 .toList() ??

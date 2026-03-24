@@ -1189,6 +1189,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get session => 'الجلسة';
 
   @override
+  String get developerCredit => 'التطوير: عبدالرحمن حجّو';
+
+  @override
   String get profileStoredLocally =>
       'هذا الملف الشخصي مخزّن محلياً. يمكنك مسحه في أي وقت.';
 

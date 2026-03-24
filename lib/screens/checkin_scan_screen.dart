@@ -2,31 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../theme/app_theme.dart';
+import '../utils/checkin_qr.dart';
 
-/// Extracts place ID from QR content. Supports:
-/// - Raw place ID (e.g. "place_123")
-/// - URL with path segment: tripoli-explorer://checkin/place_123 or .../place/place_123
-String? parsePlaceIdFromQr(String? raw) {
-  if (raw == null || raw.trim().isEmpty) return null;
-  final s = raw.trim();
-  try {
-    final uri = Uri.tryParse(s);
-    if (uri != null && uri.pathSegments.isNotEmpty) {
-      final last = uri.pathSegments.last;
-      if (last.isNotEmpty) return last;
-    }
-  } catch (_) {}
-  return s;
-}
-
-/// Full-screen QR scanner for place check-in. Scanned code must match [expectedPlaceId].
+/// Full-screen QR scanner for place check-in (official door QR with secure token).
 class CheckInScanScreen extends StatefulWidget {
-  final String expectedPlaceId;
   final String placeName;
 
   const CheckInScanScreen({
     super.key,
-    required this.expectedPlaceId,
     required this.placeName,
   });
 
@@ -42,11 +25,11 @@ class _CheckInScanScreenState extends State<CheckInScanScreen> {
     final barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
     final raw = barcodes.first.rawValue;
-    final placeId = parsePlaceIdFromQr(raw);
-    if (placeId == null) return;
+    final data = parseCheckInQr(raw);
+    if (data == null) return;
     _hasScanned = true;
     HapticFeedback.mediumImpact();
-    Navigator.of(context).pop(placeId);
+    Navigator.of(context).pop<CheckInQrData>(data);
   }
 
   @override
@@ -82,7 +65,8 @@ class _CheckInScanScreenState extends State<CheckInScanScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      'Point your camera at the QR code at ${widget.placeName}',
+                      'Scan the official QR printed at the entrance of ${widget.placeName}. '
+                      'The app needs the full secure code from that sign.',
                       style: const TextStyle(color: Colors.white, fontSize: 14),
                       textAlign: TextAlign.center,
                     ),

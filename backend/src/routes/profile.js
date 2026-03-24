@@ -5,6 +5,7 @@ const { authMiddleware } = require('../middleware/auth');
 const { query } = require('../db');
 const { imageFileFilter } = require('../middleware/secureUpload');
 const { uploadProfileAvatar, isConfigured: supabaseConfigured } = require('../lib/supabaseStorage');
+const { validateUsername } = require('../utils/username');
 
 const router = express.Router();
 
@@ -79,6 +80,25 @@ router.put('/profile', async (req, res) => {
   try {
     const userId = req.user.userId;
     const { name, username, email, city, bio, mood, pace, analytics, showTips, appRating, onboardingCompleted, avatarUrl } = req.body;
+    let usernameForSql = username;
+    if (Object.prototype.hasOwnProperty.call(req.body, 'username')) {
+      if (username == null || (typeof username === 'string' && !username.trim())) {
+        return res.status(400).json({ error: 'Username cannot be empty' });
+      }
+      const uv = validateUsername(username);
+      if (!uv.ok) {
+        return res.status(400).json({ error: uv.error });
+      }
+      const conflict = await query(
+        `SELECT user_id FROM profiles
+         WHERE LOWER(REGEXP_REPLACE(TRIM(username), '^@+', '')) = $1 AND user_id <> $2`,
+        [uv.normalized, userId]
+      );
+      if (conflict.rows.length > 0) {
+        return res.status(400).json({ error: 'This username is already taken' });
+      }
+      usernameForSql = uv.normalized;
+    }
     const onboardingNow = onboardingCompleted === true ? new Date().toISOString() : null;
     if (typeof avatarUrl === 'string') {
       await query('UPDATE users SET avatar_url = $1 WHERE id = $2', [avatarUrl || null, userId]);
@@ -98,7 +118,7 @@ router.put('/profile', async (req, res) => {
          onboarding_completed = COALESCE($10, profiles.onboarding_completed),
          onboarding_completed_at = COALESCE($11, profiles.onboarding_completed_at),
          updated_at = NOW()`,
-      [userId, username, city, bio, mood, pace, analytics ?? true, showTips ?? true, appRating ?? 0, onboardingCompleted ?? false, onboardingNow]
+      [userId, usernameForSql, city, bio, mood, pace, analytics ?? true, showTips ?? true, appRating ?? 0, onboardingCompleted ?? false, onboardingNow]
     );
     if (name) await query('UPDATE users SET name = $1 WHERE id = $2', [name, userId]);
     if (email) await query('UPDATE users SET email = $1 WHERE id = $2', [email, userId]);
@@ -128,6 +148,28 @@ router.put('/profile', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// POST /api/user/push-token — FCM / device token for remote notifications (one active token per user)
+router.post('/push-token', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { token, platform } = req.body || {};
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ error: 'token required' });
+    }
+    const plat = (platform && String(platform)) || 'android';
+    await query(
+      `INSERT INTO user_push_tokens (user_id, token, platform)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id) DO UPDATE SET token = EXCLUDED.token, platform = EXCLUDED.platform, updated_at = NOW()`,
+      [userId, token.trim(), plat.slice(0, 32)]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save push token' });
   }
 });
 

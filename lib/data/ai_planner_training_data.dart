@@ -48,7 +48,24 @@ class AiPlannerTrainingData {
     (user: 'quick visit', aiBehavior: '2-3 places. 2-3 hours total. Compact.'),
     (user: 'relaxing', aiBehavior: 'Cafes, hammam, gentle souk stroll. No rush.'),
     (user: 'adventure', aiBehavior: 'Citadel climb, souk exploration, port, active spots.'),
+    (user: 'change only one stop', aiBehavior: 'Refinement: replace exactly one slot; keep all other placeIds and times unchanged.'),
+    (user: 'keep the rest', aiBehavior: 'Refinement: only change what the user named; preserve every other stop.'),
+    (user: 'wrong place', aiBehavior: 'Refinement: apologize briefly and swap that stop for a better match from the list.'),
+    (user: 'too crowded', aiBehavior: 'Refinement: suggest quieter alternatives (smaller khans, off-peak times).'),
+    (user: 'not interested in food', aiBehavior: 'Refinement: remove or replace food stops with culture/history/souks.'),
   ];
+
+  /// Injected into the planner system prompt — reduces hallucinated IDs and sloppy JSON.
+  static const String plannerQualityRules = '''
+**Accuracy & JSON (mandatory):**
+- Never invent a placeId. Copy each "id" exactly from the "Available places" list — character-for-character.
+- Before emitting PLAN_JSON, count slots: they must match the trip (days × places per day) when that is set.
+- suggestedTime must be plausible (e.g. 9:00–18:00 for most sites); respect opening hours when you know them.
+- Spread variety: mix categories (heritage, food, souks, views) when the user did not ask for a single theme.
+- Multi-day: set dayIndex on every slot; balance stops across days; do not duplicate the same placeId on the same day unless the user asked.
+- If the user message is vague ("ok", "yes", "do it"), infer from trip context and interests — still only use listed placeIds.
+- Short user typos (knefe, souk, citdel) — map intent to Tripoli places from the list, do not refuse.
+''';
 
   /// Typos and variations → correct interpretation.
   static const List<({String typo, String correct})> typoExamples = [

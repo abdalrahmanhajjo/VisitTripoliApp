@@ -91,8 +91,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoadingProfile = false;
   bool _isUploadingAvatar = false;
   bool _formFilledFromProfile = false;
-  /// Bumps so badges/bookings sections remount and refetch after pull-to-refresh.
-  int _sectionsRefreshKey = 0;
+  String? _lastAccountKey;
+
   late TextEditingController _nameController;
   late TextEditingController _usernameController;
   late TextEditingController _emailController;
@@ -107,6 +107,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _emailController = TextEditingController();
     _cityController = TextEditingController();
     _bioController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = Provider.of<AuthProvider>(context);
+    final key = '${auth.isGuest}:${auth.userId ?? ''}';
+    if (_lastAccountKey != key) {
+      _lastAccountKey = key;
+      _hasLoadedFromApi = false;
+      _formFilledFromProfile = false;
+    }
   }
 
   @override
@@ -179,10 +191,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await profile.loadFromApi(token);
         if (mounted) {
           _fillFormFromProfile(profile);
-          setState(() => _sectionsRefreshKey++);
+          setState(() {});
         }
       } else if (mounted) {
-        setState(() => _sectionsRefreshKey++);
+        setState(() {});
       }
     }
 
@@ -234,12 +246,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onTripsTap: () => _showTripsModal(context),
                     onSavedTap: () => _showSavedPlacesModal(context),
                   ),
-                  if (auth.isLoggedIn && !auth.isGuest) ...[
-                    SizedBox(height: _ProfileResponsive.sectionGap(context)),
-                    _ProfileBadgesSection(key: ValueKey('badges_$_sectionsRefreshKey'), authToken: auth.authToken!),
-                    SizedBox(height: _ProfileResponsive.sectionGap(context)),
-                    _ProfileBookingsSection(key: ValueKey('bookings_$_sectionsRefreshKey'), authToken: auth.authToken!),
-                  ],
                   SizedBox(height: _ProfileResponsive.sectionGap(context)),
                   _ProfileAccountDetails(
                     profile: profile,
@@ -287,6 +293,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     profile: profile,
                     authToken: auth.isGuest ? null : auth.authToken,
                     onSendFeedback: () => _sendFeedbackEmail(profile),
+                  ),
+                  SizedBox(height: _ProfileResponsive.sectionGap(context)),
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Text(
+                        AppLocalizations.of(context)!.developerCredit,
+                        style: TextStyle(
+                          fontSize: 11,
+                          height: 1.3,
+                          color: AppTheme.textTertiary.withValues(alpha: 0.9),
+                          letterSpacing: 0.2,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ),
                   SizedBox(height: _ProfileResponsive.sectionGap(context)),
                     _ProfileSessionCard(
@@ -1036,194 +1058,6 @@ class _ProfileUserCard extends StatelessWidget {
   }
 }
 
-class _ProfileBadgesSection extends StatefulWidget {
-  final String authToken;
-
-  const _ProfileBadgesSection({super.key, required this.authToken});
-
-  @override
-  State<_ProfileBadgesSection> createState() => _ProfileBadgesSectionState();
-}
-
-class _ProfileBadgesSectionState extends State<_ProfileBadgesSection> {
-  List<dynamic> _badges = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final res = await ApiService.instance.getMyBadges(widget.authToken);
-      if (mounted) {
-        setState(() {
-          _badges = res['badges'] is List ? res['badges'] as List : [];
-          _loading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: _profileCardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(FontAwesomeIcons.trophy, size: 20, color: AppTheme.primaryColor),
-              const SizedBox(width: 10),
-              Text(AppLocalizations.of(context)!.myBadges,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-            ],
-          ),
-          const SizedBox(height: 14),
-          if (_loading)
-            const Center(child: Padding(padding: EdgeInsets.all(20), child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))))
-          else if (_badges.isEmpty)
-            Text(AppLocalizations.of(context)!.badgesEmptyHint,
-                style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary, height: 1.4))
-          else
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: _badges.map<Widget>((b) {
-                final name = b['name'] as String? ?? '';
-                final icon = b['icon'] as String? ?? 'star';
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(_iconForName(icon), size: 18, color: AppTheme.primaryColor),
-                      const SizedBox(width: 8),
-                      Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-        ],
-      ),
-    );
-  }
-
-  IconData _iconForName(String name) {
-    switch (name) {
-      case 'place': return Icons.place;
-      case 'explore': return Icons.explore;
-      case 'hiking': return Icons.hiking;
-      case 'restaurant': return Icons.restaurant;
-      case 'museum': return Icons.museum;
-      case 'route': return Icons.route;
-      case 'people': return Icons.people;
-      default: return Icons.star;
-    }
-  }
-}
-
-class _ProfileBookingsSection extends StatefulWidget {
-  final String authToken;
-
-  const _ProfileBookingsSection({super.key, required this.authToken});
-
-  @override
-  State<_ProfileBookingsSection> createState() => _ProfileBookingsSectionState();
-}
-
-class _ProfileBookingsSectionState extends State<_ProfileBookingsSection> {
-  List<dynamic> _bookings = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final list = await ApiService.instance.getBookings(widget.authToken);
-      if (mounted) {
-        setState(() {
-          _bookings = list;
-          _loading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: _profileCardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(FontAwesomeIcons.calendarCheck, size: 20, color: AppTheme.primaryColor),
-              const SizedBox(width: 10),
-              Text(AppLocalizations.of(context)!.myBookings,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-            ],
-          ),
-          const SizedBox(height: 14),
-          if (_loading)
-            const Center(child: Padding(padding: EdgeInsets.all(20), child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))))
-          else if (_bookings.isEmpty)
-            Text(AppLocalizations.of(context)!.bookingsEmptyHint,
-                style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary, height: 1.4))
-          else
-            ..._bookings.take(5).map((b) {
-              final placeName = b['place_name'] as String? ?? 'Place';
-              final date = b['booking_date'] as String? ?? '';
-              final status = b['status'] as String? ?? 'pending';
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.calendar_today, color: AppTheme.primaryColor),
-                  ),
-                  title: Text(placeName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text('$date • $status'),
-                  trailing: const Icon(Icons.chevron_right, size: 20),
-                  onTap: () {
-                    final placeId = b['place_id'] as String?;
-                    if (placeId != null) context.push('/place/$placeId');
-                  },
-                ),
-              );
-            }),
-        ],
-      ),
-    );
-  }
-}
-
 class _ProfileBadge extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1966,6 +1800,13 @@ class _ProfileSettings extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: Column(
             children: [
+              _ProfileNavTile(
+                icon: Icons.interests_rounded,
+                title: l10n.yourInterests,
+                subtitle: l10n.selectInterestsSubtitle,
+                onTap: () => context.push('/profile/interests'),
+              ),
+              Divider(height: 1, color: AppTheme.borderColor.withValues(alpha: 0.6)),
               _ProfileNavTile(
                 icon: Icons.settings_rounded,
                 title: l10n.openAppSettings,

@@ -29,6 +29,7 @@ import '../widgets/route_origin_picker.dart';
 import '../map/embedded_maps.dart';
 import '../map/place_coordinates.dart';
 import 'checkin_scan_screen.dart';
+import '../utils/checkin_qr.dart';
 import 'package:tripoli_explorer/l10n/app_localizations.dart';
 
 // Legacy keys kept for backwards compatibility with older app versions.
@@ -380,28 +381,38 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
     final place = placesProvider.getPlaceById(placeId);
     final placeName = place?.name ?? 'this place';
 
-    final scannedPlaceId = await Navigator.of(context).push<String>(
+    final scanned = await Navigator.of(context).push<CheckInQrData?>(
       MaterialPageRoute(
         builder: (ctx) => CheckInScanScreen(
-          expectedPlaceId: placeId,
           placeName: placeName,
         ),
       ),
     );
 
     if (!context.mounted) return;
-    if (scannedPlaceId == null) return; // user closed scanner
+    if (scanned == null) return; // user closed scanner
 
-    if (scannedPlaceId != placeId) {
+    if (scanned.placeId != placeId) {
       AppSnackBars.showError(
         context,
         'Wrong place. Please scan the QR code at $placeName to check in.',
       );
       return;
     }
+    if (scanned.token == null || scanned.token!.isEmpty) {
+      AppSnackBars.showError(
+        context,
+        'This code is not valid for check-in. Scan the official QR printed at the entrance of $placeName.',
+      );
+      return;
+    }
 
     try {
-      final res = await ApiService.instance.checkIn(auth.authToken!, placeId);
+      final res = await ApiService.instance.checkIn(
+        auth.authToken!,
+        placeId,
+        checkinToken: scanned.token!,
+      );
       final newBadges = res['newBadges'] as List? ?? [];
       if (context.mounted) {
         SystemSound.play(SystemSoundType.click);
@@ -1594,7 +1605,10 @@ class _PrimaryActions extends StatelessWidget {
                 onPressed: () async {
                   AppFeedback.tap();
                   try {
-                    await placesProvider.toggleSavePlace(place);
+                    await placesProvider.toggleSavePlace(
+                      place,
+                      auth: Provider.of<AuthProvider>(context, listen: false),
+                    );
                     if (context.mounted) {
                       final saved = placesProvider.isPlaceSaved(place.id);
                       if (saved) {

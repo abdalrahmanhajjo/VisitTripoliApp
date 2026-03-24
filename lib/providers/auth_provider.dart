@@ -12,6 +12,8 @@ class AuthProvider extends ChangeNotifier {
   String? _userId;
   String? _userEmail;
   String? _userName;
+  /// Public handle (lowercase, no `@`), from profile.
+  String? _profileUsername;
   String? _authToken;
   String? _lastError;
 
@@ -30,6 +32,7 @@ class AuthProvider extends ChangeNotifier {
   String? get userId => _userId;
   String? get userEmail => _userEmail;
   String? get userName => _userName;
+  String? get profileUsername => _profileUsername;
   String? get authToken => _authToken;
   String? get lastError => _lastError;
 
@@ -42,6 +45,7 @@ class AuthProvider extends ChangeNotifier {
     required String? userId,
     required String? userEmail,
     required String? userName,
+    String? profileUsername,
     required String? authToken,
   }) async {
     await _prefs.setBool('isAuthenticated', isAuthenticated);
@@ -52,6 +56,7 @@ class AuthProvider extends ChangeNotifier {
     await _prefs.setString('userId', userId ?? '');
     await _prefs.setString('userEmail', userEmail ?? '');
     await _prefs.setString('userName', userName ?? '');
+    await _prefs.setString('profileUsername', profileUsername ?? '');
     await _prefs.setString('authToken', authToken ?? '');
   }
 
@@ -64,6 +69,8 @@ class AuthProvider extends ChangeNotifier {
     _userId = _prefs.getString('userId');
     _userEmail = _prefs.getString('userEmail');
     _userName = _prefs.getString('userName');
+    final pu = _prefs.getString('profileUsername');
+    _profileUsername = (pu != null && pu.isNotEmpty) ? pu : null;
     _authToken = _prefs.getString('authToken');
     if (!_isGuest && (_authToken == null || _authToken!.isEmpty)) {
       _isAuthenticated = false;
@@ -85,6 +92,10 @@ class AuthProvider extends ChangeNotifier {
       _userId = user?['id']?.toString();
       _userEmail = user?['email']?.toString() ?? email;
       _userName = user?['name']?.toString() ?? email.split('@')[0];
+      _profileUsername = user?['username']?.toString();
+      if (_profileUsername != null && _profileUsername!.isEmpty) {
+        _profileUsername = null;
+      }
       _authToken = resp['token'] as String;
       _isGuest = false;
       _emailVerified = user?['emailVerified'] == true;
@@ -100,6 +111,7 @@ class AuthProvider extends ChangeNotifier {
         userId: _userId,
         userEmail: _userEmail,
         userName: _userName,
+        profileUsername: _profileUsername,
         authToken: _authToken,
       );
       notifyListeners();
@@ -128,10 +140,16 @@ class AuthProvider extends ChangeNotifier {
     return e.toString();
   }
 
-  Future<bool> register(String name, String email, String password) async {
+  Future<bool> register(
+    String name,
+    String email,
+    String password,
+    String username,
+  ) async {
     _lastError = null;
     try {
-      final resp = await ApiService.instance.register(name, email, password);
+      final resp =
+          await ApiService.instance.register(name, email, password, username);
       if (resp['token'] == null) {
         _lastError = 'Invalid response';
         notifyListeners();
@@ -143,6 +161,10 @@ class AuthProvider extends ChangeNotifier {
       _userEmail = user?['email']?.toString() ?? email;
       _userName = user?['name']?.toString() ??
           (name.trim().isEmpty ? email.split('@')[0] : name);
+      _profileUsername = user?['username']?.toString();
+      if (_profileUsername != null && _profileUsername!.isEmpty) {
+        _profileUsername = null;
+      }
       _authToken = resp['token'] as String;
       _isGuest = false;
       _onboardingCompleted = user?['onboardingCompleted'] == true;
@@ -158,6 +180,7 @@ class AuthProvider extends ChangeNotifier {
         userId: _userId,
         userEmail: _userEmail,
         userName: _userName,
+        profileUsername: _profileUsername,
         authToken: _authToken,
       );
       notifyListeners();
@@ -180,6 +203,7 @@ class AuthProvider extends ChangeNotifier {
     _userId = 'guest_${DateTime.now().millisecondsSinceEpoch}';
     _userEmail = null;
     _userName = 'Guest';
+    _profileUsername = null;
     _authToken = null;
     _onboardingCompleted = _prefs.getBool('guestOnboardingCompleted') ?? false;
 
@@ -192,6 +216,7 @@ class AuthProvider extends ChangeNotifier {
       userId: _userId,
       userEmail: null,
       userName: _userName,
+      profileUsername: null,
       authToken: null,
     );
     notifyListeners();
@@ -212,6 +237,10 @@ class AuthProvider extends ChangeNotifier {
       _userEmail = user?['email']?.toString();
       _userName =
           user?['name']?.toString() ?? _userEmail?.split('@')[0] ?? 'User';
+      _profileUsername = user?['username']?.toString();
+      if (_profileUsername != null && _profileUsername!.isEmpty) {
+        _profileUsername = null;
+      }
       _authToken = resp['token'] as String;
       _isGuest = false;
       _onboardingCompleted = user?['onboardingCompleted'] == true;
@@ -227,6 +256,7 @@ class AuthProvider extends ChangeNotifier {
         userId: _userId,
         userEmail: _userEmail,
         userName: _userName,
+        profileUsername: _profileUsername,
         authToken: _authToken,
       );
       notifyListeners();
@@ -265,6 +295,10 @@ class AuthProvider extends ChangeNotifier {
           name ??
           _userEmail?.split('@')[0] ??
           'User';
+      _profileUsername = user?['username']?.toString();
+      if (_profileUsername != null && _profileUsername!.isEmpty) {
+        _profileUsername = null;
+      }
       _authToken = resp['token'] as String;
       _isGuest = false;
       _onboardingCompleted = user?['onboardingCompleted'] == true;
@@ -280,6 +314,7 @@ class AuthProvider extends ChangeNotifier {
         userId: _userId,
         userEmail: _userEmail,
         userName: _userName,
+        profileUsername: _profileUsername,
         authToken: _authToken,
       );
       notifyListeners();
@@ -303,6 +338,10 @@ class AuthProvider extends ChangeNotifier {
     _userId = user['id']?.toString();
     _userEmail = user['email']?.toString();
     _userName = user['name']?.toString() ?? _userEmail?.split('@')[0];
+    _profileUsername = user['username']?.toString();
+    if (_profileUsername != null && _profileUsername!.isEmpty) {
+      _profileUsername = null;
+    }
     _onboardingCompleted = user['onboardingCompleted'] == true;
     _isBusinessOwner = user['isBusinessOwner'] == true;
     _prefs.setString('authToken', token);
@@ -311,6 +350,7 @@ class AuthProvider extends ChangeNotifier {
     _prefs.setString('userId', _userId ?? '');
     _prefs.setString('userEmail', _userEmail ?? '');
     _prefs.setString('userName', _userName ?? '');
+    _prefs.setString('profileUsername', _profileUsername ?? '');
     _prefs.setBool('onboardingCompleted', _onboardingCompleted);
     notifyListeners();
   }
@@ -331,6 +371,7 @@ class AuthProvider extends ChangeNotifier {
     _userId = null;
     _userEmail = null;
     _userName = null;
+    _profileUsername = null;
     _authToken = null;
     _lastError = null;
 

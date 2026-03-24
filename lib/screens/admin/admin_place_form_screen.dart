@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../../services/api_service.dart';
 import '../../theme/admin_theme.dart';
+import '../../utils/checkin_qr.dart';
 
 class AdminPlaceFormScreen extends StatefulWidget {
   final String adminKey;
@@ -38,6 +40,9 @@ class _AdminPlaceFormScreenState extends State<AdminPlaceFormScreen> {
 
   bool _isLoading = false;
   bool _isUploadingImage = false;
+  bool _regeneratingCheckin = false;
+  bool _ensuringCheckin = false;
+  String? _checkinToken;
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
@@ -64,7 +69,101 @@ class _AdminPlaceFormScreenState extends State<AdminPlaceFormScreen> {
       _tagsController.text =
           (widget.place!['tags'] is List ? widget.place!['tags'] : [])
               .join(', ');
+      _checkinToken = widget.place!['checkin_token']?.toString();
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureCheckinTokenIfNeeded();
+    });
+  }
+
+  /// Places created before check-in tokens existed get a token + QR automatically.
+  Future<void> _ensureCheckinTokenIfNeeded() async {
+    if (widget.place == null) return;
+    final existing = _checkinToken;
+    if (existing != null && existing.isNotEmpty) return;
+    if (_ensuringCheckin) return;
+    setState(() => _ensuringCheckin = true);
+    try {
+      final r = await ApiService.instance.adminEnsurePlaceCheckinToken(
+        widget.place!['id'].toString(),
+        adminKey: widget.adminKey,
+      );
+      if (mounted) {
+        setState(() {
+          _checkinToken = r['checkinToken']?.toString();
+          _ensuringCheckin = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _ensuringCheckin = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not create door QR: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _regenerateCheckinToken() async {
+    final id = widget.place?['id']?.toString();
+    if (id == null || id.isEmpty) return;
+    setState(() => _regeneratingCheckin = true);
+    try {
+      final r = await ApiService.instance.adminRegeneratePlaceCheckinToken(
+        id,
+        adminKey: widget.adminKey,
+      );
+      if (mounted) {
+        setState(() {
+          _checkinToken = r['checkinToken']?.toString();
+          _regeneratingCheckin = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('New door QR generated. Old prints no longer work.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _regeneratingCheckin = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  void _showCheckinQrDialog(String payload) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Door check-in QR'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Print and fix this at the entrance. Anyone can check in only by scanning this code with the app.',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: QrImageView(
+                  data: payload,
+                  size: 220,
+                  backgroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -135,10 +234,16 @@ class _AdminPlaceFormScreenState extends State<AdminPlaceFormScreen> {
           adminKey: widget.adminKey,
         );
       } else {
-        await ApiService.instance.adminCreatePlace(
+        final created = await ApiService.instance.adminCreatePlace(
           placeData,
           adminKey: widget.adminKey,
         );
+        final token = created['checkinToken']?.toString();
+        final payload = created['qrPayload']?.toString();
+        if (token != null) placeData['checkin_token'] = token;
+        if (mounted && payload != null) {
+          _showCheckinQrDialog(payload);
+        }
       }
 
       if (mounted) {
@@ -346,6 +451,59 @@ class _AdminPlaceFormScreenState extends State<AdminPlaceFormScreen> {
                   helperText: 'e.g. historic, family-friendly'),
             ),
             const SizedBox(height: 28),
+            if (widget.place != null) ...[
+              Text(
+                'Door check-in QR',
+                style: AdminTheme.titleMedium.copyWith(
+                  color: AdminTheme.textPrimary,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Print and place at the entrance. The secret is not shown in the public app — '
+                'visitors must scan this physical code.',
+                style: TextStyle(fontSize: 13, color: AdminTheme.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              if (_ensuringCheckin)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                )
+              else if ((_checkinToken ?? '').isNotEmpty) ...[
+                Center(
+                  child: QrImageView(
+                    data: buildOfficialCheckinQrPayload(
+                      widget.place!['id'].toString(),
+                      _checkinToken!,
+                    ),
+                    size: 200,
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _regeneratingCheckin ? null : _regenerateCheckinToken,
+                  icon: _regeneratingCheckin
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const FaIcon(FontAwesomeIcons.arrowsRotate, size: 16),
+                  label: Text(
+                      _regeneratingCheckin ? 'Working…' : 'Regenerate (invalidates old prints)'),
+                ),
+              ],
+              const SizedBox(height: 28),
+            ],
             SizedBox(
               width: double.infinity,
               height: 50,

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "904702521837",
+    "project_id": "visit-tripoli-65251",
+    "storage_bucket": "visit-tripoli-65251.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:904702521837:android:9216613f1c8475006277e4",
+        "android_client_info": {
+          "package_name": "com.example.tripoli_explorer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBw7GOFmbBuwPhXlq3pSh9533gEQ37Ujdw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

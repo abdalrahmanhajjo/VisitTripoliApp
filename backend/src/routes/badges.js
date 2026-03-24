@@ -1,7 +1,20 @@
+const crypto = require('crypto');
 const express = require('express');
 const { authMiddleware } = require('../middleware/auth');
 const { query } = require('../db');
 const { getRequestLang } = require('../utils/requestLang');
+
+function timingSafeEqualStrings(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const ba = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ba.length !== bb.length) return false;
+  try {
+    return crypto.timingSafeEqual(ba, bb);
+  } catch {
+    return false;
+  }
+}
 
 const router = express.Router();
 
@@ -49,25 +62,39 @@ router.get('/me', authMiddleware, async (req, res) => {
   }
 });
 
-// POST /api/badges/check-in - check in at a place
+// POST /api/badges/check-in - check in at a place (requires official door QR: checkinToken)
 router.post('/check-in', authMiddleware, async (req, res) => {
   try {
     const lang = getRequestLang(req);
     const userId = req.user.userId;
-    const { placeId } = req.body || {};
+    const { placeId, checkinToken } = req.body || {};
     if (!placeId) return res.status(400).json({ error: 'placeId required' });
+    if (!checkinToken || typeof checkinToken !== 'string') {
+      return res.status(400).json({
+        error: 'Official check-in QR required. Open Check in in the app and scan the code posted at the entrance.',
+      });
+    }
 
-    const place = (await query(
-      `SELECT p.id, COALESCE(pt.name, p.name) AS name FROM places p
+    const row = (await query(
+      `SELECT p.id, p.checkin_token, COALESCE(pt.name, p.name) AS name FROM places p
        LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $2
        WHERE p.id = $1`,
       [placeId, lang]
     )).rows[0];
-    if (!place) return res.status(404).json({ error: 'Place not found' });
+    if (!row) return res.status(404).json({ error: 'Place not found' });
+    if (!timingSafeEqualStrings(row.checkin_token, checkinToken.trim())) {
+      return res.status(403).json({
+        error: 'Invalid check-in code. Use the official QR printed at this place.',
+      });
+    }
+    const place = { id: row.id, name: row.name };
 
     await query('INSERT INTO check_ins (user_id, place_id) VALUES ($1, $2)', [userId, placeId]);
 
     const placeCount = (await query('SELECT COUNT(DISTINCT place_id)::int AS c FROM check_ins WHERE user_id = $1', [userId])).rows[0].c;
+    if (placeCount >= 15) {
+      await query('UPDATE users SET feed_discoverable = true WHERE id = $1', [userId]);
+    }
     const tripCount = (await query('SELECT COUNT(*)::int AS c FROM trips WHERE user_id = $1', [userId])).rows[0].c;
 
     const newBadges = [];
@@ -75,6 +102,7 @@ router.post('/check-in', authMiddleware, async (req, res) => {
       { criteria: 'place_1', minPlaces: 1 },
       { criteria: 'place_5', minPlaces: 5 },
       { criteria: 'place_10', minPlaces: 10 },
+      { criteria: 'place_15', minPlaces: 15 },
       { criteria: 'trip_1', minTrips: 1 },
     ];
     for (const b of badgesToAdd) {

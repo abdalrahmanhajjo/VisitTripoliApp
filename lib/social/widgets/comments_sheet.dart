@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
@@ -241,7 +242,10 @@ class CommentsSheetState extends State<CommentsSheet> {
   void _startReply(FeedComment c) {
     setState(() {
       _replyTo = c;
-      final mention = '@${c.authorName} ';
+      final u = c.authorUsername?.trim();
+      final mention = u != null && u.isNotEmpty
+          ? '@$u '
+          : '${c.displayAuthorName} ';
       _controller.text = mention;
       AppFeedback.tap();
       _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
@@ -252,6 +256,44 @@ class CommentsSheetState extends State<CommentsSheet> {
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Widget _commentAvatar(FeedComment c) {
+    final url = c.authorAvatarUrl;
+    if (url != null && url.isNotEmpty) {
+      return ClipOval(
+        child: CachedNetworkImage(
+          imageUrl: url,
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+          placeholder: (_, __) => _commentAvatarPlaceholder(c),
+          errorWidget: (_, __, ___) => _commentAvatarPlaceholder(c),
+        ),
+      );
+    }
+    return _commentAvatarPlaceholder(c);
+  }
+
+  Widget _commentAvatarPlaceholder(FeedComment c) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withValues(alpha: 0.15),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          c.displayAuthorInitial,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            color: AppTheme.primaryColor,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -398,31 +440,14 @@ class CommentsSheetState extends State<CommentsSheet> {
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Container(
-                                      width: 40,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          c.authorName.isNotEmpty ? c.authorName[0].toUpperCase() : '?',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTheme.primaryColor,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                                    _commentAvatar(c),
                                     const SizedBox(width: 14),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            c.authorName,
+                                            c.displayAuthorName,
                                             style: const TextStyle(
                                               fontWeight: FontWeight.w600,
                                               fontSize: 15,
@@ -458,7 +483,7 @@ class CommentsSheetState extends State<CommentsSheet> {
                                                   const SizedBox(width: 8),
                                                   Expanded(
                                                     child: Text(
-                                                      'Replying to ${c.parentAuthorName ?? "comment"}',
+                                                      'Replying to ${c.parentDisplayLabel}',
                                                       style: Theme.of(context)
                                                           .textTheme
                                                           .bodySmall
@@ -629,7 +654,7 @@ class CommentsSheetState extends State<CommentsSheet> {
                           children: [
                             Expanded(
                               child: Text(
-                                'Replying to ${_replyTo!.authorName}',
+                                'Replying to ${_replyTo!.displayAuthorName}',
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: AppTheme.textSecondary,
                                       fontWeight: FontWeight.w700,
