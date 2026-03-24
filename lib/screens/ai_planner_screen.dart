@@ -131,38 +131,37 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
     return l10n.goodEvening;
   }
 
-  static const _moodCards = [
-    (
-      icon: FontAwesomeIcons.landmark,
-      label: 'Culture day',
-      prompt:
-          'A cultural day with museums, art, and heritage—morning at the citadel, then museums'
-    ),
-    (
-      icon: FontAwesomeIcons.utensils,
-      label: 'Foodie tour',
-      prompt:
-          'Best traditional Lebanese food—souks, Hallab sweets, local lunch spots'
-    ),
-    (
-      icon: FontAwesomeIcons.mosque,
-      label: 'History & faith',
-      prompt:
-          'Historical sites and beautiful mosques, citadel first for morning light'
-    ),
-    (
-      icon: FontAwesomeIcons.store,
-      label: 'Souk explorer',
-      prompt:
-          'Explore old souks and khans, textile market, soap khan, local crafts'
-    ),
-    (
-      icon: FontAwesomeIcons.wandMagicSparkles,
-      label: 'Surprise me',
-      prompt:
-          'A varied day—one iconic site, one food stop, one hidden gem, one cultural spot'
-    ),
-  ];
+  List<({IconData icon, String label, String prompt})> _moodCardsFor(
+      BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      (
+        icon: FontAwesomeIcons.landmark,
+        label: l10n.aiPlannerMoodCultureDayLabel,
+        prompt: l10n.aiPlannerMoodCultureDayPrompt,
+      ),
+      (
+        icon: FontAwesomeIcons.utensils,
+        label: l10n.aiPlannerMoodFoodieTourLabel,
+        prompt: l10n.aiPlannerMoodFoodieTourPrompt,
+      ),
+      (
+        icon: FontAwesomeIcons.mosque,
+        label: l10n.aiPlannerMoodHistoryFaithLabel,
+        prompt: l10n.aiPlannerMoodHistoryFaithPrompt,
+      ),
+      (
+        icon: FontAwesomeIcons.store,
+        label: l10n.aiPlannerMoodSoukExplorerLabel,
+        prompt: l10n.aiPlannerMoodSoukExplorerPrompt,
+      ),
+      (
+        icon: FontAwesomeIcons.wandMagicSparkles,
+        label: l10n.aiPlannerMoodSurpriseMeLabel,
+        prompt: l10n.aiPlannerMoodSurpriseMePrompt,
+      ),
+    ];
+  }
 
   void _showPlacesGroupSheet(BuildContext context) {
     showModalBottomSheet(
@@ -1027,7 +1026,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
                     inputController: _inputController,
                     isGenerating: _isGenerating,
                     onSend: _sendMessage,
-                    moodCards: _moodCards,
+                    moodCards: _moodCardsFor(context),
                     onChipTap: (prompt) {
                       _inputController.text = prompt;
                       _sendMessage();
@@ -1606,6 +1605,7 @@ class _WelcomeHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       child: Column(
@@ -1644,7 +1644,7 @@ class _WelcomeHero extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Your Tripoli Plan',
+                            l10n.aiPlannerWelcomeTitle,
                             style: const TextStyle(
                               fontSize: 21,
                               fontWeight: FontWeight.w800,
@@ -1654,7 +1654,7 @@ class _WelcomeHero extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'AI-crafted itinerary tailored to your trip settings.',
+                            l10n.aiPlannerWelcomeSubtitle,
                             style: const TextStyle(
                               fontSize: 13,
                               color: AppTheme.textSecondary,
@@ -1667,7 +1667,7 @@ class _WelcomeHero extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Tell the planner what you feel like—culture, food, souks, history—or start from one of the quick ideas below.',
+                  l10n.aiPlannerWelcomeBody,
                   style: const TextStyle(
                     fontSize: 14,
                     color: AppTheme.textSecondary,
@@ -1695,13 +1695,13 @@ class _WelcomeHero extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.interests_rounded, size: 20, color: Colors.white),
-                          SizedBox(width: 8),
+                        children: [
+                          const Icon(Icons.interests_rounded, size: 20, color: Colors.white),
+                          const SizedBox(width: 8),
                           Flexible(
                             child: Text(
-                              'Plan from your interests & activity',
-                              style: TextStyle(
+                              l10n.aiPlannerPlanFromInterests,
+                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
@@ -1709,15 +1709,15 @@ class _WelcomeHero extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          SizedBox(width: 6),
-                          Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Uses what you like and where you have browsed recently. You can still edit every stop.',
+                    l10n.aiPlannerPlanFromInterestsHint,
                     style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                     textAlign: TextAlign.center,
                   ),
@@ -1734,7 +1734,7 @@ class _WelcomeHero extends StatelessWidget {
           ),
           const SizedBox(height: 28),
           Text(
-            'Quick start',
+            l10n.aiPlannerQuickStart,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -1852,6 +1852,7 @@ class _PlannerInputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final radius = large ? 28.0 : 24.0;
     return Container(
       padding: EdgeInsets.symmetric(
@@ -1882,7 +1883,7 @@ class _PlannerInputBar extends StatelessWidget {
             child: TextField(
               controller: controller,
               decoration: InputDecoration(
-                hintText: 'Ask anything...',
+                hintText: l10n.aiPlannerAskAnythingHint,
                 hintStyle: TextStyle(
                   fontSize: large ? 16 : 15,
                   color: AppTheme.textTertiary,

@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
-import '../screens/about_screen.dart';
 import '../screens/admin_dashboard_screen.dart';
 import '../screens/ai_planner_screen.dart';
 import '../screens/community_screen.dart';
@@ -271,7 +270,7 @@ class AppRouter {
         ),
         GoRoute(
           path: '/about',
-          builder: (context, state) => const AboutScreen(),
+          redirect: (context, state) => '/help',
         ),
         GoRoute(
           path: '/admin',

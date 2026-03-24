@@ -67,4 +67,25 @@ function optionalAuthMiddleware(req, res, next) {
   next();
 }
 
-module.exports = { authMiddleware, optionalAuthMiddleware, requireBusinessOwner };
+/**
+ * Verify a Bearer token the same way as [optionalAuthMiddleware] (no weak defaults).
+ * Use for routes that cannot use the middleware (e.g. mixed public handlers).
+ * @returns {string|null} userId or null if missing/invalid
+ */
+function verifyAccessTokenOptional(token) {
+  if (!token || typeof token !== 'string' || token.length > MAX_TOKEN_LENGTH) return null;
+  if (isProd && !process.env.JWT_SECRET) return null;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET, JWT_OPTIONS);
+    return decoded.userId || null;
+  } catch {
+    return null;
+  }
+}
+
+module.exports = {
+  authMiddleware,
+  optionalAuthMiddleware,
+  requireBusinessOwner,
+  verifyAccessTokenOptional,
+};

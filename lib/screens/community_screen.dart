@@ -37,6 +37,7 @@ import '../social/widgets/comments_sheet.dart';
 import '../social/widgets/create_post_sheet.dart';
 import '../social/widgets/edit_post_sheet.dart';
 import '../social/widgets/community_post_actions.dart';
+import '../social/widgets/feed_moderation_sheet.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -75,7 +76,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
         feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'recent');
       }
       if (auth.isLoggedIn && !auth.isGuest) {
-        feed.loadCanPost(auth.authToken!);
+        feed.loadCanPost(auth.authToken!).then((_) {
+          if (!mounted) return;
+          final f = context.read<FeedProvider>();
+          final a = context.read<AuthProvider>();
+          if (a.authToken != null && f.canPost?.isAdmin == true) {
+            f.loadPendingModeration(a.authToken!);
+          }
+        });
       }
     }
   }
@@ -90,6 +98,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
     if (auth.isLoggedIn && !auth.isGuest) {
       await feed.loadCanPost(auth.authToken!);
+      if (feed.canPost?.isAdmin == true) {
+        await feed.loadPendingModeration(auth.authToken!);
+      }
     }
   }
 
@@ -142,6 +153,23 @@ class _CommunityScreenState extends State<CommunityScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         actions: [
+          if (feed.canPost?.isAdmin == true &&
+              auth.isLoggedIn &&
+              !auth.isGuest)
+            IconButton(
+              tooltip: AppLocalizations.of(context)!.feedModerationQueueTooltip,
+              onPressed: () => showFeedModerationSheet(context),
+              icon: Badge(
+                isLabelVisible: feed.pendingModerationCount > 0,
+                label: Text(
+                  feed.pendingModerationCount > 99
+                      ? '99+'
+                      : '${feed.pendingModerationCount}',
+                  style: const TextStyle(fontSize: 11),
+                ),
+                child: const Icon(Icons.fact_check_outlined),
+              ),
+            ),
           if (feed.canPost?.isBusinessOwner ?? false)
             IconButton(
               icon: const Icon(Icons.mail_outline_rounded),
@@ -552,6 +580,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
     }
     if (auth.isLoggedIn && !auth.isGuest) {
       await feed.loadCanPost(auth.authToken!);
+      if (feed.canPost?.isAdmin == true) {
+        await feed.loadPendingModeration(auth.authToken!);
+      }
     }
   }
 
@@ -932,15 +963,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
         ),
       ),
     );
-    if (result != null && mounted) {
-      if (result.moderationStatus == 'pending') {
-        AppSnackBars.showSuccess(
-          context,
-          'Your post was submitted for review. It will appear in Discover after an admin approves it.',
-        );
-      } else {
-        feed.prependPost(result);
-      }
+    if (result == null) return;
+    if (!context.mounted) return;
+    if (result.moderationStatus == 'pending') {
+      AppSnackBars.showSuccess(
+        context,
+        'Your post was submitted for review. It will appear in Discover after an admin approves it.',
+      );
+    } else {
+      feed.prependPost(result);
     }
   }
 

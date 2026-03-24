@@ -1,6 +1,7 @@
 const express = require('express');
 const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
 const { query } = require('../db');
+const { isValidPlaceId } = require('../middleware/security');
 
 const router = express.Router();
 
@@ -16,6 +17,9 @@ function isRelationNotFound(err) {
 router.get('/', optionalAuthMiddleware, async (req, res) => {
   const { placeId } = req.query;
   if (!placeId) return res.status(400).json({ error: 'placeId is required' });
+  if (!isValidPlaceId(String(placeId))) {
+    return res.status(400).json({ error: 'Invalid placeId' });
+  }
   try {
     let result;
     const attempts = [
@@ -81,6 +85,9 @@ router.post('/', authMiddleware, async (req, res) => {
     if (!placeId || !rating) {
       return res.status(400).json({ error: 'placeId and rating are required' });
     }
+    if (!isValidPlaceId(String(placeId))) {
+      return res.status(400).json({ error: 'Invalid placeId' });
+    }
     const stars = parseInt(rating, 10);
     if (Number.isNaN(stars) || stars < 1 || stars > 5) {
       return res.status(400).json({ error: 'rating must be between 1 and 5' });
@@ -134,6 +141,7 @@ router.patch('/:id', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'rating must be between 1 and 5' });
   }
   try {
+    /** SQL identifiers only — never from request input. */
     const tables = ['place_reviews', 'reviews'];
     let updated = false;
     let placeId = null;

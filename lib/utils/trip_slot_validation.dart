@@ -16,7 +16,7 @@ int? _minutes(String? s) {
 List<int> slotTimeRange(TripSlot s) {
   final start = _minutes(s.startTime) ?? 8 * 60;
   var end = _minutes(s.endTime);
-  if (end == null) end = start + 60;
+  end ??= start + 60;
   if (end <= start) end = start + 60;
   return [start, end];
 }

@@ -280,6 +280,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get discoverRefreshNow => 'Actualiser';
 
   @override
+  String get communityFeedForYou => 'Pour vous';
+
+  @override
+  String get communityFeedSavedTab => 'Enregistrés';
+
+  @override
+  String get communityFeedReels => 'Reels';
+
+  @override
+  String get communityNoSavedPostsTitle => 'Aucune publication enregistrée';
+
+  @override
+  String get communityNoSavedPostsSubtitle =>
+      'Enregistrez des publications via l’icône signet. Elles apparaîtront ici.';
+
+  @override
   String get navTrips => 'Voyages';
 
   @override
@@ -368,6 +384,44 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get help => 'Aide';
+
+  @override
+  String get helpAboutTitle => 'À propos de Visit Tripoli';
+
+  @override
+  String get helpAboutBody =>
+      'Visit Tripoli est votre compagnon pour découvrir Tripoli, Liban—patrimoine, culture, gastronomie et expériences locales. Explorez des lieux sélectionnés, planifiez avec l’IA, suivez le fil communautaire et obtenez des itinéraires—dans une expérience soignée.';
+
+  @override
+  String get helpQuickAnswersTitle => 'Réponses rapides';
+
+  @override
+  String get helpFaqSavePlaceQ => 'Comment enregistrer un lieu ?';
+
+  @override
+  String get helpFaqSavePlaceA =>
+      'Appuyez sur le cœur sur une carte lieu ou la fiche détail. Les lieux enregistrés apparaissent dans votre profil et restent disponibles hors ligne.';
+
+  @override
+  String get helpFaqPlanQ => 'Comment organiser un voyage ?';
+
+  @override
+  String get helpFaqPlanA =>
+      'Ouvrez Planificateur pour des suggestions IA, ou Voyages pour ajouter lieux et événements à un itinéraire.';
+
+  @override
+  String get helpFaqOfflineQ => 'L’application fonctionne-t-elle hors ligne ?';
+
+  @override
+  String get helpFaqOfflineA =>
+      'Les lieux et voyages enregistrés sont stockés sur votre appareil pour les consulter sans connexion.';
+
+  @override
+  String get helpPrivacyNoticeTitle => 'Confidentialité en bref';
+
+  @override
+  String get helpPrivacyNoticeBody =>
+      'Nous collectons uniquement ce qui est nécessaire pour les cartes, les lieux enregistrés et votre compte. Les données que vous enregistrez restent sous votre contrôle ; consultez les conditions complètes dans les réglages de l’app lorsqu’elles sont disponibles.';
 
   @override
   String get myTrips => 'Mes voyages';
@@ -1280,6 +1334,48 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get createPost => 'Créer une publication';
+
+  @override
+  String get feedModerationQueueTooltip =>
+      'Examiner les publications en attente';
+
+  @override
+  String get feedModerationTitle => 'Publications en attente';
+
+  @override
+  String get feedModerationSubtitle =>
+      'Publications des contributeurs éligibles — approuvez ou refusez pour le fil Découvrir.';
+
+  @override
+  String get feedModerationEmpty => 'Aucune publication à examiner.';
+
+  @override
+  String get feedModerationApprove => 'Approuver';
+
+  @override
+  String get feedModerationReject => 'Refuser';
+
+  @override
+  String get feedModerationRejectConfirmTitle => 'Refuser cette publication ?';
+
+  @override
+  String get feedModerationRejectConfirmBody =>
+      'Elle n’apparaîtra pas dans Découvrir.';
+
+  @override
+  String get feedModerationApproved => 'Publication approuvée';
+
+  @override
+  String get feedModerationRejected => 'Publication refusée';
+
+  @override
+  String get feedModerationFailed => 'Impossible de mettre à jour. Réessayez.';
+
+  @override
+  String get feedModerationPlace => 'Lieu';
+
+  @override
+  String get feedModerationType => 'Type';
 
   @override
   String get post => 'Publier';
@@ -2322,6 +2418,66 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get aiPlannerRefineNeedPlan =>
       'Générez d’abord un plan, puis vous pourrez demander à l’IA de modifier une étape.';
+
+  @override
+  String get aiPlannerWelcomeTitle => 'Votre plan à Tripoli';
+
+  @override
+  String get aiPlannerWelcomeSubtitle =>
+      'Itinéraire conçu par l’IA selon les réglages de votre voyage.';
+
+  @override
+  String get aiPlannerWelcomeBody =>
+      'Dites au planificateur ce qui vous tente—culture, cuisine, souks, histoire—ou partez d’une des idées rapides ci-dessous.';
+
+  @override
+  String get aiPlannerPlanFromInterests =>
+      'Plan selon vos centres d’intérêt et votre activité';
+
+  @override
+  String get aiPlannerPlanFromInterestsHint =>
+      'S’appuie sur ce que vous aimez et sur vos visites récentes. Vous pouvez modifier chaque étape.';
+
+  @override
+  String get aiPlannerQuickStart => 'Démarrage rapide';
+
+  @override
+  String get aiPlannerAskAnythingHint => 'Posez une question…';
+
+  @override
+  String get aiPlannerMoodCultureDayLabel => 'Journée culture';
+
+  @override
+  String get aiPlannerMoodCultureDayPrompt =>
+      'Une journée culture avec musées, art et patrimoine—matinée à la citadelle, puis musées';
+
+  @override
+  String get aiPlannerMoodFoodieTourLabel => 'Tour gourmand';
+
+  @override
+  String get aiPlannerMoodFoodieTourPrompt =>
+      'Meilleure cuisine libanaise traditionnelle—souks, pâtisseries Hallab, déjeuners locaux';
+
+  @override
+  String get aiPlannerMoodHistoryFaithLabel => 'Histoire & foi';
+
+  @override
+  String get aiPlannerMoodHistoryFaithPrompt =>
+      'Sites historiques et belles mosquées, citadelle en premier pour la lumière du matin';
+
+  @override
+  String get aiPlannerMoodSoukExplorerLabel => 'Explorateur des souks';
+
+  @override
+  String get aiPlannerMoodSoukExplorerPrompt =>
+      'Vieux souks et khans, textile, khan du savon, artisanat local';
+
+  @override
+  String get aiPlannerMoodSurpriseMeLabel => 'Surprenez-moi';
+
+  @override
+  String get aiPlannerMoodSurpriseMePrompt =>
+      'Une journée variée—un lieu incontournable, une pause food, une perle cachée, un arrêt culturel';
 
   @override
   String aiPlannerReplaceStopUserMessage(

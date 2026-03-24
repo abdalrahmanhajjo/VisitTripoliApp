@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../theme/app_theme.dart';
 import '../community_feed_sort.dart';
 
@@ -25,6 +26,7 @@ class CommunityFeedHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
       child: Column(
@@ -34,7 +36,7 @@ class CommunityFeedHeader extends StatelessWidget {
             children: [
               Expanded(
                 child: _TikTokFeedTab(
-                  label: 'For You',
+                  label: l10n.communityFeedForYou,
                   isSelected: selectedMode == CommunityFeedSort.newest,
                   showNewDot: matchCount > 0,
                   onTap: () => onSelectedMode(CommunityFeedSort.newest),
@@ -42,7 +44,7 @@ class CommunityFeedHeader extends StatelessWidget {
               ),
               Expanded(
                 child: _TikTokFeedTab(
-                  label: 'Saved',
+                  label: l10n.communityFeedSavedTab,
                   isSelected: selectedMode == CommunityFeedSort.saved,
                   isDisabled: !isSavedAvailable,
                   disabledTap: () {
@@ -55,7 +57,7 @@ class CommunityFeedHeader extends StatelessWidget {
               ),
               Expanded(
                 child: _TikTokFeedTab(
-                  label: 'Reels',
+                  label: l10n.communityFeedReels,
                   isSelected: false,
                   onTap: onReels,
                 ),

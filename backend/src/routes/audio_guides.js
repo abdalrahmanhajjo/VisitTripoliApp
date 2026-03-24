@@ -1,6 +1,7 @@
 const express = require('express');
 const { query } = require('../db');
 const { getRequestLang } = require('../utils/requestLang');
+const { isValidPlaceId, isValidUUID } = require('../middleware/security');
 
 const router = express.Router();
 
@@ -17,6 +18,12 @@ router.get('/', async (req, res) => {
     const lang = getRequestLang(req);
     const { placeId, tourId } = req.query;
     if (!placeId && !tourId) return res.status(400).json({ error: 'placeId or tourId required' });
+    if (placeId && !isValidPlaceId(String(placeId))) {
+      return res.status(400).json({ error: 'Invalid placeId' });
+    }
+    if (tourId && !isValidPlaceId(String(tourId))) {
+      return res.status(400).json({ error: 'Invalid tourId' });
+    }
 
     let result;
     if (placeId) {
@@ -45,6 +52,9 @@ router.get('/', async (req, res) => {
 // GET /api/audio-guides/:id - Single audio guide
 router.get('/:id', async (req, res) => {
   try {
+    if (!isValidUUID(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid id' });
+    }
     const lang = getRequestLang(req);
     const result = await query(
       `${SELECT_GUIDES}

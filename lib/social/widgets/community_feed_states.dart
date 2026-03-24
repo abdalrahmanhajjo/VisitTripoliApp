@@ -12,6 +12,7 @@ class CommunitySavedEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -31,9 +32,9 @@ class CommunitySavedEmptyState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'No saved posts yet',
-              style: TextStyle(
+            Text(
+              l10n.communityNoSavedPostsTitle,
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.textPrimary,
@@ -41,9 +42,9 @@ class CommunitySavedEmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Save posts you like by tapping the bookmark icon. They\'ll appear here.',
-              style: TextStyle(
+            Text(
+              l10n.communityNoSavedPostsSubtitle,
+              style: const TextStyle(
                 fontSize: 15,
                 color: AppTheme.textSecondary,
                 height: 1.5,

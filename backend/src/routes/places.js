@@ -3,6 +3,7 @@ const { query } = require('../db');
 const { responseCache } = require('../middleware/responseCache');
 const { getRequestLang } = require('../utils/requestLang');
 const { rowToPlace, getUploadsBaseUrl } = require('../utils/placeRow');
+const { isValidPlaceId } = require('../middleware/security');
 
 const router = express.Router();
 
@@ -16,6 +17,9 @@ router.get('/', responseCache(3 * 60 * 1000, { includeHost: true }), async (req,
     const baseUrl = getUploadsBaseUrl(req);
     const lang = getRequestLang(req);
     const categoryId = (req.query.category_id || '').toString().trim();
+    if (categoryId && !isValidPlaceId(categoryId)) {
+      return res.status(400).json({ error: 'Invalid category id' });
+    }
     const whereClause = categoryId ? ' AND p.category_id = $2' : '';
     const params = categoryId ? [lang, categoryId] : [lang];
     const result = await query(
@@ -44,6 +48,9 @@ router.get('/', responseCache(3 * 60 * 1000, { includeHost: true }), async (req,
 // GET /api/places/:id
 router.get('/:id', async (req, res) => {
   try {
+    if (!isValidPlaceId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid place id' });
+    }
     const baseUrl = getUploadsBaseUrl(req);
     const lang = getRequestLang(req);
     const result = await query(

@@ -186,48 +186,6 @@ class _TourDetailScreenState extends State<TourDetailScreen>
                       ),
                     ),
                   ),
-                  Positioned(
-                    top: MediaQuery.of(context).padding.top + 56,
-                    right: ResponsiveUtils.contentPadding(context),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.star_rounded,
-                              color: AppTheme.warningColor, size: 18),
-                          const SizedBox(width: 4),
-                          Text(
-                            tour.rating.toStringAsFixed(1),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '(${tour.reviews})',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -697,15 +655,6 @@ class _TourKeyInfoCard extends StatelessWidget {
           SizedBox(height: rowSpacing),
           Row(
             children: [
-              Expanded(
-                child: DetailKeyInfoChip(
-                  icon: Icons.star_rounded,
-                  label:
-                      '${tour.rating.toStringAsFixed(1)} (${tour.reviews})',
-                  accentColor: AppTheme.warningColor,
-                ),
-              ),
-              SizedBox(width: isVerySmall ? 8 : 12),
               Expanded(
                 child: DetailKeyInfoChip(
                   icon: Icons.place_outlined,

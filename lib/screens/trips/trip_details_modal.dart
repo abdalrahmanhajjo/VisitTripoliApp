@@ -463,7 +463,7 @@ class TripDetailsModal extends StatelessWidget {
                                                       ],
                                                     ),
                                                   ),
-                                                  Icon(
+                                                  const Icon(
                                                     Icons.chevron_right_rounded,
                                                     size: 22,
                                                     color: AppTheme.textTertiary,
@@ -610,7 +610,7 @@ class TripDetailsModal extends StatelessWidget {
                                                 ],
                                               ),
                                             ),
-                                            Icon(
+                                            const Icon(
                                               Icons.chevron_right_rounded,
                                               size: 22,
                                               color: AppTheme.textTertiary,

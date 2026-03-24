@@ -5,10 +5,10 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const { responseCache, invalidateByPrefix } = require('../middleware/responseCache');
-const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
+const { authMiddleware, optionalAuthMiddleware, verifyAccessTokenOptional } = require('../middleware/auth');
 const { query } = require('../db');
 const { getRequestLang } = require('../utils/requestLang');
-const { sanitizeFeedBody, isValidPlaceId } = require('../middleware/security');
+const { sanitizeFeedBody, isValidPlaceId, isValidUUID } = require('../middleware/security');
 const { imageFileFilter, videoFileFilter, MAX_IMAGE_SIZE, MAX_VIDEO_SIZE } = require('../middleware/secureUpload');
 const { uploadFeedImage, uploadFeedVideo, isConfigured: supabaseStorageConfigured } = require('../lib/supabaseStorage');
 
@@ -174,6 +174,33 @@ const FEED_LIMIT_DEFAULT = 20;
 const FEED_LIMIT_MAX = 50;
 const FEED_TRENDING_MAX_OFFSET = 800;
 
+/** Feed cursor = post id (UUID). Rejects malformed values before they reach SQL. */
+function parseFeedBeforeParam(raw) {
+  const s = (raw || '').toString().trim();
+  if (!s) return { ok: true, value: null };
+  if (!isValidUUID(s)) return { ok: false };
+  return { ok: true, value: s };
+}
+
+/** Reels cursor = ISO timestamp from [created_at] (not UUID). Safe bound for timestamptz. */
+function parseReelsBeforeParam(raw) {
+  const s = (raw || '').toString().trim();
+  if (!s) return { ok: true, value: null };
+  const ms = Date.parse(s);
+  if (Number.isNaN(ms)) return { ok: false };
+  const y = new Date(ms).getUTCFullYear();
+  if (y < 2000 || y > 2100) return { ok: false };
+  return { ok: true, value: new Date(ms).toISOString() };
+}
+
+function requireUuidParam(name) {
+  return (req, res, next) => {
+    const v = req.params[name];
+    if (!isValidUUID(v)) return res.status(400).json({ error: 'Invalid id' });
+    next();
+  };
+}
+
 /** $1 = lang (en|ar|fr) — resolves place display name from place_translations when present. */
 const FEED_PLACE_NAME = 'COALESCE((SELECT name FROM place_translations WHERE place_id = pl.id AND lang = $1 LIMIT 1), pl.name) AS place_name';
 const FEED_POST_SELECT = `p.id, p.user_id, p.author_name, p.place_id, ${FEED_PLACE_NAME}, pl.images AS place_images, p.author_role, p.caption, p.image_url, p.video_url, p.type, p.created_at, p.hide_likes, p.comments_disabled, p.moderation_status`;
@@ -192,7 +219,9 @@ router.get('/', optionalAuthMiddleware, responseCache(30 * 1000, {
   try {
     const lang = getRequestLang(req);
     const limit = Math.min(parseInt(req.query.limit, 10) || FEED_LIMIT_DEFAULT, FEED_LIMIT_MAX);
-    const before = (req.query.before || '').toString().trim();
+    const beforeParsed = parseFeedBeforeParam(req.query.before);
+    if (!beforeParsed.ok) return res.status(400).json({ error: 'Invalid cursor' });
+    const before = beforeParsed.value;
     const sort = ((req.query.sort || 'recent').toString().toLowerCase() === 'trending') ? 'trending' : 'recent';
     const offset = Math.min(Math.max(0, parseInt(req.query.offset, 10) || 0), FEED_TRENDING_MAX_OFFSET);
     const baseUrl = getBaseUrl(req);
@@ -289,7 +318,10 @@ router.get('/', optionalAuthMiddleware, responseCache(30 * 1000, {
 router.get('/reels', optionalAuthMiddleware, async (req, res) => {
   try {
     const lang = getRequestLang(req);
-    const { before, limit = '20' } = req.query;
+    const { before: beforeRaw, limit = '20' } = req.query;
+    const beforeParsed = parseReelsBeforeParam(beforeRaw);
+    if (!beforeParsed.ok) return res.status(400).json({ error: 'Invalid cursor' });
+    const before = beforeParsed.value;
     const limitNum = Math.min(parseInt(limit, 10) || 20, 50);
     const userId = req.user?.userId || null;
 
@@ -299,7 +331,7 @@ router.get('/reels', optionalAuthMiddleware, async (req, res) => {
                     WHERE p.type = 'video' AND ${FEED_PUBLIC_VISIBLE}`;
     const params = [lang];
     if (before) {
-      queryStr += ` AND p.created_at < $2`;
+      queryStr += ` AND p.created_at < $2::timestamptz`;
       params.push(before);
     }
     queryStr += ` ORDER BY p.created_at DESC LIMIT $${params.length + 1}`;
@@ -348,7 +380,9 @@ router.get('/saved', authMiddleware, async (req, res) => {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const limit = Math.min(parseInt(req.query.limit, 10) || FEED_LIMIT_DEFAULT, FEED_LIMIT_MAX);
-    const before = (req.query.before || '').toString().trim();
+    const beforeParsed = parseFeedBeforeParam(req.query.before);
+    if (!beforeParsed.ok) return res.status(400).json({ error: 'Invalid cursor' });
+    const before = beforeParsed.value;
     const baseUrl = getBaseUrl(req);
 
     let result;
@@ -414,7 +448,9 @@ router.get('/liked', authMiddleware, async (req, res) => {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const limit = Math.min(parseInt(req.query.limit, 10) || FEED_LIMIT_DEFAULT, FEED_LIMIT_MAX);
-    const before = (req.query.before || '').toString().trim();
+    const beforeParsed = parseFeedBeforeParam(req.query.before);
+    if (!beforeParsed.ok) return res.status(400).json({ error: 'Invalid cursor' });
+    const before = beforeParsed.value;
     const baseUrl = getBaseUrl(req);
 
     let result;
@@ -473,6 +509,51 @@ router.get('/liked', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/feed/pending-moderation — Admin only. Discoverable users’ posts awaiting review.
+router.get('/pending-moderation', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const isAdmin = (await query('SELECT is_admin FROM users WHERE id = $1', [userId])).rows[0]?.is_admin;
+    if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const lang = getRequestLang(req);
+    const limit = Math.min(parseInt(req.query.limit, 10) || FEED_LIMIT_DEFAULT, FEED_LIMIT_MAX);
+    const result = await query(
+      `SELECT ${FEED_POST_SELECT}
+       FROM feed_posts p
+       LEFT JOIN places pl ON pl.id = p.place_id
+       WHERE COALESCE(p.moderation_status, 'approved') = 'pending'
+         AND COALESCE(p.author_role, '') = 'discoverer'
+       ORDER BY p.created_at ASC
+       LIMIT $2`,
+      [lang, limit],
+    );
+    const baseUrl = getBaseUrl(req);
+    const postIds = result.rows.map((r) => r.id);
+    const [likeCounts, commentCounts] = await Promise.all([
+      postIds.length
+        ? query('SELECT post_id, COUNT(*)::int AS c FROM feed_likes WHERE post_id = ANY($1) GROUP BY post_id', [postIds])
+        : Promise.resolve({ rows: [] }),
+      postIds.length
+        ? query('SELECT post_id, COUNT(*)::int AS c FROM feed_comments WHERE post_id = ANY($1) GROUP BY post_id', [postIds])
+        : Promise.resolve({ rows: [] }),
+    ]);
+    const likeMap = Object.fromEntries(likeCounts.rows.map((r) => [r.post_id, r.c]));
+    const commentMap = Object.fromEntries(commentCounts.rows.map((r) => [r.post_id, r.c]));
+    const posts = result.rows.map((r) => rowToPost(r, baseUrl, {
+      likeCount: likeMap[r.id] ?? 0,
+      commentCount: commentMap[r.id] ?? 0,
+      likedByMe: false,
+      savedByMe: false,
+    }));
+    res.json({ posts, total: posts.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch pending posts', ...(isProd ? {} : { detail: err.message }) });
+  }
+});
+
 // GET /api/feed/place/:placeId — Posts for one place (grid / “stories”). Public; optional auth for likedByMe.
 router.get('/place/:placeId', optionalAuthMiddleware, responseCache(30 * 1000, {
   key: (req) => `feed:${getRequestLang(req)}:${req.user?.userId || 'anon'}:place:${req.params.placeId}:${req.query.limit || FEED_LIMIT_DEFAULT}:${req.query.before || ''}`,
@@ -485,7 +566,9 @@ router.get('/place/:placeId', optionalAuthMiddleware, responseCache(30 * 1000, {
       return res.status(400).json({ error: 'Invalid place id' });
     }
     const limit = Math.min(parseInt(req.query.limit, 10) || FEED_LIMIT_DEFAULT, FEED_LIMIT_MAX);
-    const before = (req.query.before || '').toString().trim();
+    const beforeParsed = parseFeedBeforeParam(req.query.before);
+    if (!beforeParsed.ok) return res.status(400).json({ error: 'Invalid cursor' });
+    const before = beforeParsed.value;
     const baseUrl = getBaseUrl(req);
     const userId = req.user?.userId || null;
 
@@ -662,8 +745,58 @@ router.post('/', postLimiter, authMiddleware, sanitizeFeedBody, upload.fields([{
   }
 });
 
+// PATCH /api/feed/:id/moderation — Admin only. Approve or reject discoverer posts (pending queue).
+router.patch('/:id/moderation', authMiddleware, requireUuidParam('id'), async (req, res) => {
+  try {
+    const adminUserId = req.user?.userId;
+    if (!adminUserId) return res.status(401).json({ error: 'Unauthorized' });
+    const isAdmin = (await query('SELECT is_admin FROM users WHERE id = $1', [adminUserId])).rows[0]?.is_admin;
+    if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+    const postId = req.params.id;
+    const status = (req.body?.status ?? '').toString().trim().toLowerCase();
+    if (status !== 'approved' && status !== 'rejected') {
+      return res.status(400).json({ error: 'status must be approved or rejected' });
+    }
+
+    const row = (await query(
+      'SELECT id, author_role, moderation_status FROM feed_posts WHERE id = $1',
+      [postId],
+    )).rows[0];
+    if (!row) return res.status(404).json({ error: 'Post not found' });
+    if (row.author_role !== 'discoverer') {
+      return res.status(400).json({ error: 'Only discoverer posts use the moderation queue' });
+    }
+    if ((row.moderation_status || 'approved') !== 'pending') {
+      return res.status(400).json({ error: 'Post is not pending review' });
+    }
+
+    await query('UPDATE feed_posts SET moderation_status = $1 WHERE id = $2', [status, postId]);
+    invalidateByPrefix('feed:');
+
+    const lang = getRequestLang(req);
+    const [updated, likeCounts, commentCounts, likedByUser, savedByUser] = await Promise.all([
+      query(`SELECT ${FEED_POST_SELECT} FROM feed_posts p LEFT JOIN places pl ON pl.id = p.place_id WHERE p.id = $2`, [lang, postId]),
+      query('SELECT post_id, COUNT(*)::int AS c FROM feed_likes WHERE post_id = $1 GROUP BY post_id', [postId]),
+      query('SELECT post_id, COUNT(*)::int AS c FROM feed_comments WHERE post_id = $1 GROUP BY post_id', [postId]),
+      query('SELECT post_id FROM feed_likes WHERE user_id = $1 AND post_id = $2', [adminUserId, postId]),
+      query('SELECT post_id FROM feed_saves WHERE user_id = $1 AND post_id = $2', [adminUserId, postId]),
+    ]);
+    const baseUrl = getBaseUrl(req);
+    res.json(rowToPost(updated.rows[0], baseUrl, {
+      likeCount: likeCounts.rows[0]?.c ?? 0,
+      commentCount: commentCounts.rows[0]?.c ?? 0,
+      likedByMe: (likedByUser.rows || []).length > 0,
+      savedByMe: (savedByUser.rows || []).length > 0,
+    }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update moderation', ...(isProd ? {} : { detail: err.message }) });
+  }
+});
+
 // POST /api/feed/:id/like - Auth required. Toggle like.
-router.post('/:id/like', authMiddleware, async (req, res) => {
+router.post('/:id/like', authMiddleware, requireUuidParam('id'), async (req, res) => {
   try {
     const { id: postId } = req.params;
     const userId = req.user?.userId;
@@ -685,7 +818,7 @@ router.post('/:id/like', authMiddleware, async (req, res) => {
 });
 
 // GET /api/feed/:id/comments - List comments for a post (public). Paginated: limit + offset (max 200).
-router.get('/:id/comments', async (req, res) => {
+router.get('/:id/comments', requireUuidParam('id'), async (req, res) => {
   try {
     const postId = req.params.id;
     const vis = await assertFeedPostApprovedForInteraction(postId);
@@ -694,11 +827,7 @@ router.get('/:id/comments', async (req, res) => {
     let userId = null;
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'safedefaultsecret123');
-        userId = decoded.userId;
-      } catch (e) {}
+      userId = verifyAccessTokenOptional(authHeader.slice(7).trim());
     }
 
     const limit = Math.min(parseInt(req.query.limit, 10) || 40, 200);
@@ -744,7 +873,7 @@ router.get('/:id/comments', async (req, res) => {
 });
 
 // POST /api/feed/:id/comments - Auth required. Add comment.
-router.post('/:id/comments', authMiddleware, async (req, res) => {
+router.post('/:id/comments', authMiddleware, requireUuidParam('id'), async (req, res) => {
   try {
     const postId = req.params.id;
     const postRow = (await query(
@@ -773,6 +902,9 @@ router.post('/:id/comments', authMiddleware, async (req, res) => {
       ? `@${uname}`
       : (urow?.name && String(urow.name).trim()) || 'User';
     let parentCommentId = (req.body?.parentCommentId ?? req.body?.parent_comment_id ?? '').toString().trim() || null;
+    if (parentCommentId && !isValidUUID(parentCommentId)) {
+      return res.status(400).json({ error: 'Invalid parent comment id' });
+    }
     if (parentCommentId) {
       const parentRow = (await query('SELECT id, post_id FROM feed_comments WHERE id = $1', [parentCommentId])).rows[0];
       if (!parentRow || parentRow.post_id !== postId) {
@@ -816,7 +948,7 @@ router.post('/:id/comments', authMiddleware, async (req, res) => {
 });
 
 // DELETE /api/feed/comments/:commentId - Auth required. Delete own comment OR post owner can delete any comment on their post.
-router.delete('/comments/:commentId', authMiddleware, async (req, res) => {
+router.delete('/comments/:commentId', authMiddleware, requireUuidParam('commentId'), async (req, res) => {
   try {
     const { commentId } = req.params;
     const userId = req.user?.userId;
@@ -835,7 +967,7 @@ router.delete('/comments/:commentId', authMiddleware, async (req, res) => {
 });
 
 // POST /api/feed/comments/:commentId/like - Auth required. Toggle comment like.
-router.post('/comments/:commentId/like', authMiddleware, async (req, res) => {
+router.post('/comments/:commentId/like', authMiddleware, requireUuidParam('commentId'), async (req, res) => {
   try {
     const { commentId } = req.params;
     const userId = req.user?.userId;
@@ -854,7 +986,7 @@ router.post('/comments/:commentId/like', authMiddleware, async (req, res) => {
 });
 
 // PATCH /api/feed/comments/:commentId - Auth required. Edit comment.
-router.patch('/comments/:commentId', authMiddleware, async (req, res) => {
+router.patch('/comments/:commentId', authMiddleware, requireUuidParam('commentId'), async (req, res) => {
   try {
     const { commentId } = req.params;
     const userId = req.user?.userId;
@@ -875,7 +1007,7 @@ router.patch('/comments/:commentId', authMiddleware, async (req, res) => {
 });
 
 // POST /api/feed/:id/report - Auth required. Report a post (Instagram-like).
-router.post('/:id/report', authMiddleware, async (req, res) => {
+router.post('/:id/report', authMiddleware, requireUuidParam('id'), async (req, res) => {
   try {
     const postId = req.params.id;
     const userId = req.user?.userId;
@@ -895,7 +1027,7 @@ router.post('/:id/report', authMiddleware, async (req, res) => {
 });
 
 // POST /api/feed/:id/save - Auth required. Toggle save (bookmark).
-router.post('/:id/save', authMiddleware, async (req, res) => {
+router.post('/:id/save', authMiddleware, requireUuidParam('id'), async (req, res) => {
   try {
     const { id: postId } = req.params;
     const userId = req.user?.userId;
@@ -917,7 +1049,7 @@ router.post('/:id/save', authMiddleware, async (req, res) => {
 });
 
 // PUT /api/feed/:id - Auth required. Edit post (caption, image: add/replace/remove). Author or admin.
-router.put('/:id', authMiddleware, optionalUploadImage, async (req, res) => {
+router.put('/:id', authMiddleware, requireUuidParam('id'), optionalUploadImage, async (req, res) => {
   try {
     const { id: postId } = req.params;
     const userId = req.user?.userId;
@@ -964,7 +1096,7 @@ router.put('/:id', authMiddleware, optionalUploadImage, async (req, res) => {
 });
 
 // PATCH /api/feed/:id/options - Auth required. Toggle hideLikes, commentsDisabled. Author or admin.
-router.patch('/:id/options', authMiddleware, async (req, res) => {
+router.patch('/:id/options', authMiddleware, requireUuidParam('id'), async (req, res) => {
   try {
     const { id: postId } = req.params;
     const userId = req.user?.userId;
@@ -1012,7 +1144,7 @@ router.patch('/:id/options', authMiddleware, async (req, res) => {
 });
 
 // DELETE /api/feed/:id - Auth required. Image/news: author or admin. Video (reels): admin or business owner of place_id.
-router.delete('/:id', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, requireUuidParam('id'), async (req, res) => {
   try {
     const { id: postId } = req.params;
     const userId = req.user?.userId;

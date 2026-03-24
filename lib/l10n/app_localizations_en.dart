@@ -275,6 +275,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discoverRefreshNow => 'Refresh now';
 
   @override
+  String get communityFeedForYou => 'For You';
+
+  @override
+  String get communityFeedSavedTab => 'Saved';
+
+  @override
+  String get communityFeedReels => 'Reels';
+
+  @override
+  String get communityNoSavedPostsTitle => 'No saved posts yet';
+
+  @override
+  String get communityNoSavedPostsSubtitle =>
+      'Save posts you like by tapping the bookmark icon. They\'ll appear here.';
+
+  @override
   String get navTrips => 'Trips';
 
   @override
@@ -363,6 +379,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get help => 'Help';
+
+  @override
+  String get helpAboutTitle => 'About Visit Tripoli';
+
+  @override
+  String get helpAboutBody =>
+      'Visit Tripoli is your companion for discovering Tripoli, Lebanon—heritage, culture, cuisine, and local experiences. Explore curated places, plan with AI, follow the community feed, and get directions—in one polished experience.';
+
+  @override
+  String get helpQuickAnswersTitle => 'Quick answers';
+
+  @override
+  String get helpFaqSavePlaceQ => 'How do I save a place?';
+
+  @override
+  String get helpFaqSavePlaceA =>
+      'Tap the heart on a place card or on the place details screen. Saved places appear in your profile and stay available offline.';
+
+  @override
+  String get helpFaqPlanQ => 'How do I build a trip?';
+
+  @override
+  String get helpFaqPlanA =>
+      'Open Planner for AI suggestions, or Trips to add saved places and events to an itinerary.';
+
+  @override
+  String get helpFaqOfflineQ => 'Does the app work offline?';
+
+  @override
+  String get helpFaqOfflineA =>
+      'Saved places and trips are stored on your device so you can revisit them without a connection.';
+
+  @override
+  String get helpPrivacyNoticeTitle => 'Privacy in brief';
+
+  @override
+  String get helpPrivacyNoticeBody =>
+      'We collect only what is needed for maps, saved places, and your account. Data you save stays under your control; review full terms in App settings when available.';
 
   @override
   String get myTrips => 'My Trips';
@@ -1260,6 +1314,47 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get createPost => 'Create Post';
+
+  @override
+  String get feedModerationQueueTooltip => 'Review pending posts';
+
+  @override
+  String get feedModerationTitle => 'Pending posts';
+
+  @override
+  String get feedModerationSubtitle =>
+      'Posts from discoverable contributors — approve or reject for Discover.';
+
+  @override
+  String get feedModerationEmpty => 'No posts awaiting review.';
+
+  @override
+  String get feedModerationApprove => 'Approve';
+
+  @override
+  String get feedModerationReject => 'Reject';
+
+  @override
+  String get feedModerationRejectConfirmTitle => 'Reject this post?';
+
+  @override
+  String get feedModerationRejectConfirmBody =>
+      'It will not appear in Discover.';
+
+  @override
+  String get feedModerationApproved => 'Post approved';
+
+  @override
+  String get feedModerationRejected => 'Post rejected';
+
+  @override
+  String get feedModerationFailed => 'Could not update. Try again.';
+
+  @override
+  String get feedModerationPlace => 'Place';
+
+  @override
+  String get feedModerationType => 'Type';
 
   @override
   String get post => 'Post';
@@ -2286,6 +2381,66 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aiPlannerRefineNeedPlan =>
       'Generate a plan first, then you can ask AI to change one stop.';
+
+  @override
+  String get aiPlannerWelcomeTitle => 'Your Tripoli Plan';
+
+  @override
+  String get aiPlannerWelcomeSubtitle =>
+      'AI-crafted itinerary tailored to your trip settings.';
+
+  @override
+  String get aiPlannerWelcomeBody =>
+      'Tell the planner what you feel like—culture, food, souks, history—or start from one of the quick ideas below.';
+
+  @override
+  String get aiPlannerPlanFromInterests =>
+      'Plan from your interests & activity';
+
+  @override
+  String get aiPlannerPlanFromInterestsHint =>
+      'Uses what you like and where you have browsed recently. You can still edit every stop.';
+
+  @override
+  String get aiPlannerQuickStart => 'Quick start';
+
+  @override
+  String get aiPlannerAskAnythingHint => 'Ask anything...';
+
+  @override
+  String get aiPlannerMoodCultureDayLabel => 'Culture day';
+
+  @override
+  String get aiPlannerMoodCultureDayPrompt =>
+      'A cultural day with museums, art, and heritage—morning at the citadel, then museums';
+
+  @override
+  String get aiPlannerMoodFoodieTourLabel => 'Foodie tour';
+
+  @override
+  String get aiPlannerMoodFoodieTourPrompt =>
+      'Best traditional Lebanese food—souks, Hallab sweets, local lunch spots';
+
+  @override
+  String get aiPlannerMoodHistoryFaithLabel => 'History & faith';
+
+  @override
+  String get aiPlannerMoodHistoryFaithPrompt =>
+      'Historical sites and beautiful mosques, citadel first for morning light';
+
+  @override
+  String get aiPlannerMoodSoukExplorerLabel => 'Souk explorer';
+
+  @override
+  String get aiPlannerMoodSoukExplorerPrompt =>
+      'Explore old souks and khans, textile market, soap khan, local crafts';
+
+  @override
+  String get aiPlannerMoodSurpriseMeLabel => 'Surprise me';
+
+  @override
+  String get aiPlannerMoodSurpriseMePrompt =>
+      'A varied day—one iconic site, one food stop, one hidden gem, one cultural spot';
 
   @override
   String aiPlannerReplaceStopUserMessage(

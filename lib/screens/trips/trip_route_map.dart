@@ -184,7 +184,7 @@ class _TripDayPickerSheet extends StatelessWidget {
                                   const SizedBox(height: 2),
                                   Text(
                                     dateStr,
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 13,
                                       color: AppTheme.textSecondary,
                                     ),
@@ -196,14 +196,14 @@ class _TripDayPickerSheet extends StatelessWidget {
                               stopCount == 1
                                   ? l10n.placeCount(stopCount)
                                   : l10n.placesCount(stopCount),
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: AppTheme.primaryColor,
                               ),
                             ),
                             const SizedBox(width: 4),
-                            Icon(
+                            const Icon(
                               Icons.chevron_right_rounded,
                               color: AppTheme.textTertiary,
                             ),

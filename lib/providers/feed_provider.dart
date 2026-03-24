@@ -40,6 +40,11 @@ class FeedProvider extends ChangeNotifier {
   bool _loadingReels = false;
   bool _loadingMoreReels = false;
 
+  /// Admin queue: discoverer posts with moderation_status pending.
+  List<FeedPost> _pendingModerationPosts = [];
+  bool _loadingPendingModeration = false;
+  String? _pendingModerationError;
+
   List<FeedPost> get posts => List.unmodifiable(_posts);
 
   /// Which API sort the main [_posts] list was loaded with (`recent` | `trending`).
@@ -101,6 +106,12 @@ class FeedProvider extends ChangeNotifier {
   }
   bool get loadingMoreReels => _loadingMoreReels;
   bool get hasMoreReels => _reelsNextCursor != null;
+
+  List<FeedPost> get pendingModerationPosts =>
+      List.unmodifiable(_pendingModerationPosts);
+  bool get loadingPendingModeration => _loadingPendingModeration;
+  String? get pendingModerationError => _pendingModerationError;
+  int get pendingModerationCount => _pendingModerationPosts.length;
 
   void clearError() {
     _error = null;
@@ -448,6 +459,50 @@ class FeedProvider extends ChangeNotifier {
     }
   }
 
+  /// Admin: load posts awaiting review (discoverable contributors).
+  Future<void> loadPendingModeration(String authToken) async {
+    _loadingPendingModeration = true;
+    _pendingModerationError = null;
+    notifyListeners();
+    try {
+      final res = await _service.getPendingModeration(
+        authToken: authToken,
+        limit: 50,
+      );
+      _pendingModerationPosts = res.posts;
+    } catch (e) {
+      _pendingModerationError = e.toString();
+      _pendingModerationPosts = [];
+    } finally {
+      _loadingPendingModeration = false;
+      notifyListeners();
+    }
+  }
+
+  /// Admin: approve or reject a queued post. Returns true on success.
+  Future<bool> moderateFeedPost(
+    String authToken,
+    String postId,
+    String status,
+  ) async {
+    try {
+      final updated = await _service.moderatePost(
+        authToken: authToken,
+        postId: postId,
+        status: status,
+      );
+      _pendingModerationPosts =
+          _pendingModerationPosts.where((p) => p.id != postId).toList();
+      if (status == 'approved') {
+        prependPost(updated);
+      }
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> toggleLike(String authToken, String postId) async {
     final idx = _posts.indexWhere((p) => p.id == postId);
     final savedIdx = _savedPosts.indexWhere((p) => p.id == postId);
@@ -470,14 +525,14 @@ class FeedProvider extends ChangeNotifier {
       likedByMe: !old.likedByMe,
       likeCount: old.likedByMe ? (old.likeCount - 1).clamp(0, 999999) : old.likeCount + 1,
     );
-    void _apply(FeedPost p) {
+    void applyLikePost(FeedPost p) {
       if (idx >= 0) { _posts = List.from(_posts); _posts[idx] = p; }
       if (savedIdx >= 0) { _savedPosts = List.from(_savedPosts); _savedPosts[savedIdx] = p; }
       if (placeIdx >= 0) { _placePosts = List.from(_placePosts); _placePosts[placeIdx] = p; }
       if (reelIdx >= 0) { _reels = List.from(_reels); _reels[reelIdx] = p; }
       if (likedIdx >= 0) { _likedPosts = List.from(_likedPosts); _likedPosts[likedIdx] = p; }
     }
-    _apply(optimistic);
+    applyLikePost(optimistic);
     notifyListeners();
 
     try {
@@ -486,7 +541,7 @@ class FeedProvider extends ChangeNotifier {
       var needsNotify = false;
       if (confirmed.likedByMe != optimistic.likedByMe ||
           confirmed.likeCount != optimistic.likeCount) {
-        _apply(confirmed);
+        applyLikePost(confirmed);
         needsNotify = true;
       }
       if (!res.liked && likedIdx >= 0) {
@@ -497,7 +552,7 @@ class FeedProvider extends ChangeNotifier {
       return res.liked;
     } catch (_) {
       // Rollback on failure
-      _apply(old);
+      applyLikePost(old);
       notifyListeners();
       return old.likedByMe;
     }
@@ -566,7 +621,7 @@ class FeedProvider extends ChangeNotifier {
   }
 
   void updatePostLocally(FeedPost updated) {
-    void _upd(List<FeedPost> target, void Function(List<FeedPost>) setter) {
+    void updatePostInList(List<FeedPost> target, void Function(List<FeedPost>) setter) {
       final i = target.indexWhere((p) => p.id == updated.id);
       if (i >= 0) {
         final list = List<FeedPost>.from(target);
@@ -574,11 +629,11 @@ class FeedProvider extends ChangeNotifier {
         setter(list);
       }
     }
-    _upd(_posts, (l) { _posts = l; });
-    _upd(_savedPosts, (l) => _savedPosts = l);
-    _upd(_likedPosts, (l) => _likedPosts = l);
-    _upd(_reels, (l) => _reels = l);
-    _upd(_placePosts, (l) => _placePosts = l);
+    updatePostInList(_posts, (l) { _posts = l; });
+    updatePostInList(_savedPosts, (l) => _savedPosts = l);
+    updatePostInList(_likedPosts, (l) => _likedPosts = l);
+    updatePostInList(_reels, (l) => _reels = l);
+    updatePostInList(_placePosts, (l) => _placePosts = l);
     notifyListeners();
   }
 
@@ -601,7 +656,7 @@ class FeedProvider extends ChangeNotifier {
   }
 
   void incrementCommentCount(String postId) {
-    void _inc(List<FeedPost> target, void Function(List<FeedPost>) setter) {
+    void incCommentInList(List<FeedPost> target, void Function(List<FeedPost>) setter) {
       final i = target.indexWhere((p) => p.id == postId);
       if (i >= 0) {
         final list = List<FeedPost>.from(target);
@@ -609,16 +664,16 @@ class FeedProvider extends ChangeNotifier {
         setter(list);
       }
     }
-    _inc(_posts, (l) { _posts = l; });
-    _inc(_savedPosts, (l) => _savedPosts = l);
-    _inc(_likedPosts, (l) => _likedPosts = l);
-    _inc(_reels, (l) => _reels = l);
-    _inc(_placePosts, (l) => _placePosts = l);
+    incCommentInList(_posts, (l) { _posts = l; });
+    incCommentInList(_savedPosts, (l) => _savedPosts = l);
+    incCommentInList(_likedPosts, (l) => _likedPosts = l);
+    incCommentInList(_reels, (l) => _reels = l);
+    incCommentInList(_placePosts, (l) => _placePosts = l);
     notifyListeners();
   }
 
   void decrementCommentCount(String postId) {
-    void _dec(List<FeedPost> target, void Function(List<FeedPost>) setter) {
+    void decCommentInList(List<FeedPost> target, void Function(List<FeedPost>) setter) {
       final i = target.indexWhere((p) => p.id == postId);
       if (i >= 0) {
         final list = List<FeedPost>.from(target);
@@ -626,11 +681,11 @@ class FeedProvider extends ChangeNotifier {
         setter(list);
       }
     }
-    _dec(_posts, (l) { _posts = l; });
-    _dec(_savedPosts, (l) => _savedPosts = l);
-    _dec(_likedPosts, (l) => _likedPosts = l);
-    _dec(_reels, (l) => _reels = l);
-    _dec(_placePosts, (l) => _placePosts = l);
+    decCommentInList(_posts, (l) { _posts = l; });
+    decCommentInList(_savedPosts, (l) => _savedPosts = l);
+    decCommentInList(_likedPosts, (l) => _likedPosts = l);
+    decCommentInList(_reels, (l) => _reels = l);
+    decCommentInList(_placePosts, (l) => _placePosts = l);
     notifyListeners();
   }
 }

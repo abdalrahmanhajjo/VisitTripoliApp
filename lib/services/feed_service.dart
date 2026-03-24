@@ -210,6 +210,45 @@ class FeedService {
     return FeedResponse.fromJson(json);
   }
 
+  /// GET /api/feed/pending-moderation — Admin only. Discoverable users’ posts awaiting review.
+  Future<FeedResponse> getPendingModeration({
+    required String authToken,
+    int limit = 50,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/api/feed/pending-moderation').replace(
+      queryParameters: _queryWithLang({
+        'limit': limit.toString(),
+      }),
+    );
+    final response = await http.get(uri, headers: _feedGetHeaders(authToken));
+    if (response.statusCode != 200) {
+      throw FeedException(response.statusCode, _parseError(response.body));
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return FeedResponse.fromJson(json);
+  }
+
+  /// PATCH /api/feed/:id/moderation — Admin only. [status] `approved` or `rejected`.
+  Future<FeedPost> moderatePost({
+    required String authToken,
+    required String postId,
+    required String status,
+  }) async {
+    final response = await http.patch(
+      Uri.parse('$_baseUrl/api/feed/$postId/moderation'),
+      headers: {
+        ..._authHeaders(authToken),
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'status': status}),
+    );
+    if (response.statusCode != 200) {
+      throw FeedException(response.statusCode, _parseError(response.body));
+    }
+    return FeedPost.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
   /// GET /api/feed/can-post - Check if user can post (business owner/admin).
   Future<CanPostResponse> canPost(String authToken) async {
     final response = await http.get(

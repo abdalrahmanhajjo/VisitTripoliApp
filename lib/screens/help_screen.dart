@@ -1,170 +1,106 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:tripoli_explorer/l10n/app_localizations.dart';
+
+import '../theme/app_theme.dart';
 import '../utils/responsive_utils.dart';
 
+/// Single professional Help screen: about the app, quick answers, privacy note.
 class HelpScreen extends StatelessWidget {
   const HelpScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final pad = ResponsiveUtils.screenPadding(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFf8fafc),
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text(l10n.helpSupportTitle),
-        backgroundColor: Colors.white,
+        title: Text(
+          l10n.help,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        backgroundColor: AppTheme.backgroundColor,
+        foregroundColor: AppTheme.textPrimary,
         elevation: 0,
+        scrolledUnderElevation: 0.5,
       ),
       body: ListView(
-        padding: ResponsiveUtils.screenPadding(context),
+        padding: pad.copyWith(top: 8, bottom: 32),
         children: [
-          // FAQ Section
-          const _HelpSection(
-            title: 'Frequently Asked Questions',
-            items: [
-              _HelpItem(
-                question: 'How do I save a place?',
-                answer: 'Tap the heart icon on any place card or place details page to save it to your favorites.',
-              ),
-              _HelpItem(
-                question: 'How do I create a trip?',
-                answer: 'Manually add places to your trips from the Trips screen. Save places from Explore, then add them to a trip.',
-              ),
-              _HelpItem(
-                question: 'Can I use the app offline?',
-                answer: 'Yes! Saved places and trips are stored locally on your device and can be accessed offline.',
-              ),
-              _HelpItem(
-                question: 'How do I get directions?',
-                answer: 'Tap the "Directions" button on any place card, or use the Map screen to navigate to multiple places.',
-              ),
-            ],
+          _HeroHeader(l10n: l10n),
+          const SizedBox(height: 24),
+          _SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.helpAboutTitle,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.helpAboutBody,
+                  style: TextStyle(
+                    fontSize: 15,
+                    height: 1.55,
+                    color: AppTheme.textSecondary.withValues(alpha: 0.95),
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 32),
-          
-          // Contact Section
-          _HelpSection(
-            title: 'Contact Us',
-            items: [
-              _ContactTile(
-                icon: FontAwesomeIcons.envelope,
-                title: 'Email Support',
-                subtitle: 'support@tripoliexplorer.com',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.helpEmailComingSoon)),
-                  );
-                },
-              ),
-              _ContactTile(
-                icon: FontAwesomeIcons.phone,
-                title: 'Phone Support',
-                subtitle: '+961 1 234 567',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.helpPhoneComingSoon)),
-                  );
-                },
-              ),
-            ],
+          const SizedBox(height: 20),
+          Text(
+            l10n.helpQuickAnswersTitle,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+              letterSpacing: 0.2,
+            ),
           ),
-          const SizedBox(height: 32),
-          
-          // Resources
-          _HelpSection(
-            title: 'Resources',
-            items: [
-              _ContactTile(
-                icon: FontAwesomeIcons.book,
-                title: 'User Guide',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.helpUserGuideComingSoon)),
-                  );
-                },
-              ),
-              _ContactTile(
-                icon: FontAwesomeIcons.video,
-                title: 'Video Tutorials',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.helpVideoTutorialsComingSoon)),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HelpSection extends StatelessWidget {
-  final String title;
-  final List<Widget> items;
-
-  const _HelpSection({required this.title, required this.items});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF0F172a),
-          ),
-        ),
-        const SizedBox(height: 16),
-        ...items,
-      ],
-    );
-  }
-}
-
-class _HelpItem extends StatelessWidget {
-  final String question;
-  final String answer;
-
-  const _HelpItem({required this.question, required this.answer});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: ExpansionTile(
-        title: Text(
-          question,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 15,
-          ),
-        ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              answer,
-              style: TextStyle(
-                color: Colors.grey[700],
-                height: 1.5,
-              ),
+          const SizedBox(height: 12),
+          _FaqTile(question: l10n.helpFaqSavePlaceQ, answer: l10n.helpFaqSavePlaceA),
+          _FaqTile(question: l10n.helpFaqPlanQ, answer: l10n.helpFaqPlanA),
+          _FaqTile(question: l10n.helpFaqOfflineQ, answer: l10n.helpFaqOfflineA),
+          const SizedBox(height: 20),
+          _SectionCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.shield_outlined, size: 20, color: AppTheme.primaryColor.withValues(alpha: 0.9)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.helpPrivacyNoticeTitle,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  l10n.helpPrivacyNoticeBody,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: AppTheme.textSecondary.withValues(alpha: 0.95),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -173,60 +109,144 @@ class _HelpItem extends StatelessWidget {
   }
 }
 
-class _ContactTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final VoidCallback onTap;
+class _HeroHeader extends StatelessWidget {
+  final AppLocalizations l10n;
 
-  const _ContactTile({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    required this.onTap,
-  });
+  const _HeroHeader({required this.l10n});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppTheme.primaryColor,
+                AppTheme.primaryColor.withValues(alpha: 0.75),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryColor.withValues(alpha: 0.28),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: const Icon(
+            FontAwesomeIcons.mapLocationDot,
+            size: 34,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.appTitle,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textPrimary,
+                  letterSpacing: -0.5,
+                  height: 1.15,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '1.0.0',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textTertiary.withValues(alpha: 0.95),
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  final Widget child;
+
+  const _SectionCard({required this.child});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.85)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
+            color: AppTheme.textPrimary.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFeff6ff),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            icon,
-            color: const Color(0xFF1d4ed8),
-            size: 24,
+      child: child,
+    );
+  }
+}
+
+class _FaqTile extends StatelessWidget {
+  final String question;
+  final String answer;
+
+  const _FaqTile({required this.question, required this.answer});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.75)),
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            title: Text(
+              question,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            children: [
+              Text(
+                answer,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: AppTheme.textSecondary.withValues(alpha: 0.95),
+                ),
+              ),
+            ],
           ),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: subtitle != null
-            ? Text(
-                subtitle!,
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
-              )
-            : null,
-        trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-        onTap: onTap,
       ),
     );
   }

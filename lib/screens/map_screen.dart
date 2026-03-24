@@ -219,7 +219,7 @@ class _MapScreenState extends State<MapScreen> {
                 return ListTile(
                   leading: e.$3 != null
                       ? FaIcon(e.$3, color: AppTheme.primaryColor, size: 20)
-                      : Icon(Icons.grid_view_rounded,
+                      : const Icon(Icons.grid_view_rounded,
                           color: AppTheme.primaryColor, size: 22),
                   title: Text(e.$2),
                   trailing: active
@@ -693,7 +693,7 @@ class _MapScreenState extends State<MapScreen> {
         !tripOnly;
 
     var places = placesWithCoordinates(placesProvider.places);
-    if (singlePlaceFromDeepLink && focusPlaceId != null) {
+    if (singlePlaceFromDeepLink) {
       final p = placesProvider.getPlaceById(focusPlaceId);
       if (p != null && p.latitude != null && p.longitude != null) {
         places = placesWithCoordinates([p]);
@@ -1089,7 +1089,7 @@ class _MapScreenState extends State<MapScreen> {
                                 horizontal: 12, vertical: 11),
                             child: Row(
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.tune_rounded,
                                   size: 20,
                                   color: AppTheme.primaryColor,
@@ -1103,7 +1103,7 @@ class _MapScreenState extends State<MapScreen> {
                                     children: [
                                       Text(
                                         l10n.mapFilterSectionTitle,
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
                                           color: AppTheme.textTertiary,
@@ -1123,7 +1123,7 @@ class _MapScreenState extends State<MapScreen> {
                                     ],
                                   ),
                                 ),
-                                Icon(
+                                const Icon(
                                   Icons.keyboard_arrow_down_rounded,
                                   color: AppTheme.textTertiary,
                                 ),
@@ -1973,7 +1973,6 @@ class _DirectionsHeader extends StatelessWidget {
   final ValueChanged<String> onTravelModeChanged;
 
   const _DirectionsHeader({
-    super.key,
     required this.destinationName,
     required this.originName,
     required this.travelMode,

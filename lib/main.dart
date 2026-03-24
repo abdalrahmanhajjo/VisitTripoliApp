@@ -232,27 +232,27 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
                     right: 0,
                     child: Material(
                       elevation: 4,
-                      color: Color(0xFFB45309),
+                      color: const Color(0xFFB45309),
                       child: SafeArea(
                         bottom: false,
                         child: Padding(
-                          padding: EdgeInsets.symmetric(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 10,
                           ),
                           child: Row(
                             children: [
-                              Icon(
+                              const Icon(
                                 Icons.wifi_off_rounded,
                                 color: Colors.white,
                                 size: 20,
                               ),
-                              SizedBox(width: 10),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   l10n?.offlineBannerMessage ??
                                       'No internet — you can still browse saved content.',
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -269,9 +269,8 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
               ],
             );
             return _FeedWarmup(
-              child: ShowCaseWidget(
-                enableAutoScroll: true,
-                builder: (context) => Semantics(
+              child: _ShowcaseScope(
+                child: Semantics(
                   container: true,
                   label: l10n?.appRootSemanticsLabel ??
                       'Visit Tripoli - Explore places, tours and plan your trip',
@@ -284,6 +283,37 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
       },
     );
   }
+}
+
+/// Registers [ShowcaseView] for app-wide coach marks (replaces deprecated [ShowCaseWidget]).
+class _ShowcaseScope extends StatefulWidget {
+  const _ShowcaseScope({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_ShowcaseScope> createState() => _ShowcaseScopeState();
+}
+
+class _ShowcaseScopeState extends State<_ShowcaseScope> {
+  late final ShowcaseView _view;
+
+  @override
+  void initState() {
+    super.initState();
+    _view = ShowcaseView.register(
+      enableAutoScroll: true,
+    );
+  }
+
+  @override
+  void dispose() {
+    _view.unregister();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Starts Discover feed fetch on app launch and precaches first images so the feed feels instant.

@@ -272,6 +272,22 @@ class AppLocalizationsAr extends AppLocalizations {
   String get discoverRefreshNow => 'تحديث الآن';
 
   @override
+  String get communityFeedForYou => 'لك';
+
+  @override
+  String get communityFeedSavedTab => 'المحفوظات';
+
+  @override
+  String get communityFeedReels => 'ريلز';
+
+  @override
+  String get communityNoSavedPostsTitle => 'لا منشورات محفوظة بعد';
+
+  @override
+  String get communityNoSavedPostsSubtitle =>
+      'احفظ المنشورات التي تعجبك من أيقونة الإشارة المرجعية. ستظهر هنا.';
+
+  @override
   String get navTrips => 'رحلاتي';
 
   @override
@@ -360,6 +376,44 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get help => 'المساعدة';
+
+  @override
+  String get helpAboutTitle => 'عن Visit Tripoli';
+
+  @override
+  String get helpAboutBody =>
+      'Visit Tripoli رفيقك لاكتشاف طرابلس، لبنان—التراث والثقافة والمأكولات والتجارب المحلية. تصفّح أماكن مختارة، خطط بالذكاء الاصطناعي، تابع المجتمع، واحصل على الاتجاهات—في تجربة واحدة.';
+
+  @override
+  String get helpQuickAnswersTitle => 'إجابات سريعة';
+
+  @override
+  String get helpFaqSavePlaceQ => 'كيف أحفظ مكاناً؟';
+
+  @override
+  String get helpFaqSavePlaceA =>
+      'اضغط على أيقونة القلب في بطاقة المكان أو صفحة التفاصيل. تظهر الأماكن المحفوظة في ملفك وتبقى متاحة دون اتصال.';
+
+  @override
+  String get helpFaqPlanQ => 'كيف أضع خطة رحلة؟';
+
+  @override
+  String get helpFaqPlanA =>
+      'افتح المخطّط للحصول على اقتراحات الذكاء الاصطناعي، أو الرحلات لإضافة أماكن وفعاليات إلى مسارك.';
+
+  @override
+  String get helpFaqOfflineQ => 'هل يعمل التطبيق دون إنترنت؟';
+
+  @override
+  String get helpFaqOfflineA =>
+      'تُخزَّن الأماكن والرحلات المحفوظة على جهازك لمراجعتها دون اتصال.';
+
+  @override
+  String get helpPrivacyNoticeTitle => 'الخصوصية باختصار';
+
+  @override
+  String get helpPrivacyNoticeBody =>
+      'نجمع فقط ما يلزم للخرائط والأماكن المحفوظة وحسابك. البيانات التي تحفظها تبقى تحت سيطرتك؛ راجع الشروط الكاملة في إعدادات التطبيق عند توفرها.';
 
   @override
   String get myTrips => 'رحلاتي';
@@ -1248,6 +1302,46 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get createPost => 'إنشاء منشور';
+
+  @override
+  String get feedModerationQueueTooltip => 'مراجعة المنشورات المعلّقة';
+
+  @override
+  String get feedModerationTitle => 'منشورات معلّقة';
+
+  @override
+  String get feedModerationSubtitle =>
+      'منشورات من مساهمين مؤهّلين — وافق أو ارفض لظهورها في الاستكشاف.';
+
+  @override
+  String get feedModerationEmpty => 'لا توجد منشورات بانتظار المراجعة.';
+
+  @override
+  String get feedModerationApprove => 'قبول';
+
+  @override
+  String get feedModerationReject => 'رفض';
+
+  @override
+  String get feedModerationRejectConfirmTitle => 'رفض هذا المنشور؟';
+
+  @override
+  String get feedModerationRejectConfirmBody => 'لن يظهر في الاستكشاف.';
+
+  @override
+  String get feedModerationApproved => 'تم قبول المنشور';
+
+  @override
+  String get feedModerationRejected => 'تم رفض المنشور';
+
+  @override
+  String get feedModerationFailed => 'تعذّر التحديث. حاول مرة أخرى.';
+
+  @override
+  String get feedModerationPlace => 'المكان';
+
+  @override
+  String get feedModerationType => 'النوع';
 
   @override
   String get post => 'نشر';
@@ -2269,6 +2363,65 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get aiPlannerRefineNeedPlan =>
       'أنشئ خطة أولاً، ثم يمكنك طلب تغيير محطة واحدة.';
+
+  @override
+  String get aiPlannerWelcomeTitle => 'خطتك في طرابلس';
+
+  @override
+  String get aiPlannerWelcomeSubtitle =>
+      'مسار مقترح بالذكاء الاصطناعي وفق إعدادات رحلتك.';
+
+  @override
+  String get aiPlannerWelcomeBody =>
+      'صف للمخطّط ما تودّه—ثقافة، طعام، أسواق، تاريخ—أو ابدأ من أحد الاقتراحات السريعة أدناه.';
+
+  @override
+  String get aiPlannerPlanFromInterests => 'خطة من اهتماماتك ونشاطك';
+
+  @override
+  String get aiPlannerPlanFromInterestsHint =>
+      'يعتمد على ما يعجبك وأين تصفّحت مؤخراً. يمكنك تعديل كل محطة لاحقاً.';
+
+  @override
+  String get aiPlannerQuickStart => 'بداية سريعة';
+
+  @override
+  String get aiPlannerAskAnythingHint => 'اسأل عن أي شيء…';
+
+  @override
+  String get aiPlannerMoodCultureDayLabel => 'يوم ثقافي';
+
+  @override
+  String get aiPlannerMoodCultureDayPrompt =>
+      'يوم ثقافي مع متاحف وفنون وتراث—صباحاً في القلعة ثم المتاحف';
+
+  @override
+  String get aiPlannerMoodFoodieTourLabel => 'جولة طعام';
+
+  @override
+  String get aiPlannerMoodFoodieTourPrompt =>
+      'أفضل المأكولات اللبنانية التقليدية—الأسواق، حلويات الحلاب، مطاعم غداء محلية';
+
+  @override
+  String get aiPlannerMoodHistoryFaithLabel => 'تاريخ وإيمان';
+
+  @override
+  String get aiPlannerMoodHistoryFaithPrompt =>
+      'مواقع تاريخية ومساجد جميلة، القلعة أولاً لضوء الصباح';
+
+  @override
+  String get aiPlannerMoodSoukExplorerLabel => 'مستكشف الأسواق';
+
+  @override
+  String get aiPlannerMoodSoukExplorerPrompt =>
+      'استكشف الأسواق والخانات القديمة، سوق الأقمشة، خان الصابون، حرف يدوية';
+
+  @override
+  String get aiPlannerMoodSurpriseMeLabel => 'فاجئني';
+
+  @override
+  String get aiPlannerMoodSurpriseMePrompt =>
+      'يوم متنوّع—موقع أيقوني، محطة طعام، جوهرة مخفية، موقع ثقافي';
 
   @override
   String aiPlannerReplaceStopUserMessage(

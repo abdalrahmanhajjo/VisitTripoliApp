@@ -284,31 +284,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     profile: profile,
                     languageProvider: language,
                     authToken: auth.isGuest ? null : auth.authToken,
-                    onTripPreferences: auth.isLoggedIn && !auth.isGuest
-                        ? () => _showTripPreferencesDialog(profile, auth.authToken)
-                        : null,
+                    showAccountLinks: auth.isLoggedIn && !auth.isGuest,
                   ),
                   SizedBox(height: _ProfileResponsive.sectionGap(context)),
                   _ProfileRateCard(
                     profile: profile,
                     authToken: auth.isGuest ? null : auth.authToken,
                     onSendFeedback: () => _sendFeedbackEmail(profile),
-                  ),
-                  SizedBox(height: _ProfileResponsive.sectionGap(context)),
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        AppLocalizations.of(context)!.developerCredit,
-                        style: TextStyle(
-                          fontSize: 11,
-                          height: 1.3,
-                          color: AppTheme.textTertiary.withValues(alpha: 0.9),
-                          letterSpacing: 0.2,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
                   ),
                   SizedBox(height: _ProfileResponsive.sectionGap(context)),
                     _ProfileSessionCard(
@@ -398,109 +380,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   static const _feedbackMail = 'tripoliexplorer@gmail.com';
-
-  String _normalizeMoodKey(String raw) {
-    final s = raw.toLowerCase();
-    if (s.contains('chill')) return 'chill';
-    if (s.contains('historical')) return 'historical';
-    if (s.contains('food')) return 'food';
-    return 'mixed';
-  }
-
-  String _normalizePaceKey(String raw) {
-    final s = raw.toLowerCase();
-    if (s.contains('light')) return 'light';
-    if (s.contains('full')) return 'full';
-    return 'normal';
-  }
-
-  Future<void> _showTripPreferencesDialog(
-    ProfileProvider profile,
-    String? authToken,
-  ) async {
-    final l10n = AppLocalizations.of(context)!;
-    var mood = _normalizeMoodKey(profile.mood);
-    var pace = _normalizePaceKey(profile.pace);
-
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSt) => AlertDialog(
-          title: Text(l10n.editTripPreferences),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  l10n.mood,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                DropdownButton<String>(
-                  value: mood,
-                  isExpanded: true,
-                  items: [
-                    DropdownMenuItem(value: 'mixed', child: Text(l10n.mixedBalanced)),
-                    DropdownMenuItem(value: 'chill', child: Text(l10n.chillSlow)),
-                    DropdownMenuItem(value: 'historical', child: Text(l10n.historicalCultural)),
-                    DropdownMenuItem(value: 'food', child: Text(l10n.foodCafes)),
-                  ],
-                  onChanged: (v) => setSt(() => mood = v ?? mood),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  l10n.pace,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                DropdownButton<String>(
-                  value: pace,
-                  isExpanded: true,
-                  items: [
-                    DropdownMenuItem(value: 'light', child: Text(l10n.lightEasy)),
-                    DropdownMenuItem(value: 'normal', child: Text(l10n.normalPace)),
-                    DropdownMenuItem(value: 'full', child: Text(l10n.fullButCalm)),
-                  ],
-                  onChanged: (v) => setSt(() => pace = v ?? pace),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.cancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.saveChanges),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (saved != true || !mounted) return;
-    final ok = await profile.updateProfile(
-      mood: mood,
-      pace: pace,
-      authToken: authToken,
-    );
-    if (mounted) {
-      _showToast(
-        context,
-        ok ? l10n.tripPreferencesSaved : 'Failed to save. Check connection.',
-      );
-    }
-  }
 
   Future<void> _sendFeedbackEmail(ProfileProvider profile) async {
     final l10n = AppLocalizations.of(context)!;
@@ -1627,13 +1506,14 @@ class _ProfileSettings extends StatelessWidget {
   final ProfileProvider profile;
   final LanguageProvider languageProvider;
   final String? authToken;
-  final VoidCallback? onTripPreferences;
+  /// Logged-in (non-guest): show AI Planner shortcut in settings.
+  final bool showAccountLinks;
 
   const _ProfileSettings({
     required this.profile,
     required this.languageProvider,
     this.authToken,
-    this.onTripPreferences,
+    this.showAccountLinks = false,
   });
 
   @override
@@ -1765,71 +1645,71 @@ class _ProfileSettings extends StatelessWidget {
                 activeThumbColor: Colors.white,
                 activeTrackColor: AppTheme.primaryColor,
               ),
-              if (onTripPreferences != null) ...[
-                const SizedBox(height: 8),
-                Divider(height: 24, color: AppTheme.borderColor.withValues(alpha: 0.6)),
+              const SizedBox(height: 8),
+              Divider(height: 24, color: AppTheme.borderColor.withValues(alpha: 0.6)),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.interests_rounded, color: cs.primary),
+                title: Text(
+                  l10n.yourInterests,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                subtitle: Text(
+                  l10n.selectInterestsSubtitle,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.push('/profile/interests'),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.help_outline_rounded, color: cs.primary),
+                title: Text(
+                  l10n.help,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                subtitle: Text(
+                  l10n.helpSupportTitle,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.push('/help'),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.settings_rounded, color: cs.primary),
+                title: Text(
+                  l10n.openAppSettings,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => context.push('/settings'),
+              ),
+              if (showAccountLinks) ...[
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.tune_rounded, color: cs.primary),
+                  leading: Icon(Icons.auto_awesome_rounded, color: cs.primary),
                   title: Text(
-                    l10n.editTripPreferences,
+                    l10n.tripPlannerProfile,
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 15,
                     ),
                   ),
                   subtitle: Text(
-                    l10n.usedByAiPlanner,
+                    l10n.tripPlannerProfileSubtitle,
                     style: const TextStyle(fontSize: 12, color: AppTheme.textTertiary),
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: onTripPreferences,
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        _SectionHeader(
-          title: l10n.profileMoreSection,
-          caption: l10n.profileMoreSectionCaption,
-        ),
-        const SizedBox(height: 10),
-        Container(
-          decoration: _profileCardDecoration(),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              _ProfileNavTile(
-                icon: Icons.interests_rounded,
-                title: l10n.yourInterests,
-                subtitle: l10n.selectInterestsSubtitle,
-                onTap: () => context.push('/profile/interests'),
-              ),
-              Divider(height: 1, color: AppTheme.borderColor.withValues(alpha: 0.6)),
-              _ProfileNavTile(
-                icon: Icons.settings_rounded,
-                title: l10n.openAppSettings,
-                onTap: () => context.push('/settings'),
-              ),
-              Divider(height: 1, color: AppTheme.borderColor.withValues(alpha: 0.6)),
-              _ProfileNavTile(
-                icon: Icons.help_outline_rounded,
-                title: l10n.help,
-                onTap: () => context.push('/help'),
-              ),
-              Divider(height: 1, color: AppTheme.borderColor.withValues(alpha: 0.6)),
-              _ProfileNavTile(
-                icon: Icons.info_outline_rounded,
-                title: l10n.about,
-                onTap: () => context.push('/about'),
-              ),
-              if (token != null && token.isNotEmpty) ...[
-                Divider(height: 1, color: AppTheme.borderColor.withValues(alpha: 0.6)),
-                _ProfileNavTile(
-                  icon: Icons.auto_awesome_rounded,
-                  title: l10n.tripPlannerProfile,
-                  subtitle: l10n.tripPlannerProfileSubtitle,
                   onTap: () => context.push('/ai-planner'),
                 ),
               ],
@@ -1837,48 +1717,6 @@ class _ProfileSettings extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ProfileNavTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final VoidCallback onTap;
-
-  const _ProfileNavTile({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final h = _ProfileResponsive.isCompact(context) ? 12.0 : 16.0;
-    return ListTile(
-      contentPadding: EdgeInsets.symmetric(horizontal: h, vertical: 4),
-      minVerticalPadding: _ProfileResponsive.isCompact(context) ? 8 : 12,
-      leading: Icon(icon, color: AppTheme.primaryColor, size: _ProfileResponsive.isCompact(context) ? 22 : 24),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: _ProfileResponsive.isCompact(context) ? 14 : 15,
-          color: AppTheme.textPrimary,
-        ),
-      ),
-      subtitle: subtitle != null && subtitle!.isNotEmpty
-          ? Text(
-              subtitle!,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, color: AppTheme.textTertiary),
-            )
-          : null,
-      trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textTertiary),
-      onTap: onTap,
     );
   }
 }

@@ -598,6 +598,36 @@ abstract class AppLocalizations {
   /// **'Refresh now'**
   String get discoverRefreshNow;
 
+  /// No description provided for @communityFeedForYou.
+  ///
+  /// In en, this message translates to:
+  /// **'For You'**
+  String get communityFeedForYou;
+
+  /// No description provided for @communityFeedSavedTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get communityFeedSavedTab;
+
+  /// No description provided for @communityFeedReels.
+  ///
+  /// In en, this message translates to:
+  /// **'Reels'**
+  String get communityFeedReels;
+
+  /// No description provided for @communityNoSavedPostsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved posts yet'**
+  String get communityNoSavedPostsTitle;
+
+  /// No description provided for @communityNoSavedPostsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save posts you like by tapping the bookmark icon. They\'ll appear here.'**
+  String get communityNoSavedPostsSubtitle;
+
   /// No description provided for @navTrips.
   ///
   /// In en, this message translates to:
@@ -777,6 +807,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Help'**
   String get help;
+
+  /// No description provided for @helpAboutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'About Visit Tripoli'**
+  String get helpAboutTitle;
+
+  /// No description provided for @helpAboutBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Visit Tripoli is your companion for discovering Tripoli, Lebanon—heritage, culture, cuisine, and local experiences. Explore curated places, plan with AI, follow the community feed, and get directions—in one polished experience.'**
+  String get helpAboutBody;
+
+  /// No description provided for @helpQuickAnswersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick answers'**
+  String get helpQuickAnswersTitle;
+
+  /// No description provided for @helpFaqSavePlaceQ.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I save a place?'**
+  String get helpFaqSavePlaceQ;
+
+  /// No description provided for @helpFaqSavePlaceA.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the heart on a place card or on the place details screen. Saved places appear in your profile and stay available offline.'**
+  String get helpFaqSavePlaceA;
+
+  /// No description provided for @helpFaqPlanQ.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I build a trip?'**
+  String get helpFaqPlanQ;
+
+  /// No description provided for @helpFaqPlanA.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Planner for AI suggestions, or Trips to add saved places and events to an itinerary.'**
+  String get helpFaqPlanA;
+
+  /// No description provided for @helpFaqOfflineQ.
+  ///
+  /// In en, this message translates to:
+  /// **'Does the app work offline?'**
+  String get helpFaqOfflineQ;
+
+  /// No description provided for @helpFaqOfflineA.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved places and trips are stored on your device so you can revisit them without a connection.'**
+  String get helpFaqOfflineA;
+
+  /// No description provided for @helpPrivacyNoticeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy in brief'**
+  String get helpPrivacyNoticeTitle;
+
+  /// No description provided for @helpPrivacyNoticeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We collect only what is needed for maps, saved places, and your account. Data you save stays under your control; review full terms in App settings when available.'**
+  String get helpPrivacyNoticeBody;
 
   /// No description provided for @myTrips.
   ///
@@ -2427,6 +2523,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create Post'**
   String get createPost;
+
+  /// No description provided for @feedModerationQueueTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Review pending posts'**
+  String get feedModerationQueueTooltip;
+
+  /// No description provided for @feedModerationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending posts'**
+  String get feedModerationTitle;
+
+  /// No description provided for @feedModerationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Posts from discoverable contributors — approve or reject for Discover.'**
+  String get feedModerationSubtitle;
+
+  /// No description provided for @feedModerationEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No posts awaiting review.'**
+  String get feedModerationEmpty;
+
+  /// No description provided for @feedModerationApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get feedModerationApprove;
+
+  /// No description provided for @feedModerationReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get feedModerationReject;
+
+  /// No description provided for @feedModerationRejectConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject this post?'**
+  String get feedModerationRejectConfirmTitle;
+
+  /// No description provided for @feedModerationRejectConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'It will not appear in Discover.'**
+  String get feedModerationRejectConfirmBody;
+
+  /// No description provided for @feedModerationApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Post approved'**
+  String get feedModerationApproved;
+
+  /// No description provided for @feedModerationRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Post rejected'**
+  String get feedModerationRejected;
+
+  /// No description provided for @feedModerationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update. Try again.'**
+  String get feedModerationFailed;
+
+  /// No description provided for @feedModerationPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Place'**
+  String get feedModerationPlace;
+
+  /// No description provided for @feedModerationType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get feedModerationType;
 
   /// No description provided for @post.
   ///
@@ -4353,6 +4527,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Generate a plan first, then you can ask AI to change one stop.'**
   String get aiPlannerRefineNeedPlan;
+
+  /// No description provided for @aiPlannerWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Tripoli Plan'**
+  String get aiPlannerWelcomeTitle;
+
+  /// No description provided for @aiPlannerWelcomeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI-crafted itinerary tailored to your trip settings.'**
+  String get aiPlannerWelcomeSubtitle;
+
+  /// No description provided for @aiPlannerWelcomeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell the planner what you feel like—culture, food, souks, history—or start from one of the quick ideas below.'**
+  String get aiPlannerWelcomeBody;
+
+  /// No description provided for @aiPlannerPlanFromInterests.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan from your interests & activity'**
+  String get aiPlannerPlanFromInterests;
+
+  /// No description provided for @aiPlannerPlanFromInterestsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses what you like and where you have browsed recently. You can still edit every stop.'**
+  String get aiPlannerPlanFromInterestsHint;
+
+  /// No description provided for @aiPlannerQuickStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick start'**
+  String get aiPlannerQuickStart;
+
+  /// No description provided for @aiPlannerAskAnythingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask anything...'**
+  String get aiPlannerAskAnythingHint;
+
+  /// No description provided for @aiPlannerMoodCultureDayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Culture day'**
+  String get aiPlannerMoodCultureDayLabel;
+
+  /// No description provided for @aiPlannerMoodCultureDayPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'A cultural day with museums, art, and heritage—morning at the citadel, then museums'**
+  String get aiPlannerMoodCultureDayPrompt;
+
+  /// No description provided for @aiPlannerMoodFoodieTourLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Foodie tour'**
+  String get aiPlannerMoodFoodieTourLabel;
+
+  /// No description provided for @aiPlannerMoodFoodieTourPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Best traditional Lebanese food—souks, Hallab sweets, local lunch spots'**
+  String get aiPlannerMoodFoodieTourPrompt;
+
+  /// No description provided for @aiPlannerMoodHistoryFaithLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'History & faith'**
+  String get aiPlannerMoodHistoryFaithLabel;
+
+  /// No description provided for @aiPlannerMoodHistoryFaithPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Historical sites and beautiful mosques, citadel first for morning light'**
+  String get aiPlannerMoodHistoryFaithPrompt;
+
+  /// No description provided for @aiPlannerMoodSoukExplorerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Souk explorer'**
+  String get aiPlannerMoodSoukExplorerLabel;
+
+  /// No description provided for @aiPlannerMoodSoukExplorerPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore old souks and khans, textile market, soap khan, local crafts'**
+  String get aiPlannerMoodSoukExplorerPrompt;
+
+  /// No description provided for @aiPlannerMoodSurpriseMeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Surprise me'**
+  String get aiPlannerMoodSurpriseMeLabel;
+
+  /// No description provided for @aiPlannerMoodSurpriseMePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'A varied day—one iconic site, one food stop, one hidden gem, one cultural spot'**
+  String get aiPlannerMoodSurpriseMePrompt;
 
   /// No description provided for @aiPlannerReplaceStopUserMessage.
   ///

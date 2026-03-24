@@ -3904,9 +3904,6 @@ class _FeaturedSpotlightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = place.images.isNotEmpty ? place.images.first : null;
-    final priceText = (place.price == null || place.price == '0')
-        ? AppLocalizations.of(context)!.free
-        : '\$${place.price}';
 
     return GestureDetector(
       onTap: onTap,
@@ -4022,47 +4019,31 @@ class _FeaturedSpotlightCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.star_rounded,
-                            size: 18,
-                            color: AppTheme.accentColor,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${place.rating ?? 4.5}',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
+                      if (place.rating != null) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 18,
+                              color: AppTheme.accentColor,
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: (place.price == null || place.price == '0')
-                                  ? AppTheme.successColor.withValues(alpha: 0.9)
-                                  : Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              priceText,
+                            const SizedBox(width: 4),
+                            Text(
+                              place.reviewCount != null && place.reviewCount! > 0
+                                  ? '${place.rating!.toStringAsFixed(1)} (${place.reviewCount})'
+                                  : place.rating!.toStringAsFixed(1),
                               style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
                                 color: Colors.white,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                      ] else
+                        const SizedBox(height: 10),
                       Row(
                         children: [
                           Icon(
@@ -4108,9 +4089,6 @@ class _RecommendedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl = place.images.isNotEmpty ? place.images.first : null;
-    final priceText = (place.price == null || place.price == '0')
-        ? AppLocalizations.of(context)!.free
-        : '\$${place.price}';
 
     return GestureDetector(
       onTap: onTap,
@@ -4224,48 +4202,29 @@ class _RecommendedCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.star_rounded,
-                            size: 14,
-                            color: AppTheme.accentColor,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${place.rating ?? 4.5}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
+                      if (place.rating != null) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 14,
+                              color: AppTheme.accentColor,
                             ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: (place.price == null || place.price == '0')
-                                  ? AppTheme.successColor.withValues(alpha: 0.9)
-                                  : Colors.white.withValues(alpha: 0.25),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              priceText,
+                            const SizedBox(width: 4),
+                            Text(
+                              place.reviewCount != null && place.reviewCount! > 0
+                                  ? '${place.rating!.toStringAsFixed(1)} (${place.reviewCount})'
+                                  : place.rating!.toStringAsFixed(1),
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -4764,41 +4723,11 @@ class _TourCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      // Rating + price row
+                      // Price row (tour ratings are not shown)
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  AppTheme.accentColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  FontAwesomeIcons.solidStar,
-                                  size: 11,
-                                  color: AppTheme.accentColor,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  tour.rating.toStringAsFixed(1),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                           Flexible(
                             child: Text(
                               tour.priceDisplay,
@@ -4811,6 +4740,7 @@ class _TourCard extends StatelessWidget {
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.end,
                             ),
                           ),
                         ],
@@ -5179,9 +5109,6 @@ class _ExplorePlaceCard extends StatelessWidget {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final isSaved = placesProvider.isPlaceSaved(place.id);
     final imageUrl = place.images.isNotEmpty ? place.images.first : null;
-    final isFree = place.price == null || place.price == '0';
-    final priceText =
-        isFree ? AppLocalizations.of(context)!.free : '\$${place.price}';
     final duration = place.duration ?? '1-2 hours';
 
     return LayoutBuilder(
@@ -5348,11 +5275,17 @@ class _ExplorePlaceCard extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          _glassStat(
-                            icon: Icons.star_rounded,
-                            label: place.rating?.toStringAsFixed(1) ?? '4.5',
-                            iconColor: AppTheme.accentColor,
-                          ),
+                          if (place.rating != null)
+                            _glassStat(
+                              icon: Icons.star_rounded,
+                              label: place.reviewCount != null &&
+                                      place.reviewCount! > 0
+                                  ? '${place.rating!.toStringAsFixed(1)} (${place.reviewCount})'
+                                  : place.rating!.toStringAsFixed(1),
+                              iconColor: AppTheme.accentColor,
+                            )
+                          else
+                            const SizedBox.shrink(),
                           _glassStat(
                             icon: Icons.schedule_rounded,
                             label: duration,
@@ -5397,33 +5330,8 @@ class _ExplorePlaceCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Flexible(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isFree
-                                    ? AppTheme.successColor
-                                        .withValues(alpha: 0.3)
-                                    : Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                priceText,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
                           Material(
                             color: Colors.transparent,
                             child: InkWell(
