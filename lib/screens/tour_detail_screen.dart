@@ -11,7 +11,6 @@ import '../models/place.dart';
 import '../providers/tours_provider.dart';
 import '../providers/places_provider.dart';
 import '../providers/map_provider.dart';
-import '../providers/trips_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/map_launcher.dart';
 import '../services/api_service.dart';
@@ -260,7 +259,7 @@ class _TourDetailScreenState extends State<TourDetailScreen>
               onShare: _shareTour,
               onDirections: (ctx) =>
                   _showDirectionsPicker(ctx, tour, firstPlace),
-              onAddToTrip: _showAddToTripDialog,
+              onAddToTrip: null,
               onOpenItineraryTab: () {
                 if (_tabController.index != 2) {
                   _tabController.animateTo(2);
@@ -293,76 +292,6 @@ class _TourDetailScreenState extends State<TourDetailScreen>
     }
   }
 
-  void _showAddToTripDialog(BuildContext context, Tour tour) {
-    if (tour.placeIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This tour has no places')),
-      );
-      return;
-    }
-    final tripsProvider = Provider.of<TripsProvider>(context, listen: false);
-    final placesProvider = Provider.of<PlacesProvider>(context, listen: false);
-    final firstPlace = placesProvider.getPlaceById(tour.placeIds.first);
-    if (firstPlace == null) return;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Add Tour to Trip'),
-        content: tripsProvider.trips.isEmpty
-            ? const Text('No trips available. Create a new trip first.')
-            : SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'The first stop of this tour will be added to your trip.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    ...tripsProvider.trips.map(
-                      (trip) => ListTile(
-                        title: Text(trip.name),
-                        subtitle: Text(
-                          '${trip.startDate.day}/${trip.startDate.month}/${trip.startDate.year}',
-                        ),
-                        onTap: () async {
-                          Navigator.pop(dialogContext);
-                          final dateStr = trip.days.isNotEmpty
-                              ? trip.days.first.date
-                              : '${trip.startDate.year}-${trip.startDate.month.toString().padLeft(2, '0')}-${trip.startDate.day.toString().padLeft(2, '0')}';
-                          await tripsProvider.addPlaceToTrip(
-                              trip.id, firstPlace.id, dateStr);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Tour start added to trip')),
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                    const Divider(),
-                    ListTile(
-                      leading: const Icon(Icons.add),
-                      title: const Text('Create New Trip'),
-                      onTap: () {
-                        Navigator.pop(dialogContext);
-                        context.push('/trips');
-                      },
-                    ),
-                  ],
-                ),
-              ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _TourTabBarDelegate extends SliverPersistentHeaderDelegate {
@@ -393,7 +322,7 @@ class _TourOverviewTab extends StatelessWidget {
   final bool isSaved;
   final void Function(Tour) onShare;
   final void Function(BuildContext) onDirections;
-  final void Function(BuildContext, Tour) onAddToTrip;
+  final void Function(BuildContext, Tour)? onAddToTrip;
   final VoidCallback onOpenItineraryTab;
   final VoidCallback onViewMap;
 
@@ -402,7 +331,7 @@ class _TourOverviewTab extends StatelessWidget {
     required this.isSaved,
     required this.onShare,
     required this.onDirections,
-    required this.onAddToTrip,
+    this.onAddToTrip,
     required this.onOpenItineraryTab,
     required this.onViewMap,
   });
@@ -459,7 +388,8 @@ class _TourOverviewTab extends StatelessWidget {
                 tour: tour,
                 isSaved: isSaved,
                 onDirections: () => onDirections(context),
-                onAddToTrip: () => onAddToTrip(context, tour),
+                onAddToTrip:
+                    onAddToTrip != null ? () => onAddToTrip!(context, tour) : null,
                 onViewMap: onViewMap,
                 hasPlaces: tour.placeIds.isNotEmpty,
               ),
@@ -1107,7 +1037,7 @@ class _TourPrimaryActions extends StatelessWidget {
   final Tour tour;
   final bool isSaved;
   final VoidCallback onDirections;
-  final VoidCallback onAddToTrip;
+  final VoidCallback? onAddToTrip;
   final VoidCallback onViewMap;
   final bool hasPlaces;
 
@@ -1115,7 +1045,7 @@ class _TourPrimaryActions extends StatelessWidget {
     required this.tour,
     required this.isSaved,
     required this.onDirections,
-    required this.onAddToTrip,
+    this.onAddToTrip,
     required this.onViewMap,
     required this.hasPlaces,
   });
@@ -1128,6 +1058,7 @@ class _TourPrimaryActions extends StatelessWidget {
     final small = ResponsiveUtils.isSmallPhone(context);
     final btnFontSize = ResponsiveUtils.actionButtonFontSize(context);
     final iconSize = small ? 18.0 : 20.0;
+    final add = onAddToTrip;
     return Row(
       children: [
         Expanded(
@@ -1144,6 +1075,7 @@ class _TourPrimaryActions extends StatelessWidget {
         ),
         SizedBox(width: gap),
         Expanded(
+          flex: add != null ? 1 : 2,
           child: FilledButton.icon(
             onPressed: hasPlaces ? onViewMap : null,
             icon: Icon(Icons.map, size: iconSize),
@@ -1154,15 +1086,17 @@ class _TourPrimaryActions extends StatelessWidget {
             ),
           ),
         ),
-        SizedBox(width: gap),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: hasPlaces ? onAddToTrip : null,
-            icon: Icon(Icons.add, size: iconSize),
-            label: Text('Add to Trip', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: btnFontSize)),
-            style: OutlinedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: pad)),
+        if (add != null) ...[
+          SizedBox(width: gap),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: hasPlaces ? add : null,
+              icon: Icon(Icons.add, size: iconSize),
+              label: Text('Add to Trip', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: btnFontSize)),
+              style: OutlinedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: pad)),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

@@ -526,6 +526,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapFilterArchitecture => 'Architecture';
 
   @override
+  String get tripOverlapsExistingDates =>
+      'You already have another trip on these dates. Adjust dates or edit the other trip.';
+
+  @override
+  String get tripStopDateNotInRange =>
+      'That date is outside this trip’s dates.';
+
+  @override
+  String get eventNoTripCoversEventDay =>
+      'None of your trips include this event’s day. Create a trip that covers this date first.';
+
+  @override
+  String get eventAddedOnEventDayOnly =>
+      'The stop is added on the event’s date only.';
+
+  @override
   String get goodMorning => 'Good morning';
 
   @override
@@ -2199,4 +2215,78 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorGenericTitle => 'Something went wrong';
+
+  @override
+  String get appTutorialDialogTitle => 'Welcome to Visit Tripoli';
+
+  @override
+  String get appTutorialDialogBody =>
+      'Take a guided tour of the app—Discover, every main tab, and how to get the most from your visit. This only takes a minute.';
+
+  @override
+  String get appTutorialStartTour => 'Start tour';
+
+  @override
+  String get appTutorialNotNow => 'Not now';
+
+  @override
+  String get appTutorialDiscoverTitle => 'Discover Tripoli';
+
+  @override
+  String get appTutorialDiscoverDesc =>
+      'Browse curated places, tours, and events. Use search and filters to find exactly what you need.';
+
+  @override
+  String get appTutorialProfileTitle => 'Profile & account';
+
+  @override
+  String get appTutorialProfileDesc =>
+      'Open your profile, preferences, and settings. Sign in to sync trips and AI plans across devices.';
+
+  @override
+  String get appTutorialNavExploreDesc =>
+      'Your home for hand-picked attractions, dining, hotels, and recommendations.';
+
+  @override
+  String get appTutorialNavCommunityDesc =>
+      'Your feed—posts and reels from places you follow, in one place.';
+
+  @override
+  String get appTutorialNavMapDesc =>
+      'Explore the interactive map and find places nearby with precise navigation.';
+
+  @override
+  String get appTutorialNavAiDesc =>
+      'Let AI build a custom itinerary tailored to your dates and pace.';
+
+  @override
+  String get appTutorialNavTripsDesc =>
+      'Plan and organize your trips—add places and events, and keep everything in one itinerary.';
+
+  @override
+  String get aiPlannerAskAiChangeStop => 'Ask AI to change this stop';
+
+  @override
+  String get aiPlannerAskAiChangeStopTitle => 'Change this stop with AI';
+
+  @override
+  String get aiPlannerAskAiChangeStopSubtitle =>
+      'Describe what you want instead — quieter, different vibe, more history, kid-friendly, etc.';
+
+  @override
+  String get aiPlannerAskAiChangeStopHint =>
+      'e.g. Somewhere quieter, less crowded, better for photos…';
+
+  @override
+  String get aiPlannerAskAiChangeStopSend => 'Send to AI';
+
+  @override
+  String get aiPlannerRefineNeedPlan =>
+      'Generate a plan first, then you can ask AI to change one stop.';
+
+  @override
+  String aiPlannerReplaceStopUserMessage(
+      String placeName, int day, String time, String request) {
+    return 'Replace only the stop \"$placeName\" on day $day at $time. My request: $request. Keep every other stop exactly the same (same places, times, and days). Output a full PLAN_JSON with only that one slot changed.';
+  }
 }

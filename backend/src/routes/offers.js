@@ -49,25 +49,20 @@ function mapOffer(row) {
   };
 }
 
-// GET /api/offers - List active offers from restaurants only (category_id = 'food')
+// GET /api/offers - List active offers (food places). Simplified query so missing translation tables never 500.
 router.get('/', optionalAuthMiddleware, async (req, res) => {
   try {
-    const lang = getRequestLang(req);
     const result = await query(
-      `SELECT o.id, o.place_id,
-              COALESCE(pot.title, o.title) AS title,
-              COALESCE(pot.description, o.description) AS description,
+      `SELECT o.id, o.place_id, o.title, o.description,
               o.discount_type, o.discount_value,
               o.start_time, o.end_time, o.expires_at,
-              COALESCE(pt.name, p.name) AS place_name, p.images AS place_images
+              p.name AS place_name, p.images AS place_images
        FROM place_offers o
-       JOIN places p ON p.id = o.place_id AND p.category_id = 'food'
-       LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $1
-       LEFT JOIN place_offer_translations pot ON pot.offer_id = o.id AND pot.lang = $1
+       JOIN places p ON p.id = o.place_id
        WHERE o.expires_at > NOW()
+         AND (p.category_id = 'food' OR LOWER(COALESCE(p.category, '')) LIKE '%food%')
        ORDER BY o.expires_at ASC
-       LIMIT 50`,
-      [lang]
+       LIMIT 50`
     );
     res.json({ offers: result.rows.map(mapOffer) });
   } catch (err) {

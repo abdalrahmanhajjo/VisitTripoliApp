@@ -19,6 +19,7 @@ class AppBottomNav extends StatelessWidget {
   static final GlobalKey communityKey = GlobalKey();
   static final GlobalKey mapKey = GlobalKey();
   static final GlobalKey aiPlannerKey = GlobalKey();
+  static final GlobalKey tripsKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -105,8 +106,8 @@ class AppBottomNav extends StatelessWidget {
           destinations: [
             Showcase(
               key: exploreKey,
-              description:
-                  'Find top attractions, restaurants, and hotels hand-picked for you.',
+              title: l10n.navExplore,
+              description: l10n.appTutorialNavExploreDesc,
               child: NavigationDestination(
                 icon: const Icon(Icons.explore_outlined),
                 selectedIcon: const Icon(Icons.explore),
@@ -115,8 +116,8 @@ class AppBottomNav extends StatelessWidget {
             ),
             Showcase(
               key: communityKey,
-              description:
-                  'Your feed, Reels, and posts from places you follow—like Instagram and TikTok in one tab.',
+              title: l10n.navCommunity,
+              description: l10n.appTutorialNavCommunityDesc,
               child: NavigationDestination(
                 icon: const Icon(Icons.dynamic_feed_outlined),
                 selectedIcon: const Icon(Icons.dynamic_feed_rounded),
@@ -125,8 +126,8 @@ class AppBottomNav extends StatelessWidget {
             ),
             Showcase(
               key: mapKey,
-              description:
-                  'Navigate precisely and discover places nearby on the interactive map.',
+              title: l10n.navMap,
+              description: l10n.appTutorialNavMapDesc,
               child: NavigationDestination(
                 icon: const Icon(Icons.map_outlined),
                 selectedIcon: const Icon(Icons.map),
@@ -135,18 +136,23 @@ class AppBottomNav extends StatelessWidget {
             ),
             Showcase(
               key: aiPlannerKey,
-              description:
-                  'Let AI craft the perfect custom itinerary for your trip in seconds.',
+              title: l10n.navAiPlanner,
+              description: l10n.appTutorialNavAiDesc,
               child: NavigationDestination(
                 icon: const Icon(Icons.auto_awesome_outlined),
                 selectedIcon: const Icon(Icons.auto_awesome),
                 label: l10n.navAiPlanner,
               ),
             ),
-            NavigationDestination(
-              icon: const Icon(Icons.route_outlined),
-              selectedIcon: const Icon(Icons.route),
-              label: l10n.navTrips,
+            Showcase(
+              key: tripsKey,
+              title: l10n.navTrips,
+              description: l10n.appTutorialNavTripsDesc,
+              child: NavigationDestination(
+                icon: const Icon(Icons.route_outlined),
+                selectedIcon: const Icon(Icons.route),
+                label: l10n.navTrips,
+              ),
             ),
           ],
         ),

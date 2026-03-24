@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../widgets/app_image.dart';
+import '../utils/trip_slot_validation.dart';
 import '../widgets/detail_hero_image.dart';
 import '../widgets/detail_key_info_chip.dart';
 import '../models/event.dart';
@@ -277,42 +278,77 @@ class _EventDetailScreenState extends State<EventDetailScreen>
         title: Text(l10n.eventAddToTripTitle),
         content: tripsProvider.trips.isEmpty
             ? Text(l10n.eventNoTripsCreateFirst)
-            : SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ...tripsProvider.trips.map(
-                      (trip) => ListTile(
-                        title: Text(trip.name),
-                        subtitle: Text(
-                          '${trip.startDate.day}/${trip.startDate.month}/${trip.startDate.year}',
+            : Builder(
+                builder: (ctx) {
+                  final dateStr =
+                      '${event.startDate.year}-${event.startDate.month.toString().padLeft(2, '0')}-${event.startDate.day.toString().padLeft(2, '0')}';
+                  final eligible = tripsProvider.trips
+                      .where((t) => tripCoversCalendarDate(t, dateStr))
+                      .toList();
+                  if (eligible.isEmpty) {
+                    return Text(l10n.eventNoTripCoversEventDay);
+                  }
+                  return SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          l10n.eventAddedOnEventDayOnly,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppTheme.textSecondary,
+                              ),
                         ),
-                        onTap: () async {
-                          Navigator.pop(dialogContext);
-                          final dateStr =
-                              '${event.startDate.year}-${event.startDate.month.toString().padLeft(2, '0')}-${event.startDate.day.toString().padLeft(2, '0')}';
-                          await tripsProvider.addPlaceToTrip(
-                              trip.id, place.id, dateStr);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(AppLocalizations.of(context)!.eventVenueAddedToTrip)),
-                            );
-                          }
-                        },
-                      ),
+                        const SizedBox(height: 8),
+                        ...eligible.map(
+                          (trip) => ListTile(
+                            title: Text(trip.name),
+                            subtitle: Text(
+                              '${trip.startDate.day}/${trip.startDate.month}/${trip.startDate.year}',
+                            ),
+                            onTap: () async {
+                              Navigator.pop(dialogContext);
+                              final err = await tripsProvider.addPlaceToTrip(
+                                  trip.id, place.id, dateStr);
+                              if (context.mounted) {
+                                if (err != null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        err == 'overlap'
+                                            ? AppLocalizations.of(context)!
+                                                .timeConflict
+                                            : AppLocalizations.of(context)!
+                                                .tripStopDateNotInRange,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          AppLocalizations.of(context)!
+                                              .eventVenueAddedToTrip),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                          ),
+                        ),
+                        const Divider(),
+                        ListTile(
+                          leading: const Icon(Icons.add),
+                          title: Text(l10n.createNewTripTitle),
+                          onTap: () {
+                            Navigator.pop(dialogContext);
+                            context.push('/trips');
+                          },
+                        ),
+                      ],
                     ),
-                    const Divider(),
-                    ListTile(
-                      leading: const Icon(Icons.add),
-                      title: Text(l10n.createNewTripTitle),
-                      onTap: () {
-                        Navigator.pop(dialogContext);
-                        context.push('/trips');
-                      },
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
         actions: [
           TextButton(

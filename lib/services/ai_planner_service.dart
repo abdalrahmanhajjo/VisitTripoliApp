@@ -708,7 +708,8 @@ You ONLY help with Tripoli, Lebanon. Answer only about Tripoli—trip planning, 
 
 CURRENT PLAN (user may have edited it; they want you to update it):
 ${lines.join('\n')}
-When the user asks to add a place, remove one, reorder, or "do the plan again", output an updated PLAN_JSON that applies their requested change and adjusts times/order as needed. Keep as much of the current plan as they did not ask to change.''';
+When the user asks to add a place, remove one, reorder, or "do the plan again", output an updated PLAN_JSON that applies their requested change and adjusts times/order as needed. Keep as much of the current plan as they did not ask to change.
+If the user asks to change or replace ONLY ONE stop (they name one place, time, or day), output a full PLAN_JSON array where every slot is identical to the current plan except that single slot: only that slot's placeId (and reason) may change to a different place from the list. Keep the same suggestedTime and dayIndex for all slots unless they explicitly asked to change a time. Preserve order and count.''';
     }
 
     final systemPrompt = '''You are a friendly Tripoli, Lebanon trip planner.

@@ -184,51 +184,55 @@ class _MapScreenState extends State<MapScreen> {
     ];
   }
 
-  Widget _mapCategoryFilterChip({
-    required String label,
-    required IconData? faIcon,
-    required bool isActive,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: isActive ? AppTheme.primaryColor : Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      elevation: isActive ? 1 : 2,
-      shadowColor: Colors.black.withValues(alpha: 0.14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (faIcon != null)
-                  FaIcon(
-                    faIcon,
-                    size: 15,
-                    color: isActive ? Colors.white : AppTheme.textSecondary,
-                  )
-                else
-                  Icon(
-                    Icons.grid_view_rounded,
-                    size: 18,
-                    color: isActive ? Colors.white : AppTheme.textSecondary,
-                  ),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    height: 1.2,
-                    color: isActive ? Colors.white : AppTheme.textPrimary,
-                  ),
+  String _mapActiveCategoryLabel(AppLocalizations l10n) {
+    final id = _categoryFilter ?? 'all';
+    for (final e in _categoryFilterEntries(l10n)) {
+      if (e.$1 == id) return e.$2;
+    }
+    return l10n.mapFilterAll;
+  }
+
+  void _openMapCategoryFilterSheet(
+      BuildContext context, AppLocalizations l10n) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: AppTheme.backgroundColor,
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: Text(
+                  l10n.mapFilterSectionTitle,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                 ),
-              ],
-            ),
+              ),
+              ..._categoryFilterEntries(l10n).map((e) {
+                final active = (_categoryFilter ?? 'all') == e.$1;
+                return ListTile(
+                  leading: e.$3 != null
+                      ? FaIcon(e.$3, color: AppTheme.primaryColor, size: 20)
+                      : Icon(Icons.grid_view_rounded,
+                          color: AppTheme.primaryColor, size: 22),
+                  title: Text(e.$2),
+                  trailing: active
+                      ? const Icon(Icons.check_rounded, color: AppTheme.primaryColor)
+                      : null,
+                  onTap: () {
+                    setState(
+                        () => _categoryFilter = e.$1 == 'all' ? null : e.$1);
+                    Navigator.pop(ctx);
+                  },
+                );
+              }),
+            ],
           ),
         ),
       ),
@@ -683,8 +687,20 @@ class _MapScreenState extends State<MapScreen> {
           .toList();
     }
 
+    final singlePlaceFromDeepLink = focusPlaceId != null &&
+        (placeIdsParam == null || placeIdsParam.isEmpty) &&
+        !tourOnly &&
+        !tripOnly;
+
     var places = placesWithCoordinates(placesProvider.places);
-    if (filterIds.isNotEmpty) {
+    if (singlePlaceFromDeepLink && focusPlaceId != null) {
+      final p = placesProvider.getPlaceById(focusPlaceId);
+      if (p != null && p.latitude != null && p.longitude != null) {
+        places = placesWithCoordinates([p]);
+      } else {
+        places = [];
+      }
+    } else if (filterIds.isNotEmpty) {
       places = places.where((p) => filterIds.contains(p.id)).toList();
       if (tourOnly || tripOnly) {
         places = placesWithCoordinates(
@@ -816,7 +832,7 @@ class _MapScreenState extends State<MapScreen> {
             zoomGesturesEnabled: true,
             minMaxZoomPreference: const MinMaxZoomPreference(2, 21),
             padding: EdgeInsets.only(
-              top: showSearchAndFilters ? 200 : 80,
+              top: showSearchAndFilters ? 132 : 80,
               right: 72,
               bottom: 100,
               left: 16,
@@ -1058,36 +1074,63 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 12),
-                      Text(
-                        l10n.mapFilterSectionTitle,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.textPrimary,
-                              fontSize: 13,
-                              letterSpacing: 0.2,
-                            ),
-                      ),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.start,
-                        children: _categoryFilterEntries(l10n).map((f) {
-                          final id = f.$1;
-                          final label = f.$2;
-                          final icon = f.$3;
-                          final isActive = (_categoryFilter ?? 'all') == id;
-                          return _mapCategoryFilterChip(
-                            label: label,
-                            faIcon: icon,
-                            isActive: isActive,
-                            onTap: () {
-                              setState(() =>
-                                  _categoryFilter = id == 'all' ? null : id);
-                            },
-                          );
-                        }).toList(),
+                      Material(
+                        color: Colors.white,
+                        elevation: 2,
+                        borderRadius: BorderRadius.circular(12),
+                        shadowColor: Colors.black.withValues(alpha: 0.1),
+                        child: InkWell(
+                          onTap: () =>
+                              _openMapCategoryFilterSheet(context, l10n),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 11),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.tune_rounded,
+                                  size: 20,
+                                  color: AppTheme.primaryColor,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        l10n.mapFilterSectionTitle,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.textTertiary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _mapActiveCategoryLabel(l10n),
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppTheme.textPrimary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  color: AppTheme.textTertiary,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
                       if (places.isNotEmpty)
                         Padding(

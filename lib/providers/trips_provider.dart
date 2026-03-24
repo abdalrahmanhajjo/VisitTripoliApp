@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/trip.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import '../utils/trip_slot_validation.dart';
 
 /// Normalize API/DB JSON: accept snake_case keys so we parse regardless of backend format.
 Map<String, dynamic> _normalizeTripJson(Map<String, dynamic> json) {
@@ -295,14 +296,23 @@ class TripsProvider extends ChangeNotifier {
 
   /// Add a place to a trip on the given date. Creates the day if needed.
   /// Persists to the API for logged-in users so the database stays in sync.
-  Future<void> addPlaceToTrip(String tripId, String placeId, String date,
+  /// Returns `null` on success, or `'date_out'` / `'overlap'` for validation failures.
+  Future<String?> addPlaceToTrip(String tripId, String placeId, String date,
       {String? startTime, String? endTime}) async {
     final index = _trips.indexWhere((t) => t.id == tripId);
-    if (index == -1) return;
+    if (index == -1) return 'date_out';
     final trip = _trips[index];
+    if (!tripCoversCalendarDate(trip, date)) {
+      return 'date_out';
+    }
     final newSlot =
         TripSlot(placeId: placeId, startTime: startTime, endTime: endTime);
     final dayIndex = trip.days.indexWhere((d) => d.date == date);
+    final existingSlots =
+        dayIndex >= 0 ? trip.days[dayIndex].slots : <TripSlot>[];
+    if (hasOverlappingTimeSlots([...existingSlots, newSlot])) {
+      return 'overlap';
+    }
     List<TripDay> newDays;
     if (dayIndex >= 0) {
       final day = trip.days[dayIndex];
@@ -327,5 +337,6 @@ class TripsProvider extends ChangeNotifier {
     );
     _trips[index] = updatedTrip;
     await updateTrip(updatedTrip);
+    return null;
   }
 }

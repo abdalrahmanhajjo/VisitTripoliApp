@@ -1090,6 +1090,30 @@ abstract class AppLocalizations {
   /// **'Architecture'**
   String get mapFilterArchitecture;
 
+  /// No description provided for @tripOverlapsExistingDates.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have another trip on these dates. Adjust dates or edit the other trip.'**
+  String get tripOverlapsExistingDates;
+
+  /// No description provided for @tripStopDateNotInRange.
+  ///
+  /// In en, this message translates to:
+  /// **'That date is outside this trip’s dates.'**
+  String get tripStopDateNotInRange;
+
+  /// No description provided for @eventNoTripCoversEventDay.
+  ///
+  /// In en, this message translates to:
+  /// **'None of your trips include this event’s day. Create a trip that covers this date first.'**
+  String get eventNoTripCoversEventDay;
+
+  /// No description provided for @eventAddedOnEventDayOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'The stop is added on the event’s date only.'**
+  String get eventAddedOnEventDayOnly;
+
   /// No description provided for @goodMorning.
   ///
   /// In en, this message translates to:
@@ -4209,6 +4233,127 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something went wrong'**
   String get errorGenericTitle;
+
+  /// No description provided for @appTutorialDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Visit Tripoli'**
+  String get appTutorialDialogTitle;
+
+  /// No description provided for @appTutorialDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a guided tour of the app—Discover, every main tab, and how to get the most from your visit. This only takes a minute.'**
+  String get appTutorialDialogBody;
+
+  /// No description provided for @appTutorialStartTour.
+  ///
+  /// In en, this message translates to:
+  /// **'Start tour'**
+  String get appTutorialStartTour;
+
+  /// No description provided for @appTutorialNotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get appTutorialNotNow;
+
+  /// No description provided for @appTutorialDiscoverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover Tripoli'**
+  String get appTutorialDiscoverTitle;
+
+  /// No description provided for @appTutorialDiscoverDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse curated places, tours, and events. Use search and filters to find exactly what you need.'**
+  String get appTutorialDiscoverDesc;
+
+  /// No description provided for @appTutorialProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile & account'**
+  String get appTutorialProfileTitle;
+
+  /// No description provided for @appTutorialProfileDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Open your profile, preferences, and settings. Sign in to sync trips and AI plans across devices.'**
+  String get appTutorialProfileDesc;
+
+  /// No description provided for @appTutorialNavExploreDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Your home for hand-picked attractions, dining, hotels, and recommendations.'**
+  String get appTutorialNavExploreDesc;
+
+  /// No description provided for @appTutorialNavCommunityDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Your feed—posts and reels from places you follow, in one place.'**
+  String get appTutorialNavCommunityDesc;
+
+  /// No description provided for @appTutorialNavMapDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore the interactive map and find places nearby with precise navigation.'**
+  String get appTutorialNavMapDesc;
+
+  /// No description provided for @appTutorialNavAiDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Let AI build a custom itinerary tailored to your dates and pace.'**
+  String get appTutorialNavAiDesc;
+
+  /// No description provided for @appTutorialNavTripsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan and organize your trips—add places and events, and keep everything in one itinerary.'**
+  String get appTutorialNavTripsDesc;
+
+  /// No description provided for @aiPlannerAskAiChangeStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask AI to change this stop'**
+  String get aiPlannerAskAiChangeStop;
+
+  /// No description provided for @aiPlannerAskAiChangeStopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change this stop with AI'**
+  String get aiPlannerAskAiChangeStopTitle;
+
+  /// No description provided for @aiPlannerAskAiChangeStopSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe what you want instead — quieter, different vibe, more history, kid-friendly, etc.'**
+  String get aiPlannerAskAiChangeStopSubtitle;
+
+  /// No description provided for @aiPlannerAskAiChangeStopHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Somewhere quieter, less crowded, better for photos…'**
+  String get aiPlannerAskAiChangeStopHint;
+
+  /// No description provided for @aiPlannerAskAiChangeStopSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to AI'**
+  String get aiPlannerAskAiChangeStopSend;
+
+  /// No description provided for @aiPlannerRefineNeedPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate a plan first, then you can ask AI to change one stop.'**
+  String get aiPlannerRefineNeedPlan;
+
+  /// No description provided for @aiPlannerReplaceStopUserMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace only the stop \"{placeName}\" on day {day} at {time}. My request: {request}. Keep every other stop exactly the same (same places, times, and days). Output a full PLAN_JSON with only that one slot changed.'**
+  String aiPlannerReplaceStopUserMessage(
+      String placeName, int day, String time, String request);
 }
 
 class _AppLocalizationsDelegate

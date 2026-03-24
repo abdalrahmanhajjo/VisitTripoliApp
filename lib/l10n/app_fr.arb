@@ -167,6 +167,10 @@
   "mapFilterFood": "Gastronomie",
   "mapFilterCultural": "Culture",
   "mapFilterArchitecture": "Architecture",
+  "tripOverlapsExistingDates": "Vous avez déjà un voyage sur ces dates. Modifiez les dates ou l’autre voyage.",
+  "tripStopDateNotInRange": "Cette date est en dehors des dates de ce voyage.",
+  "eventNoTripCoversEventDay": "Aucun voyage n’inclut ce jour d’événement. Créez d’abord un voyage couvrant cette date.",
+  "eventAddedOnEventDayOnly": "L’arrêt est ajouté uniquement à la date de l’événement.",
   "goodMorning": "Bonjour",
   "goodAfternoon": "Bon après-midi",
   "goodEvening": "Bonsoir",
@@ -752,6 +756,34 @@
   "viewPlacePosts": "Voir les publications du lieu",
   "eventOrganizerLabel": "Organisateur",
   "similarEventsSectionTitle": "Événements similaires",
-  "errorGenericTitle": "Une erreur s'est produite"
+  "errorGenericTitle": "Une erreur s'est produite",
+  "appTutorialDialogTitle": "Bienvenue sur Visit Tripoli",
+  "appTutorialDialogBody": "Faites une visite guidée de l'application—Découvrir, chaque onglet principal et comment profiter au mieux de votre séjour. Cela prend environ une minute.",
+  "appTutorialStartTour": "Commencer la visite",
+  "appTutorialNotNow": "Pas maintenant",
+  "appTutorialDiscoverTitle": "Découvrir Tripoli",
+  "appTutorialDiscoverDesc": "Parcourez des lieux, circuits et événements sélectionnés. Recherchez et filtrez pour trouver ce qu'il vous faut.",
+  "appTutorialProfileTitle": "Profil et compte",
+  "appTutorialProfileDesc": "Accédez à votre profil, préférences et réglages. Connectez-vous pour synchroniser voyages et plans IA.",
+  "appTutorialNavExploreDesc": "Votre accueil pour attractions, restaurants, hôtels et recommandations triées sur le volet.",
+  "appTutorialNavCommunityDesc": "Votre fil—publications et reels des lieux que vous suivez, au même endroit.",
+  "appTutorialNavMapDesc": "Explorez la carte interactive et trouvez des lieux à proximité avec une navigation précise.",
+  "appTutorialNavAiDesc": "Laissez l'IA construire un itinéraire adapté à vos dates et à votre rythme.",
+  "appTutorialNavTripsDesc": "Planifiez et organisez vos voyages—ajoutez lieux et événements, tout dans un seul itinéraire.",
+  "aiPlannerAskAiChangeStop": "Demander à l’IA de changer cette étape",
+  "aiPlannerAskAiChangeStopTitle": "Modifier cette étape avec l’IA",
+  "aiPlannerAskAiChangeStopSubtitle": "Décrivez ce que vous voulez à la place — plus calme, autre style, histoire, famille…",
+  "aiPlannerAskAiChangeStopHint": "ex. Plus calme, moins de monde, adapté aux photos…",
+  "aiPlannerAskAiChangeStopSend": "Envoyer à l’IA",
+  "aiPlannerRefineNeedPlan": "Générez d’abord un plan, puis vous pourrez demander à l’IA de modifier une étape.",
+  "aiPlannerReplaceStopUserMessage": "Remplacez uniquement l’étape « {placeName} » le jour {day} à {time}. Ma demande : {request}. Gardez toutes les autres étapes identiques (mêmes lieux, horaires et jours). Renvoyez un PLAN_JSON complet en ne modifiant qu’une seule étape.",
+  "@aiPlannerReplaceStopUserMessage": {
+    "placeholders": {
+      "placeName": { "type": "String" },
+      "day": { "type": "int" },
+      "time": { "type": "String" },
+      "request": { "type": "String" }
+    }
+  }
 }
 

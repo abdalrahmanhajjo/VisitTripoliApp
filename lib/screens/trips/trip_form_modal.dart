@@ -12,6 +12,7 @@ import '../../providers/tours_provider.dart';
 import '../../providers/events_provider.dart';
 import '../../providers/trips_provider.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/trip_slot_validation.dart';
 import 'trips_ui.dart';
 
 class TripFormModal extends StatefulWidget {
@@ -1062,6 +1063,20 @@ class TripFormModalState extends State<TripFormModal> {
     }
 
     final provider = Provider.of<TripsProvider>(context, listen: false);
+    if (provider.hasDateConflict(
+      _startDate,
+      _endDate,
+      excludeTripId: widget.trip?.id,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context)!.tripOverlapsExistingDates,
+          ),
+        ),
+      );
+      return;
+    }
     final daySpan = calendarDayCount(_startDate, _endDate);
     final days = buildTripDaysFromAssignments(
       orderedPlaceIds: _orderedPlaceIds,
@@ -1071,6 +1086,16 @@ class TripFormModalState extends State<TripFormModal> {
       startDate: _startDate,
       dayCount: daySpan,
     );
+    for (final day in days) {
+      if (hasOverlappingTimeSlots(day.slots)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.timeConflict),
+          ),
+        );
+        return;
+      }
+    }
 
     if (widget.trip != null) {
       provider.updateTrip(Trip(

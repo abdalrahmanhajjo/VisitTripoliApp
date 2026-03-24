@@ -7,7 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/places_provider.dart';
@@ -418,6 +418,123 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
       _chatMessages.removeLast(); // remove user message
       _inputController.text = _lastFailedUserMessage!;
     });
+    _sendMessage();
+  }
+
+  /// After a plan exists: user describes how to replace one stop; AI returns an updated plan.
+  Future<void> _showAskAiReplaceStopSheet({
+    required int dayIndex,
+    required Place place,
+    required AIPlannerSlot slot,
+  }) async {
+    final l10n = AppLocalizations.of(context)!;
+    if (_lastPlanSlots == null || _lastPlanPlaces == null || _lastPlanSlots!.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.aiPlannerRefineNeedPlan)),
+      );
+      return;
+    }
+    final controller = TextEditingController();
+    String? result;
+    try {
+      result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final bottom = MediaQuery.viewInsetsOf(ctx).bottom;
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottom),
+          child: Material(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            color: AppTheme.surfaceColor,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppTheme.borderColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      l10n.aiPlannerAskAiChangeStopTitle,
+                      style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.textPrimary,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      place.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        height: 1.35,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      l10n.aiPlannerAskAiChangeStopSubtitle,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.4,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      decoration: InputDecoration(
+                        hintText: l10n.aiPlannerAskAiChangeStopHint,
+                        border: const OutlineInputBorder(),
+                        alignLabelWithHint: true,
+                      ),
+                      maxLines: 4,
+                      minLines: 2,
+                      textCapitalization: TextCapitalization.sentences,
+                      autofocus: true,
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: () {
+                        final q = controller.text.trim();
+                        if (q.isEmpty) return;
+                        Navigator.pop(ctx, q);
+                      },
+                      child: Text(l10n.aiPlannerAskAiChangeStopSend),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    } finally {
+      controller.dispose();
+    }
+    if (result == null || result.isEmpty || !mounted) return;
+    final msg = AppLocalizations.of(context)!.aiPlannerReplaceStopUserMessage(
+      place.name,
+      dayIndex + 1,
+      slot.suggestedTime,
+      result,
+    );
+    _inputController.text = msg;
     _sendMessage();
   }
 
@@ -874,6 +991,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
                                 });
                               }
                             : null,
+                        onAskAiReplaceStop: _showAskAiReplaceStopSheet,
                         onRetry: msg.isRetryable ? _retryLastMessage : null,
                       );
                     },
@@ -1825,6 +1943,11 @@ class _ChatBubble extends StatelessWidget {
   final void Function(Place) onPlaceTap;
   final void Function(List<Place> places, List<AIPlannerSlot> slots)? onSaveTrip;
   final void Function(List<AIPlannerSlot> slots, List<Place> places)? onPlanChanged;
+  final Future<void> Function({
+    required int dayIndex,
+    required Place place,
+    required AIPlannerSlot slot,
+  })? onAskAiReplaceStop;
   final VoidCallback? onRetry;
 
   const _ChatBubble({
@@ -1832,6 +1955,7 @@ class _ChatBubble extends StatelessWidget {
     required this.onPlaceTap,
     this.onSaveTrip,
     this.onPlanChanged,
+    this.onAskAiReplaceStop,
     this.onRetry,
   });
 
@@ -1886,6 +2010,8 @@ class _ChatBubble extends StatelessWidget {
                       ),
                       child: Text(
                         displayText,
+                        textAlign: TextAlign.start,
+                        textDirection: Directionality.of(context),
                         style: TextStyle(
                           color: message.isUser ? Colors.white : AppTheme.textPrimary,
                           fontSize: narrow ? 14 : 15,
@@ -1934,6 +2060,7 @@ class _ChatBubble extends StatelessWidget {
                 onPlaceTap: onPlaceTap,
                 onSaveTrip: onSaveTrip,
                 onPlanChanged: onPlanChanged,
+                onAskAiReplaceStop: onAskAiReplaceStop,
               ),
             ),
           ],
@@ -2678,6 +2805,11 @@ class _EditableItineraryCard extends StatefulWidget {
   final void Function(Place) onPlaceTap;
   final void Function(List<Place> places, List<AIPlannerSlot> slots)? onSaveTrip;
   final void Function(List<AIPlannerSlot> slots, List<Place> places)? onPlanChanged;
+  final Future<void> Function({
+    required int dayIndex,
+    required Place place,
+    required AIPlannerSlot slot,
+  })? onAskAiReplaceStop;
 
   const _EditableItineraryCard({
     required this.slots,
@@ -2685,6 +2817,7 @@ class _EditableItineraryCard extends StatefulWidget {
     required this.onPlaceTap,
     this.onSaveTrip,
     this.onPlanChanged,
+    this.onAskAiReplaceStop,
   });
 
   @override
@@ -3126,6 +3259,13 @@ class _EditableItineraryCardState extends State<_EditableItineraryCard> {
                         onTimeTap: () => _editTime(dayIndex, index),
                         onRemove: () => _remove(dayIndex, index),
                         onReplace: () => _showReplacePlacePicker(context, dayIndex, index, entry.place),
+                        onAskAiChange: widget.onAskAiReplaceStop != null
+                            ? () => widget.onAskAiReplaceStop!(
+                                  dayIndex: dayIndex,
+                                  place: entry.place,
+                                  slot: entry.slot,
+                                )
+                            : null,
                       );
                     },
                   ),
@@ -3148,6 +3288,7 @@ class _PlanRow extends StatelessWidget {
   final VoidCallback onTimeTap;
   final VoidCallback onRemove;
   final VoidCallback? onReplace;
+  final Future<void> Function()? onAskAiChange;
 
   const _PlanRow({
     super.key,
@@ -3159,6 +3300,7 @@ class _PlanRow extends StatelessWidget {
     required this.onTimeTap,
     required this.onRemove,
     this.onReplace,
+    this.onAskAiChange,
   });
 
   static bool _isModificationReason(String? reason) {
@@ -3167,10 +3309,17 @@ class _PlanRow extends StatelessWidget {
     return lower.contains('change') || lower.contains('wanted') || lower.contains('modify') || lower.contains('replace');
   }
 
+  /// Avoid one-character-per-line breaks for Latin names in RTL layouts.
+  static TextDirection _textDirectionForMixedName(String text, BuildContext context) {
+    if (RegExp(r'[A-Za-z]').hasMatch(text)) return TextDirection.ltr;
+    return Directionality.of(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isModified = _isModificationReason(slot.reason);
-    final narrow = MediaQuery.sizeOf(context).width < 400;
+    final compact = MediaQuery.sizeOf(context).width < 430;
+    final l10n = AppLocalizations.of(context)!;
 
     Widget reasonChip() {
       if (slot.reason == null || slot.reason!.trim().isEmpty) {
@@ -3188,14 +3337,18 @@ class _PlanRow extends StatelessWidget {
           ),
           child: Text(
             slot.reason!,
+            textDirection: Directionality.of(context),
+            textAlign: TextAlign.start,
             style: TextStyle(
               fontSize: 11,
               color: isModified ? AppTheme.primaryColor : AppTheme.textTertiary,
               fontStyle: FontStyle.italic,
               fontWeight: isModified ? FontWeight.w600 : FontWeight.normal,
+              height: 1.35,
             ),
-            maxLines: 3,
+            maxLines: 4,
             overflow: TextOverflow.ellipsis,
+            softWrap: true,
           ),
         ),
       );
@@ -3204,8 +3357,8 @@ class _PlanRow extends StatelessWidget {
     final timePill = GestureDetector(
       onTap: onTimeTap,
       child: Container(
-        width: narrow ? 44 : 48,
-        height: narrow ? 34 : 36,
+        width: compact ? 44 : 48,
+        height: compact ? 34 : 36,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: AppTheme.primaryColor.withValues(alpha: 0.12),
@@ -3218,7 +3371,7 @@ class _PlanRow extends StatelessWidget {
         child: Text(
           slot.suggestedTime,
           style: TextStyle(
-            fontSize: narrow ? 11 : 12,
+            fontSize: compact ? 11 : 12,
             fontWeight: FontWeight.w700,
             color: AppTheme.primaryColor,
           ),
@@ -3226,7 +3379,7 @@ class _PlanRow extends StatelessWidget {
       ),
     );
 
-    if (narrow) {
+    if (compact) {
       return Material(
         key: key,
         color: Colors.transparent,
@@ -3241,25 +3394,10 @@ class _PlanRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       timePill,
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          place.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            letterSpacing: -0.2,
-                            height: 1.28,
-                            color: AppTheme.textPrimary,
-                          ),
-                          maxLines: 12,
-                          overflow: TextOverflow.ellipsis,
-                          softWrap: true,
-                        ),
-                      ),
+                      const Spacer(),
                       PopupMenuButton<String>(
                         padding: EdgeInsets.zero,
                         icon: Icon(
@@ -3268,10 +3406,22 @@ class _PlanRow extends StatelessWidget {
                           size: 22,
                         ),
                         onSelected: (v) {
+                          if (v == 'askAi') onAskAiChange?.call();
                           if (v == 'replace') onReplace?.call();
                           if (v == 'remove') onRemove();
                         },
                         itemBuilder: (ctx) => [
+                          if (onAskAiChange != null)
+                            PopupMenuItem(
+                              value: 'askAi',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.auto_awesome_rounded, size: 20, color: AppTheme.primaryColor),
+                                  const SizedBox(width: 10),
+                                  Flexible(child: Text(l10n.aiPlannerAskAiChangeStop)),
+                                ],
+                              ),
+                            ),
                           if (onReplace != null)
                             const PopupMenuItem(
                               value: 'replace',
@@ -3285,16 +3435,33 @@ class _PlanRow extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    place.name,
+                    textDirection: _textDirectionForMixedName(place.name, context),
+                    textAlign: TextAlign.start,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      height: 1.35,
+                      color: AppTheme.textPrimary,
+                    ),
+                    softWrap: true,
+                  ),
                   if (place.location.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(left: 54, top: 2),
+                      padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         place.location,
+                        textDirection: _textDirectionForMixedName(place.location, context),
+                        textAlign: TextAlign.start,
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
+                          height: 1.35,
                           color: AppTheme.textSecondary,
                         ),
-                        maxLines: 2,
+                        softWrap: true,
+                        maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -3358,43 +3525,64 @@ class _PlanRow extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              place.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                                letterSpacing: -0.2,
-                                color: AppTheme.textPrimary,
-                                height: 1.28,
-                              ),
-                              maxLines: 12,
-                              overflow: TextOverflow.ellipsis,
-                              softWrap: true,
-                            ),
-                          ),
-                          if (place.location.isNotEmpty)
-                            Icon(Icons.place_outlined, size: 14, color: AppTheme.textTertiary),
-                        ],
+                      Text(
+                        place.name,
+                        textDirection: _textDirectionForMixedName(place.name, context),
+                        textAlign: TextAlign.start,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: AppTheme.textPrimary,
+                          height: 1.35,
+                        ),
+                        softWrap: true,
                       ),
                       if (place.location.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          place.location,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textSecondary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        const SizedBox(height: 4),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Icon(Icons.place_outlined, size: 14, color: AppTheme.textTertiary),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                place.location,
+                                textDirection: _textDirectionForMixedName(place.location, context),
+                                textAlign: TextAlign.start,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  height: 1.35,
+                                  color: AppTheme.textSecondary,
+                                ),
+                                softWrap: true,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                       reasonChip(),
                     ],
                   ),
                 ),
+                if (onAskAiChange != null)
+                  IconButton(
+                    onPressed: () => onAskAiChange?.call(),
+                    icon: Icon(
+                      Icons.auto_awesome_outlined,
+                      size: 22,
+                      color: AppTheme.primaryColor.withValues(alpha: 0.9),
+                    ),
+                    tooltip: l10n.aiPlannerAskAiChangeStop,
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(40, 40),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
                 if (onReplace != null)
                   IconButton(
                     onPressed: onReplace,

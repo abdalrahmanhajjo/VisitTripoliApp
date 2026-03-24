@@ -167,6 +167,10 @@
   "mapFilterFood": "طعام",
   "mapFilterCultural": "ثقافي",
   "mapFilterArchitecture": "عمارة",
+  "tripOverlapsExistingDates": "لديك رحلة أخرى في هذه التواريخ. غيّر التواريخ أو عدّل الرحلة الأخرى.",
+  "tripStopDateNotInRange": "هذا التاريخ خارج نطاق هذه الرحلة.",
+  "eventNoTripCoversEventDay": "لا توجد رحلة تتضمن يوم هذا الحدث. أنشئ رحلة تغطي هذا التاريخ أولاً.",
+  "eventAddedOnEventDayOnly": "تُضاف المحطة في تاريخ الحدث فقط.",
   "goodMorning": "صباح الخير",
   "goodAfternoon": "مساء الخير",
   "goodEvening": "مساء الخير",
@@ -752,5 +756,33 @@
   "viewPlacePosts": "عرض منشورات المكان",
   "eventOrganizerLabel": "المنظّم",
   "similarEventsSectionTitle": "فعاليات مشابهة",
-  "errorGenericTitle": "حدث خطأ ما"
+  "errorGenericTitle": "حدث خطأ ما",
+  "appTutorialDialogTitle": "مرحباً بك في Visit Tripoli",
+  "appTutorialDialogBody": "جولة قصيرة في التطبيق—الاستكشاف، كل التبويبات الرئيسية، وكيف تستفيد من زيارتك. تستغرق دقيقة تقريباً.",
+  "appTutorialStartTour": "ابدأ الجولة",
+  "appTutorialNotNow": "ليس الآن",
+  "appTutorialDiscoverTitle": "اكتشف طرابلس",
+  "appTutorialDiscoverDesc": "تصفّح الأماكن والجولات والفعاليات المختارة. استخدم البحث والمرشحات للعثور على ما تريد.",
+  "appTutorialProfileTitle": "الملف والحساب",
+  "appTutorialProfileDesc": "افتح ملفك وتفضيلاتك والإعدادات. سجّل الدخول لمزامنة الرحلات وخطط الذكاء الاصطناعي.",
+  "appTutorialNavExploreDesc": "صفحتك الرئيسية لأفضل المعالم والمطاعم والفنادق والتوصيات.",
+  "appTutorialNavCommunityDesc": "خلاصتك—منشورات وريلز من الأماكن التي تتابعها في مكان واحد.",
+  "appTutorialNavMapDesc": "استكشف الخريطة التفاعلية واعثر على الأماكن القريبة بدقة.",
+  "appTutorialNavAiDesc": "دع الذكاء الاصطناعي يبني مساراً يناسب تواريخك وإيقاعك.",
+  "appTutorialNavTripsDesc": "خطط لرحلاتك ونظّمها—أضف أماكناً وفعاليات واحتفظ بكل شيء في مسار واحد.",
+  "aiPlannerAskAiChangeStop": "اطلب من الذكاء الاصطناعي تغيير هذه المحطة",
+  "aiPlannerAskAiChangeStopTitle": "تغيير المحطة بالذكاء الاصطناعي",
+  "aiPlannerAskAiChangeStopSubtitle": "صف ما تريده بدلاً منها — أهدأ، أسلوب مختلف، تاريخ، مناسب للعائلة…",
+  "aiPlannerAskAiChangeStopHint": "مثال: مكان أهدأ، أقل ازدحاماً، أفضل للتصوير…",
+  "aiPlannerAskAiChangeStopSend": "إرسال للذكاء الاصطناعي",
+  "aiPlannerRefineNeedPlan": "أنشئ خطة أولاً، ثم يمكنك طلب تغيير محطة واحدة.",
+  "aiPlannerReplaceStopUserMessage": "استبدل المحطة \"{placeName}\" فقط في اليوم {day} عند الساعة {time}. طلبي: {request}. أبقِ كل المحطات الأخرى كما هي (نفس الأماكن والأوقات والأيام). أعد PLAN_JSON كاملاً مع تغيير تلك المحطة فقط.",
+  "@aiPlannerReplaceStopUserMessage": {
+    "placeholders": {
+      "placeName": { "type": "String" },
+      "day": { "type": "int" },
+      "time": { "type": "String" },
+      "request": { "type": "String" }
+    }
+  }
 }

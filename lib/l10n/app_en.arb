@@ -170,6 +170,10 @@
   "mapFilterFood": "Food",
   "mapFilterCultural": "Cultural",
   "mapFilterArchitecture": "Architecture",
+  "tripOverlapsExistingDates": "You already have another trip on these dates. Adjust dates or edit the other trip.",
+  "tripStopDateNotInRange": "That date is outside this trip’s dates.",
+  "eventNoTripCoversEventDay": "None of your trips include this event’s day. Create a trip that covers this date first.",
+  "eventAddedOnEventDayOnly": "The stop is added on the event’s date only.",
   "goodMorning": "Good morning",
   "goodAfternoon": "Good afternoon",
   "goodEvening": "Good evening",
@@ -751,5 +755,33 @@
   "viewPlacePosts": "View place posts",
   "eventOrganizerLabel": "Organizer",
   "similarEventsSectionTitle": "Similar Events",
-  "errorGenericTitle": "Something went wrong"
+  "errorGenericTitle": "Something went wrong",
+  "appTutorialDialogTitle": "Welcome to Visit Tripoli",
+  "appTutorialDialogBody": "Take a guided tour of the app—Discover, every main tab, and how to get the most from your visit. This only takes a minute.",
+  "appTutorialStartTour": "Start tour",
+  "appTutorialNotNow": "Not now",
+  "appTutorialDiscoverTitle": "Discover Tripoli",
+  "appTutorialDiscoverDesc": "Browse curated places, tours, and events. Use search and filters to find exactly what you need.",
+  "appTutorialProfileTitle": "Profile & account",
+  "appTutorialProfileDesc": "Open your profile, preferences, and settings. Sign in to sync trips and AI plans across devices.",
+  "appTutorialNavExploreDesc": "Your home for hand-picked attractions, dining, hotels, and recommendations.",
+  "appTutorialNavCommunityDesc": "Your feed—posts and reels from places you follow, in one place.",
+  "appTutorialNavMapDesc": "Explore the interactive map and find places nearby with precise navigation.",
+  "appTutorialNavAiDesc": "Let AI build a custom itinerary tailored to your dates and pace.",
+  "appTutorialNavTripsDesc": "Plan and organize your trips—add places and events, and keep everything in one itinerary.",
+  "aiPlannerAskAiChangeStop": "Ask AI to change this stop",
+  "aiPlannerAskAiChangeStopTitle": "Change this stop with AI",
+  "aiPlannerAskAiChangeStopSubtitle": "Describe what you want instead — quieter, different vibe, more history, kid-friendly, etc.",
+  "aiPlannerAskAiChangeStopHint": "e.g. Somewhere quieter, less crowded, better for photos…",
+  "aiPlannerAskAiChangeStopSend": "Send to AI",
+  "aiPlannerRefineNeedPlan": "Generate a plan first, then you can ask AI to change one stop.",
+  "aiPlannerReplaceStopUserMessage": "Replace only the stop \"{placeName}\" on day {day} at {time}. My request: {request}. Keep every other stop exactly the same (same places, times, and days). Output a full PLAN_JSON with only that one slot changed.",
+  "@aiPlannerReplaceStopUserMessage": {
+    "placeholders": {
+      "placeName": { "type": "String" },
+      "day": { "type": "int" },
+      "time": { "type": "String" },
+      "request": { "type": "String" }
+    }
+  }
 }

@@ -608,13 +608,25 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
                           final dateStr = trip.days.isNotEmpty
                               ? trip.days.first.date
                               : '${trip.startDate.year}-${trip.startDate.month.toString().padLeft(2, '0')}-${trip.startDate.day.toString().padLeft(2, '0')}';
-                          await tripsProvider.addPlaceToTrip(
+                          final err = await tripsProvider.addPlaceToTrip(
                               trip.id, place.id, dateStr);
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Place added to trip')),
-                            );
+                            final l10n = AppLocalizations.of(context)!;
+                            if (err != null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    err == 'overlap'
+                                        ? l10n.timeConflict
+                                        : l10n.tripStopDateNotInRange,
+                                  ),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(l10n.addedToTrip(place.name))),
+                              );
+                            }
                           }
                         },
                       ),

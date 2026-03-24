@@ -32,6 +32,8 @@ import '../l10n/app_localizations.dart';
 import '../utils/feedback_utils.dart';
 import '../utils/responsive_utils.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/app_tutorial_prefs.dart';
+import '../widgets/app_tutorial_prompt_dialog.dart';
 
 /// Places whose names, tags, or text match [query] (for search suggestions).
 List<Place> _placesMatchingSearchQuery(
@@ -777,6 +779,10 @@ class ExploreScreen extends StatefulWidget {
   final bool showWelcome;
   final bool openEventsSheet;
 
+  /// Keys for the first-launch app tour ([Showcase]).
+  static final GlobalKey tutorialDiscoverKey = GlobalKey();
+  static final GlobalKey tutorialProfileKey = GlobalKey();
+
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
 }
@@ -882,17 +888,59 @@ class _ExploreScreenState extends State<ExploreScreen>
 
   Future<void> _checkTutorial() async {
     final prefs = await SharedPreferences.getInstance();
-    final seen = prefs.getBool('has_seen_tutorial') ?? false;
-    if (!seen) {
-      if (!mounted) return;
-      ShowCaseWidget.of(context).startShowCase([
+    if (!await AppTutorialPrefs.shouldOfferTutorial(prefs)) return;
+    if (!mounted) return;
+    final choice = await showAppTutorialPromptDialog(context);
+    if (!mounted) return;
+    if (choice != true) {
+      await AppTutorialPrefs.markResolved(prefs);
+      return;
+    }
+    _runAppTutorial(prefs);
+  }
+
+  void _runAppTutorial(SharedPreferences prefs) {
+    if (!mounted) return;
+    final ShowcaseView view;
+    try {
+      view = ShowcaseView.get();
+    } catch (_) {
+      return;
+    }
+    var finished = false;
+    late void Function() onFinish;
+    late void Function(GlobalKey?) onDismiss;
+
+    onFinish = () {
+      if (finished) return;
+      finished = true;
+      view.removeOnFinishCallback(onFinish);
+      view.removeOnDismissCallback(onDismiss);
+      AppTutorialPrefs.markResolved(prefs);
+    };
+
+    onDismiss = (GlobalKey? _) {
+      if (finished) return;
+      finished = true;
+      view.removeOnFinishCallback(onFinish);
+      view.removeOnDismissCallback(onDismiss);
+      AppTutorialPrefs.markResolved(prefs);
+    };
+
+    view.addOnFinishCallback(onFinish);
+    view.addOnDismissCallback(onDismiss);
+    view.startShowCase(
+      [
+        ExploreScreen.tutorialProfileKey,
+        ExploreScreen.tutorialDiscoverKey,
         AppBottomNav.exploreKey,
         AppBottomNav.communityKey,
         AppBottomNav.mapKey,
         AppBottomNav.aiPlannerKey,
-      ]);
-      await prefs.setBool('has_seen_tutorial', true);
-    }
+        AppBottomNav.tripsKey,
+      ],
+      delay: const Duration(milliseconds: 400),
+    );
   }
 
   void _showWelcomeMessage() {
@@ -1003,44 +1051,6 @@ class _ExploreScreenState extends State<ExploreScreen>
         onCancel: () => Navigator.pop(sheetContext),
       ),
     );
-  }
-
-  /// Add tour (all its places) to a selected trip in one go.
-  void _showAddTourToTripDialog(BuildContext context, Tour tour) {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!auth.isLoggedIn || auth.isGuest) {
-      context.go('/login?redirect=${Uri.encodeComponent('/explore')}');
-      return;
-    }
-    final tripsProvider = Provider.of<TripsProvider>(context, listen: false);
-    final placeIds = tour.placeIds.where((id) => id.isNotEmpty).toList();
-    if (placeIds.isEmpty) {
-      AppFeedback.info(context, 'This tour has no places.');
-      return;
-    }
-    _showAddToTripPicker(context, onTripSelected: (trip) async {
-      final dateStr = trip.days.isNotEmpty
-          ? trip.days.first.date
-          : '${trip.startDate.year}-${trip.startDate.month.toString().padLeft(2, '0')}-${trip.startDate.day.toString().padLeft(2, '0')}';
-      try {
-        for (final placeId in placeIds) {
-          await tripsProvider.addPlaceToTrip(trip.id, placeId, dateStr);
-        }
-        if (context.mounted) {
-          AppFeedback.success(
-            context,
-            placeIds.length == 1
-                ? AppLocalizations.of(context)!.addedToTrip(tour.name)
-                : '${placeIds.length} places from "${tour.name}" added to trip',
-          );
-        }
-      } catch (_) {
-        if (context.mounted) {
-          AppFeedback.error(
-              context, AppLocalizations.of(context)!.couldNotLoadData);
-        }
-      }
-    });
   }
 
   void _onScroll() {
@@ -1930,36 +1940,46 @@ class _ExploreScreenState extends State<ExploreScreen>
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const AppProfileIconButton(
-                    iconColor: AppTheme.textPrimary,
-                    iconSize: 26,
+                  Showcase(
+                    key: ExploreScreen.tutorialProfileKey,
+                    title: l10n.appTutorialProfileTitle,
+                    description: l10n.appTutorialProfileDesc,
+                    child: const AppProfileIconButton(
+                      iconColor: AppTheme.textPrimary,
+                      iconSize: 26,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          l10n.tripoli,
-                          style: TextStyle(
-                            fontSize: isCompact ? 26 : 30,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.textPrimary,
-                            letterSpacing: -0.6,
-                            height: 1.1,
+                    child: Showcase(
+                      key: ExploreScreen.tutorialDiscoverKey,
+                      title: l10n.appTutorialDiscoverTitle,
+                      description: l10n.appTutorialDiscoverDesc,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            l10n.tripoli,
+                            style: TextStyle(
+                              fontSize: isCompact ? 26 : 30,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.textPrimary,
+                              letterSpacing: -0.6,
+                              height: 1.1,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          l10n.lebanon,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: AppTheme.textSecondary,
+                          const SizedBox(height: 2),
+                          Text(
+                            l10n.lebanon,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: AppTheme.textSecondary,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   // Search icon
@@ -2606,8 +2626,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                       );
                                     }
                                   },
-                                  onAddToTrip: () =>
-                                      _showAddTourToTripDialog(context, tour),
+                                  onAddToTrip: null,
                                 ),
                               );
                             },
@@ -2922,8 +2941,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                               );
                             }
                           },
-                          onAddToTrip: () =>
-                              _showAddTourToTripDialog(context, tour),
+                          onAddToTrip: null,
                         );
                       },
                     ),
@@ -4771,14 +4789,6 @@ class _TourCard extends StatelessWidget {
                                     color: AppTheme.textPrimary,
                                   ),
                                 ),
-                                if (tour.reviews > 0)
-                                  Text(
-                                    ' (${tour.reviews})',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.textSecondary,
-                                    ),
-                                  ),
                               ],
                             ),
                           ),
@@ -4808,15 +4818,18 @@ class _TourCard extends StatelessWidget {
                               onTap: onDirections,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 2,
-                            child: _filledActionButton(
-                              icon: Icons.add_rounded,
-                              label: AppLocalizations.of(context)!.addToTrip,
-                              onTap: onAddToTrip ?? () {},
+                          if (onAddToTrip != null) ...[
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 2,
+                              child: _filledActionButton(
+                                icon: Icons.add_rounded,
+                                label:
+                                    AppLocalizations.of(context)!.addToTrip,
+                                onTap: onAddToTrip!,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ],
@@ -5930,7 +5943,7 @@ class _AddPlaceTimeSheetState extends State<_AddPlaceTimeSheet> {
     }
     setState(() => _isAdding = true);
     try {
-      await widget.tripsProvider.addPlaceToTrip(
+      final err = await widget.tripsProvider.addPlaceToTrip(
         widget.trip.id,
         widget.place.id,
         _selectedDateStr,
@@ -5938,6 +5951,14 @@ class _AddPlaceTimeSheetState extends State<_AddPlaceTimeSheet> {
         endTime: _formatTime(_endTime),
       );
       if (!mounted) return;
+      if (err != null) {
+        final l10n = AppLocalizations.of(context)!;
+        AppFeedback.error(
+          context,
+          err == 'overlap' ? l10n.timeConflict : l10n.tripStopDateNotInRange,
+        );
+        return;
+      }
       Provider.of<ActivityLogProvider>(context, listen: false)
           .addToTrip(widget.place.name, widget.trip.name);
       AppFeedback.success(context,

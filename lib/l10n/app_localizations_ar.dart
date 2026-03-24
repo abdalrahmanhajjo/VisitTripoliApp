@@ -523,6 +523,20 @@ class AppLocalizationsAr extends AppLocalizations {
   String get mapFilterArchitecture => 'عمارة';
 
   @override
+  String get tripOverlapsExistingDates =>
+      'لديك رحلة أخرى في هذه التواريخ. غيّر التواريخ أو عدّل الرحلة الأخرى.';
+
+  @override
+  String get tripStopDateNotInRange => 'هذا التاريخ خارج نطاق هذه الرحلة.';
+
+  @override
+  String get eventNoTripCoversEventDay =>
+      'لا توجد رحلة تتضمن يوم هذا الحدث. أنشئ رحلة تغطي هذا التاريخ أولاً.';
+
+  @override
+  String get eventAddedOnEventDayOnly => 'تُضاف المحطة في تاريخ الحدث فقط.';
+
+  @override
   String get goodMorning => 'صباح الخير';
 
   @override
@@ -2183,4 +2197,79 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get errorGenericTitle => 'حدث خطأ ما';
+
+  @override
+  String get appTutorialDialogTitle => 'مرحباً بك في Visit Tripoli';
+
+  @override
+  String get appTutorialDialogBody =>
+      'جولة قصيرة في التطبيق—الاستكشاف، كل التبويبات الرئيسية، وكيف تستفيد من زيارتك. تستغرق دقيقة تقريباً.';
+
+  @override
+  String get appTutorialStartTour => 'ابدأ الجولة';
+
+  @override
+  String get appTutorialNotNow => 'ليس الآن';
+
+  @override
+  String get appTutorialDiscoverTitle => 'اكتشف طرابلس';
+
+  @override
+  String get appTutorialDiscoverDesc =>
+      'تصفّح الأماكن والجولات والفعاليات المختارة. استخدم البحث والمرشحات للعثور على ما تريد.';
+
+  @override
+  String get appTutorialProfileTitle => 'الملف والحساب';
+
+  @override
+  String get appTutorialProfileDesc =>
+      'افتح ملفك وتفضيلاتك والإعدادات. سجّل الدخول لمزامنة الرحلات وخطط الذكاء الاصطناعي.';
+
+  @override
+  String get appTutorialNavExploreDesc =>
+      'صفحتك الرئيسية لأفضل المعالم والمطاعم والفنادق والتوصيات.';
+
+  @override
+  String get appTutorialNavCommunityDesc =>
+      'خلاصتك—منشورات وريلز من الأماكن التي تتابعها في مكان واحد.';
+
+  @override
+  String get appTutorialNavMapDesc =>
+      'استكشف الخريطة التفاعلية واعثر على الأماكن القريبة بدقة.';
+
+  @override
+  String get appTutorialNavAiDesc =>
+      'دع الذكاء الاصطناعي يبني مساراً يناسب تواريخك وإيقاعك.';
+
+  @override
+  String get appTutorialNavTripsDesc =>
+      'خطط لرحلاتك ونظّمها—أضف أماكناً وفعاليات واحتفظ بكل شيء في مسار واحد.';
+
+  @override
+  String get aiPlannerAskAiChangeStop =>
+      'اطلب من الذكاء الاصطناعي تغيير هذه المحطة';
+
+  @override
+  String get aiPlannerAskAiChangeStopTitle => 'تغيير المحطة بالذكاء الاصطناعي';
+
+  @override
+  String get aiPlannerAskAiChangeStopSubtitle =>
+      'صف ما تريده بدلاً منها — أهدأ، أسلوب مختلف، تاريخ، مناسب للعائلة…';
+
+  @override
+  String get aiPlannerAskAiChangeStopHint =>
+      'مثال: مكان أهدأ، أقل ازدحاماً، أفضل للتصوير…';
+
+  @override
+  String get aiPlannerAskAiChangeStopSend => 'إرسال للذكاء الاصطناعي';
+
+  @override
+  String get aiPlannerRefineNeedPlan =>
+      'أنشئ خطة أولاً، ثم يمكنك طلب تغيير محطة واحدة.';
+
+  @override
+  String aiPlannerReplaceStopUserMessage(
+      String placeName, int day, String time, String request) {
+    return 'استبدل المحطة \"$placeName\" فقط في اليوم $day عند الساعة $time. طلبي: $request. أبقِ كل المحطات الأخرى كما هي (نفس الأماكن والأوقات والأيام). أعد PLAN_JSON كاملاً مع تغيير تلك المحطة فقط.';
+  }
 }

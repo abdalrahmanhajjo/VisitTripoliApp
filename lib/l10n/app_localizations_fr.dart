@@ -532,6 +532,22 @@ class AppLocalizationsFr extends AppLocalizations {
   String get mapFilterArchitecture => 'Architecture';
 
   @override
+  String get tripOverlapsExistingDates =>
+      'Vous avez déjà un voyage sur ces dates. Modifiez les dates ou l’autre voyage.';
+
+  @override
+  String get tripStopDateNotInRange =>
+      'Cette date est en dehors des dates de ce voyage.';
+
+  @override
+  String get eventNoTripCoversEventDay =>
+      'Aucun voyage n’inclut ce jour d’événement. Créez d’abord un voyage couvrant cette date.';
+
+  @override
+  String get eventAddedOnEventDayOnly =>
+      'L’arrêt est ajouté uniquement à la date de l’événement.';
+
+  @override
   String get goodMorning => 'Bonjour';
 
   @override
@@ -2234,4 +2250,79 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get errorGenericTitle => 'Une erreur s\'est produite';
+
+  @override
+  String get appTutorialDialogTitle => 'Bienvenue sur Visit Tripoli';
+
+  @override
+  String get appTutorialDialogBody =>
+      'Faites une visite guidée de l\'application—Découvrir, chaque onglet principal et comment profiter au mieux de votre séjour. Cela prend environ une minute.';
+
+  @override
+  String get appTutorialStartTour => 'Commencer la visite';
+
+  @override
+  String get appTutorialNotNow => 'Pas maintenant';
+
+  @override
+  String get appTutorialDiscoverTitle => 'Découvrir Tripoli';
+
+  @override
+  String get appTutorialDiscoverDesc =>
+      'Parcourez des lieux, circuits et événements sélectionnés. Recherchez et filtrez pour trouver ce qu\'il vous faut.';
+
+  @override
+  String get appTutorialProfileTitle => 'Profil et compte';
+
+  @override
+  String get appTutorialProfileDesc =>
+      'Accédez à votre profil, préférences et réglages. Connectez-vous pour synchroniser voyages et plans IA.';
+
+  @override
+  String get appTutorialNavExploreDesc =>
+      'Votre accueil pour attractions, restaurants, hôtels et recommandations triées sur le volet.';
+
+  @override
+  String get appTutorialNavCommunityDesc =>
+      'Votre fil—publications et reels des lieux que vous suivez, au même endroit.';
+
+  @override
+  String get appTutorialNavMapDesc =>
+      'Explorez la carte interactive et trouvez des lieux à proximité avec une navigation précise.';
+
+  @override
+  String get appTutorialNavAiDesc =>
+      'Laissez l\'IA construire un itinéraire adapté à vos dates et à votre rythme.';
+
+  @override
+  String get appTutorialNavTripsDesc =>
+      'Planifiez et organisez vos voyages—ajoutez lieux et événements, tout dans un seul itinéraire.';
+
+  @override
+  String get aiPlannerAskAiChangeStop =>
+      'Demander à l’IA de changer cette étape';
+
+  @override
+  String get aiPlannerAskAiChangeStopTitle => 'Modifier cette étape avec l’IA';
+
+  @override
+  String get aiPlannerAskAiChangeStopSubtitle =>
+      'Décrivez ce que vous voulez à la place — plus calme, autre style, histoire, famille…';
+
+  @override
+  String get aiPlannerAskAiChangeStopHint =>
+      'ex. Plus calme, moins de monde, adapté aux photos…';
+
+  @override
+  String get aiPlannerAskAiChangeStopSend => 'Envoyer à l’IA';
+
+  @override
+  String get aiPlannerRefineNeedPlan =>
+      'Générez d’abord un plan, puis vous pourrez demander à l’IA de modifier une étape.';
+
+  @override
+  String aiPlannerReplaceStopUserMessage(
+      String placeName, int day, String time, String request) {
+    return 'Remplacez uniquement l’étape « $placeName » le jour $day à $time. Ma demande : $request. Gardez toutes les autres étapes identiques (mêmes lieux, horaires et jours). Renvoyez un PLAN_JSON complet en ne modifiant qu’une seule étape.';
+  }
 }

@@ -202,6 +202,7 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
             );
             return _FeedWarmup(
               child: ShowCaseWidget(
+                enableAutoScroll: true,
                 builder: (context) => Semantics(
                   container: true,
                   label: l10n?.appRootSemanticsLabel ??
