@@ -1,5 +1,5 @@
-# Google Maps and other plugins require iOS 14+ (see flutter.dev/to/ios-deploy)
-platform :ios, '14.0'
+# Google Maps (14+), mobile_scanner / MLKit (15.5+ per plugin podspec)
+platform :ios, '15.5'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
