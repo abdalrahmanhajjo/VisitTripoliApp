@@ -1253,7 +1253,53 @@ class AppLocalizationsEn extends AppLocalizations {
   String get session => 'Session';
 
   @override
-  String get developerCredit => 'Developed by Abdalrahman Hajjo';
+  String get developerCredit => 'Design & experience — Abdalrahman Hajjo';
+
+  @override
+  String get profileFavoritesTitle => 'Favorites';
+
+  @override
+  String get profileFavoritesMeta => 'Places, events & tours you saved';
+
+  @override
+  String get favoritesSectionPlaces => 'Places';
+
+  @override
+  String get favoritesSectionEvents => 'Events';
+
+  @override
+  String get favoritesSectionTours => 'Tours';
+
+  @override
+  String get postCaptionRequired => 'Please add a caption before posting.';
+
+  @override
+  String get openDeviceLocationSettings => 'Location settings';
+
+  @override
+  String get profileBookingsCardSubtitle => 'Reservations for places and tours';
+
+  @override
+  String get profileBadgesCardSubtitle => 'Rewards from visiting places';
+
+  @override
+  String get favoritesEmptyTitle => 'Nothing saved yet';
+
+  @override
+  String get favoritesEmptyBody =>
+      'Save places, events, or tours with the heart — they all appear here together.';
+
+  @override
+  String get profileLoadFailed =>
+      'Could not load. Check your connection and try again.';
+
+  @override
+  String profilePlacesCheckIns(int count) {
+    return '$count places checked in';
+  }
+
+  @override
+  String get postCaptionHelper => 'Required — add a short description';
 
   @override
   String get profileStoredLocally =>

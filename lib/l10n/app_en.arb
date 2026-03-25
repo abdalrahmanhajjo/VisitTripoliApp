@@ -395,7 +395,26 @@
   "feedbackNoted": "Feedback noted. We will keep the app gentle and simple.",
   "happyEnjoying": "Happy you are enjoying Visit Tripoli 💙",
   "session": "Session",
-  "developerCredit": "Developed by Abdalrahman Hajjo",
+  "developerCredit": "Design & experience — Abdalrahman Hajjo",
+  "profileFavoritesTitle": "Favorites",
+  "profileFavoritesMeta": "Places, events & tours you saved",
+  "favoritesSectionPlaces": "Places",
+  "favoritesSectionEvents": "Events",
+  "favoritesSectionTours": "Tours",
+  "postCaptionRequired": "Please add a caption before posting.",
+  "openDeviceLocationSettings": "Location settings",
+  "profileBookingsCardSubtitle": "Reservations for places and tours",
+  "profileBadgesCardSubtitle": "Rewards from visiting places",
+  "favoritesEmptyTitle": "Nothing saved yet",
+  "favoritesEmptyBody": "Save places, events, or tours with the heart — they all appear here together.",
+  "profileLoadFailed": "Could not load. Check your connection and try again.",
+  "profilePlacesCheckIns": "{count} places checked in",
+  "@profilePlacesCheckIns": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "postCaptionHelper": "Required — add a short description",
   "profileStoredLocally": "This profile is stored locally. You can clear it anytime.",
   "explorer": "Explorer",
   "memberSince": "Member since",

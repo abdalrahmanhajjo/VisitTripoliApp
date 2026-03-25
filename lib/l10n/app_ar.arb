@@ -393,7 +393,26 @@
   "feedbackNoted": "تم تسجيل الملاحظات. سنبقي التطبيق لطيفاً وبسيطاً.",
   "happyEnjoying": "سعداء أنك تستمتع بزيارة طرابلس 💙",
   "session": "الجلسة",
-  "developerCredit": "التطوير: عبدالرحمن حجّو",
+  "developerCredit": "التصميم وتجربة الاستخدام — عبدالرحمن حجّو",
+  "profileFavoritesTitle": "المفضّلة",
+  "profileFavoritesMeta": "أماكن وفعّاليات وجولات حفظتَها",
+  "favoritesSectionPlaces": "الأماكن",
+  "favoritesSectionEvents": "الفعّاليات",
+  "favoritesSectionTours": "الجولات",
+  "postCaptionRequired": "يرجى كتابة تعليق قبل النشر.",
+  "openDeviceLocationSettings": "إعدادات الموقع",
+  "profileBookingsCardSubtitle": "حجوزات للأماكن والجولات",
+  "profileBadgesCardSubtitle": "مكافآت من زيارة الأماكن",
+  "favoritesEmptyTitle": "لا مفضّلات بعد",
+  "favoritesEmptyBody": "احفظ الأماكن أو الفعّاليات أو الجولات بزرّ القلب — تظهر كلها هنا.",
+  "profileLoadFailed": "تعذّر التحميل. تحقّق من الاتصال وحاول مجدداً.",
+  "profilePlacesCheckIns": "{count} أماكن تمّت زيارتها",
+  "@profilePlacesCheckIns": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "postCaptionHelper": "مطلوب — أضف وصفاً قصيراً",
   "profileStoredLocally": "هذا الملف الشخصي مخزّن محلياً. يمكنك مسحه في أي وقت.",
   "explorer": "مستكشف",
   "memberSince": "عضو منذ",

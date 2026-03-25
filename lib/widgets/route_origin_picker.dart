@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
@@ -220,14 +221,30 @@ class _RouteOriginPickerState extends State<RouteOriginPicker> {
 
                 final pos = mapProvider.currentPosition;
                 if (pos == null) {
+                  final errRaw = mapProvider.lastLocationError;
+                  final msg = (errRaw != null && errRaw.isNotEmpty)
+                      ? errRaw
+                      : l10n.locationUnavailable;
+                  final lower = msg.toLowerCase();
+                  final canOpenSettings = lower.contains('disabled') ||
+                      lower.contains('denied') ||
+                      lower.contains('permission');
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(
-                        mapProvider.lastLocationError != null &&
-                                mapProvider.lastLocationError!.isNotEmpty
-                            ? mapProvider.lastLocationError!
-                            : l10n.locationUnavailable,
-                      ),
+                      content: Text(msg),
+                      action: canOpenSettings
+                          ? SnackBarAction(
+                              label: l10n.openDeviceLocationSettings,
+                              onPressed: () async {
+                                if (lower.contains('permanently')) {
+                                  await Geolocator.openAppSettings();
+                                } else {
+                                  await Geolocator.openLocationSettings();
+                                }
+                              },
+                            )
+                          : null,
                     ),
                   );
                   return;

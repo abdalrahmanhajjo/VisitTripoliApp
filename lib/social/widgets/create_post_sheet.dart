@@ -195,6 +195,10 @@ class CreatePostSheetState extends State<CreatePostSheet> {
         return;
       }
     }
+    if (_captionController.text.trim().isEmpty) {
+      AppSnackBars.showError(context, AppLocalizations.of(context)!.postCaptionRequired);
+      return;
+    }
 
     setState(() => _posting = true);
     try {
@@ -214,7 +218,7 @@ class CreatePostSheetState extends State<CreatePostSheet> {
       final post = await FeedService.instance.createPost(
         authToken: widget.authToken,
         placeId: placeId,
-        caption: _captionController.text.trim().isEmpty ? null : _captionController.text.trim(),
+        caption: _captionController.text.trim(),
         authorName: widget.userName,
         imageFiles: imageFiles ?? (_coverBytes != null ? [(bytes: _coverBytes!.toList(), filename: _coverFilename)] : null),
         videoBytes: isVideoMode ? _videoBytes!.toList() : null,
@@ -478,6 +482,8 @@ class CreatePostSheetState extends State<CreatePostSheet> {
               maxLines: 4,
               decoration: InputDecoration(
                 hintText: l10n.whatsOnYourMind,
+                helperText: l10n.postCaptionHelper,
+                helperMaxLines: 2,
                 filled: true,
                 fillColor: Colors.white,
                 border: OutlineInputBorder(

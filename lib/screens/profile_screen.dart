@@ -9,7 +9,11 @@ import '../config/api_config.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../providers/places_provider.dart';
+import '../providers/events_provider.dart';
+import '../providers/tours_provider.dart';
 import '../providers/trips_provider.dart';
+import '../models/event.dart';
+import '../models/tour.dart';
 import '../providers/language_provider.dart';
 import '../providers/profile_provider.dart';
 import '../theme/app_theme.dart';
@@ -145,6 +149,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final profile = Provider.of<ProfileProvider>(context);
     final places = Provider.of<PlacesProvider>(context);
     final trips = Provider.of<TripsProvider>(context);
+    final events = Provider.of<EventsProvider>(context);
+    final toursP = Provider.of<ToursProvider>(context);
     final language = Provider.of<LanguageProvider>(context);
 
     // Load profile from API for logged-in users so avatar and data come from database (persists after reload)
@@ -180,6 +186,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final savedCount = places.savedPlaces.length;
     final tripCount = trips.trips.length;
+    final favoritesCount =
+        savedCount + events.savedEvents.length + toursP.savedTours.length;
 
     final hp = _ProfileResponsive.horizontalPadding(context);
     final bottomPad = _ProfileResponsive.isSmallPhone(context) ? 20.0 : 28.0;
@@ -242,10 +250,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SizedBox(height: _ProfileResponsive.sectionGap(context)),
                   _ProfileStats(
                     trips: tripCount,
-                    savedPlaces: savedCount,
+                    favoritesCount: favoritesCount,
                     onTripsTap: () => _showTripsModal(context),
-                    onSavedTap: () => _showSavedPlacesModal(context),
+                    onFavoritesTap: () => _showFavoritesModal(context),
                   ),
+                  if (auth.isLoggedIn && !auth.isGuest && auth.authToken != null) ...[
+                    SizedBox(height: _ProfileResponsive.sectionGap(context)),
+                    _ProfileBookingsBadgesRow(
+                      onBookings: () => _showBookingsModal(context, auth.authToken!),
+                      onBadges: () => _showBadgesModal(context, auth.authToken!),
+                    ),
+                  ],
                   SizedBox(height: _ProfileResponsive.sectionGap(context)),
                   _ProfileAccountDetails(
                     profile: profile,
@@ -285,6 +300,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     languageProvider: language,
                     authToken: auth.isGuest ? null : auth.authToken,
                     showAccountLinks: auth.isLoggedIn && !auth.isGuest,
+                    showTechnicalAppSettings: auth.isAdmin,
                   ),
                   SizedBox(height: _ProfileResponsive.sectionGap(context)),
                   _ProfileRateCard(
@@ -293,6 +309,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onSendFeedback: () => _sendFeedbackEmail(profile),
                   ),
                   SizedBox(height: _ProfileResponsive.sectionGap(context)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Center(
+                      child: Text(
+                        AppLocalizations.of(context)!.developerCredit,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          height: 1.4,
+                          color: AppTheme.textTertiary,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.15,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: _ProfileResponsive.sectionGap(context) * 0.65),
                     _ProfileSessionCard(
                       onLogout: () async {
                         await Provider.of<AuthProvider>(context, listen: false)
@@ -414,48 +447,609 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _showSavedPlacesModal(BuildContext context) {
+  void _showFavoritesModal(BuildContext context) {
     final placesProvider = Provider.of<PlacesProvider>(context, listen: false);
+    final events = Provider.of<EventsProvider>(context, listen: false);
+    final tours = Provider.of<ToursProvider>(context, listen: false);
+    final l10n = AppLocalizations.of(context)!;
     final saved = placesProvider.savedPlaces;
-    showModalBottomSheet(
+    final savedEv = events.savedEvents;
+    final savedTr = tours.savedTours;
+    final isEmpty =
+        saved.isEmpty && savedEv.isEmpty && savedTr.isEmpty;
+
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _ProfileListSheet(
-        title: AppLocalizations.of(context)!.savedPlaces,
-        isEmpty: saved.isEmpty,
-        emptyIcon: FontAwesomeIcons.heart,
-        emptyTitle: AppLocalizations.of(context)!.noSavedPlaces,
-        emptySubtitle: AppLocalizations.of(context)!.favoritesAndTripPlaces,
-        itemCount: saved.length,
-        itemBuilder: (context, index) {
-          final p = saved[index];
-          return ListTile(
-            leading: p.images.isNotEmpty
-                ? SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: AppImage(
-                        src: p.images.first,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => _placeholderIcon(48),
-                      ),
+      builder: (ctx) {
+        final sheetH = MediaQuery.sizeOf(ctx).height * 0.88;
+        final bottomInset = MediaQuery.paddingOf(ctx).bottom;
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: SizedBox(
+            height: sheetH,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x22000000),
+                    blurRadius: 24,
+                    offset: Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.borderColor,
+                      borderRadius: BorderRadius.circular(999),
                     ),
-                  )
-                : _placeholderIcon(48),
-            title: Text(p.name,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(p.location),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.pop(ctx);
-              context.push('/place/${p.id}');
-            },
-          );
-        },
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      _ProfileResponsive.horizontalPadding(ctx),
+                      16,
+                      _ProfileResponsive.horizontalPadding(ctx),
+                      8,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.profileFavoritesTitle,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip:
+                              MaterialLocalizations.of(ctx).closeButtonTooltip,
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: isEmpty
+                        ? Center(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(28, 8, 28, 32),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(FontAwesomeIcons.heart,
+                                      size: 56,
+                                      color: AppTheme.textTertiary),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    l10n.favoritesEmptyTitle,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppTheme.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    l10n.favoritesEmptyBody,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      height: 1.45,
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : ListView(
+                  padding: EdgeInsets.fromLTRB(
+                    _ProfileResponsive.horizontalPadding(ctx),
+                    0,
+                    _ProfileResponsive.horizontalPadding(ctx),
+                    24 + MediaQuery.paddingOf(ctx).bottom,
+                  ),
+                  children: [
+                    if (saved.isNotEmpty) ...[
+                      _favoritesSectionHeader(l10n.favoritesSectionPlaces),
+                      ...saved.map((p) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: p.images.isNotEmpty
+                                ? SizedBox(
+                                    width: 48,
+                                    height: 48,
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: AppImage(
+                                        src: p.images.first,
+                                        fit: BoxFit.cover,
+                                        errorWidget: (_, __, ___) =>
+                                            _placeholderIcon(48),
+                                      ),
+                                    ),
+                                  )
+                                : _placeholderIcon(48),
+                            title: Text(p.name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
+                            subtitle: Text(p.location),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              context.push('/place/${p.id}');
+                            },
+                          )),
+                      const SizedBox(height: 8),
+                    ],
+                    if (savedEv.isNotEmpty) ...[
+                      _favoritesSectionHeader(l10n.favoritesSectionEvents),
+                      ...savedEv.map((Event e) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: e.image != null && e.image!.isNotEmpty
+                                    ? AppImage(
+                                        src: e.image!,
+                                        fit: BoxFit.cover,
+                                        errorWidget: (_, __, ___) =>
+                                            _placeholderIcon(48),
+                                      )
+                                    : _placeholderIcon(48),
+                              ),
+                            ),
+                            title: Text(e.name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
+                            subtitle: Text(e.location,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              context.push('/event/${e.id}');
+                            },
+                          )),
+                      const SizedBox(height: 8),
+                    ],
+                    if (savedTr.isNotEmpty) ...[
+                      _favoritesSectionHeader(l10n.favoritesSectionTours),
+                      ...savedTr.map((Tour t) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: t.image.isNotEmpty
+                                    ? AppImage(
+                                        src: t.image,
+                                        fit: BoxFit.cover,
+                                        errorWidget: (_, __, ___) =>
+                                            _placeholderIcon(48),
+                                      )
+                                    : _placeholderIcon(48),
+                              ),
+                            ),
+                            title: Text(t.name,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600)),
+                            subtitle: Text(t.duration),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              context.push('/tour/${t.id}');
+                            },
+                          )),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+      },
+    );
+  }
+
+  Widget _favoritesSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 8),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: AppTheme.textSecondary,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+
+  void _showBookingsModal(BuildContext context, String token) {
+    final l10n = AppLocalizations.of(context)!;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final h = MediaQuery.sizeOf(ctx).height * 0.85;
+        final bottomInset = MediaQuery.paddingOf(ctx).bottom;
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: SizedBox(
+            height: h,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x22000000),
+                    blurRadius: 20,
+                    offset: Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.borderColor,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.myBookings,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: FutureBuilder<List<dynamic>>(
+                      future: ApiService.instance.getBookings(token),
+                      builder: (context, snap) {
+                  if (snap.connectionState != ConnectionState.done) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snap.hasError) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          l10n.profileLoadFailed,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  final list = snap.data ?? [];
+                  if (list.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          l10n.bookingsEmptyHint,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final b = list[i] as Map<String, dynamic>;
+                      final title = (b['place_name'] ?? b['tour_name'] ?? '')
+                          .toString()
+                          .trim();
+                      final date =
+                          (b['booking_date'] ?? '').toString();
+                      final slot =
+                          (b['time_slot'] ?? '').toString();
+                      final status =
+                          (b['status'] ?? '').toString();
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor:
+                              AppTheme.primaryColor.withValues(alpha: 0.12),
+                          child: const Icon(FontAwesomeIcons.calendarCheck,
+                              size: 18, color: AppTheme.primaryColor),
+                        ),
+                        title: Text(
+                          title.isEmpty ? '—' : title,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          [
+                            if (date.isNotEmpty) date,
+                            if (slot.isNotEmpty) slot,
+                            if (status.isNotEmpty) status,
+                          ].join(' · '),
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      );
+                    },
+                  );
+                },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showBadgesModal(BuildContext context, String token) {
+    final l10n = AppLocalizations.of(context)!;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final h = MediaQuery.sizeOf(ctx).height * 0.88;
+        final bottomInset = MediaQuery.paddingOf(ctx).bottom;
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: SizedBox(
+            height: h,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x22000000),
+                    blurRadius: 20,
+                    offset: Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.borderColor,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            l10n.myBadges,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: FutureBuilder<Map<String, dynamic>>(
+                      future: ApiService.instance.getMyBadges(token),
+                      builder: (context, snap) {
+                  if (snap.connectionState != ConnectionState.done) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snap.hasError) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          l10n.profileLoadFailed,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  final data = snap.data ?? {};
+                  final rawBadges = data['badges'];
+                  final badges = rawBadges is List ? rawBadges : <dynamic>[];
+                  final placeCountRaw = data['placesCheckedIn'];
+                  final checkInCount = placeCountRaw is num
+                      ? placeCountRaw.toInt()
+                      : int.tryParse('$placeCountRaw') ?? 0;
+                  if (badges.isEmpty) {
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          if (checkInCount > 0)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(14),
+                              margin: const EdgeInsets.only(bottom: 16),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor
+                                    .withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Text(
+                                l10n.profilePlacesCheckIns(checkInCount),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                            ),
+                          const Icon(FontAwesomeIcons.trophy,
+                              size: 48, color: AppTheme.textTertiary),
+                          const SizedBox(height: 12),
+                          Text(
+                            l10n.badgesEmptyHint,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AppTheme.textSecondary,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                    children: [
+                      if (checkInCount > 0)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
+                          margin: const EdgeInsets.only(bottom: 14),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppTheme.primaryColor.withValues(alpha: 0.12),
+                                AppTheme.primaryDark.withValues(alpha: 0.08),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color:
+                                  AppTheme.primaryColor.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(FontAwesomeIcons.locationDot,
+                                  color: AppTheme.primaryColor),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  l10n.profilePlacesCheckIns(checkInCount),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ...badges.map((raw) {
+                        final m = raw as Map<String, dynamic>;
+                        final name = (m['name'] ?? '').toString();
+                        final icon = (m['icon'] ?? '🏅').toString();
+                        final desc =
+                            (m['description'] ?? '').toString();
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceVariant.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppTheme.borderColor),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(icon, style: const TextStyle(fontSize: 32)),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    if (desc.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        desc,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppTheme.textSecondary,
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  );
+                },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -985,15 +1579,15 @@ class _ProfileBadge extends StatelessWidget {
 
 class _ProfileStats extends StatelessWidget {
   final int trips;
-  final int savedPlaces;
+  final int favoritesCount;
   final VoidCallback onTripsTap;
-  final VoidCallback onSavedTap;
+  final VoidCallback onFavoritesTap;
 
   const _ProfileStats({
     required this.trips,
-    required this.savedPlaces,
+    required this.favoritesCount,
     required this.onTripsTap,
-    required this.onSavedTap,
+    required this.onFavoritesTap,
   });
 
   @override
@@ -1013,13 +1607,183 @@ class _ProfileStats extends StatelessWidget {
         SizedBox(width: gap),
         Expanded(
           child: _StatCard(
-            label: AppLocalizations.of(context)!.savedPlaces,
-            value: savedPlaces.toString(),
-            meta: AppLocalizations.of(context)!.favoritesAndTripPlaces,
-            onTap: onSavedTap,
+            label: AppLocalizations.of(context)!.profileFavoritesTitle,
+            value: favoritesCount.toString(),
+            meta: AppLocalizations.of(context)!.profileFavoritesMeta,
+            onTap: onFavoritesTap,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ProfileBookingsBadgesRow extends StatelessWidget {
+  final VoidCallback onBookings;
+  final VoidCallback onBadges;
+
+  const _ProfileBookingsBadgesRow({
+    required this.onBookings,
+    required this.onBadges,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final compact = _ProfileResponsive.isCompact(context);
+    final gap = compact ? 8.0 : 10.0;
+    final l10n = AppLocalizations.of(context)!;
+
+    Widget bookingsCard() {
+      return Material(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onBookings,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: EdgeInsets.all(compact ? 14 : 18),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border:
+                  Border.all(color: AppTheme.borderColor.withValues(alpha: 0.85)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.textPrimary.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(FontAwesomeIcons.calendarCheck,
+                      color: AppTheme.primaryColor, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.myBookings,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        l10n.profileBookingsCardSubtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textTertiary,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppTheme.textTertiary),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget badgesCard() {
+      return Material(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onBadges,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: EdgeInsets.all(compact ? 14 : 18),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border:
+                  Border.all(color: AppTheme.borderColor.withValues(alpha: 0.85)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.textPrimary.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFB020).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(FontAwesomeIcons.trophy,
+                      color: Color(0xFFB45309), size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.myBadges,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        l10n.profileBadgesCardSubtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textTertiary,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppTheme.textTertiary),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, c) {
+        final narrow = c.maxWidth < 380;
+        final tileW = narrow
+            ? c.maxWidth
+            : (c.maxWidth - gap).clamp(0.0, double.infinity) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            SizedBox(width: tileW, child: bookingsCard()),
+            SizedBox(width: tileW, child: badgesCard()),
+          ],
+        );
+      },
     );
   }
 }
@@ -1508,12 +2272,15 @@ class _ProfileSettings extends StatelessWidget {
   final String? authToken;
   /// Logged-in (non-guest): show AI Planner shortcut in settings.
   final bool showAccountLinks;
+  /// Server-flagged admins: technical app settings (API URL, SMTP, etc.).
+  final bool showTechnicalAppSettings;
 
   const _ProfileSettings({
     required this.profile,
     required this.languageProvider,
     this.authToken,
     this.showAccountLinks = false,
+    this.showTechnicalAppSettings = false,
   });
 
   @override
@@ -1681,19 +2448,20 @@ class _ProfileSettings extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => context.push('/help'),
               ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.settings_rounded, color: cs.primary),
-                title: Text(
-                  l10n.openAppSettings,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
+              if (showTechnicalAppSettings)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.settings_rounded, color: cs.primary),
+                  title: Text(
+                    l10n.openAppSettings,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
                   ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => context.push('/settings'),
                 ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => context.push('/settings'),
-              ),
               if (showAccountLinks) ...[
                 ListTile(
                   contentPadding: EdgeInsets.zero,

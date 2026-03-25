@@ -210,7 +210,8 @@ router.post('/register', sanitizeAuthInput, async (req, res) => {
         email: user.email,
         emailVerified: false,
         onboardingCompleted: false,
-        isBusinessOwner: false
+        isBusinessOwner: false,
+        isAdmin: false,
       }
     });
   } catch (err) {
@@ -242,6 +243,7 @@ router.post('/login', sanitizeAuthInput, async (req, res) => {
     }
     const result = await query(
       `SELECT u.id, u.email, u.name, u.password_hash, u.email_verified, u.is_business_owner,
+        COALESCE(u.is_admin, false) AS is_admin,
         COALESCE(p.onboarding_completed, false) AS onboarding_completed
        FROM users u
        LEFT JOIN profiles p ON p.user_id = u.id
@@ -272,7 +274,8 @@ router.post('/login', sanitizeAuthInput, async (req, res) => {
         email: user.email,
         emailVerified: true,
         onboardingCompleted: user.onboarding_completed === true,
-        isBusinessOwner: user.is_business_owner === true
+        isBusinessOwner: user.is_business_owner === true,
+        isAdmin: user.is_admin === true,
       }
     });
   } catch (err) {
@@ -302,6 +305,7 @@ router.post('/google', async (req, res) => {
 
     let result = await query(
       `SELECT u.id, u.email, u.name, u.is_business_owner,
+        COALESCE(u.is_admin, false) AS is_admin,
         COALESCE(p.onboarding_completed, false) AS onboarding_completed
        FROM users u
        LEFT JOIN profiles p ON p.user_id = u.id
@@ -348,6 +352,7 @@ router.post('/google', async (req, res) => {
         email: user.email,
         onboardingCompleted: user.onboarding_completed === true,
         isBusinessOwner: user.is_business_owner === true,
+        isAdmin: user.is_admin === true,
       },
     });
   } catch (err) {
@@ -399,6 +404,7 @@ router.post('/apple', async (req, res) => {
 
     let result = await query(
       `SELECT u.id, u.email, u.name, u.is_business_owner,
+        COALESCE(u.is_admin, false) AS is_admin,
         COALESCE(p.onboarding_completed, false) AS onboarding_completed
        FROM users u
        LEFT JOIN profiles p ON p.user_id = u.id
@@ -445,6 +451,7 @@ router.post('/apple', async (req, res) => {
         email: user.email,
         onboardingCompleted: user.onboarding_completed === true,
         isBusinessOwner: user.is_business_owner === true,
+        isAdmin: user.is_admin === true,
       },
     });
   } catch (err) {
@@ -480,7 +487,9 @@ router.post('/verify-email', async (req, res) => {
       throw e;
     }
     const userResult = await query(
-      `SELECT u.id, u.email, u.name, u.is_business_owner, COALESCE(p.onboarding_completed, false) AS onboarding_completed
+      `SELECT u.id, u.email, u.name, u.is_business_owner,
+        COALESCE(u.is_admin, false) AS is_admin,
+        COALESCE(p.onboarding_completed, false) AS onboarding_completed
        FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id = $1`,
       [row.user_id]
     );
@@ -495,6 +504,7 @@ router.post('/verify-email', async (req, res) => {
         emailVerified: true,
         onboardingCompleted: user.onboarding_completed === true,
         isBusinessOwner: user.is_business_owner === true,
+        isAdmin: user.is_admin === true,
       },
     });
   } catch (err) {

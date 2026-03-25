@@ -1270,7 +1270,56 @@ class AppLocalizationsFr extends AppLocalizations {
   String get session => 'Session';
 
   @override
-  String get developerCredit => 'Développé par Abdalrahman Hajjo';
+  String get developerCredit => 'Design et expérience — Abdalrahman Hajjo';
+
+  @override
+  String get profileFavoritesTitle => 'Favoris';
+
+  @override
+  String get profileFavoritesMeta =>
+      'Lieux, événements et circuits enregistrés';
+
+  @override
+  String get favoritesSectionPlaces => 'Lieux';
+
+  @override
+  String get favoritesSectionEvents => 'Événements';
+
+  @override
+  String get favoritesSectionTours => 'Circuits';
+
+  @override
+  String get postCaptionRequired => 'Ajoutez une légende avant de publier.';
+
+  @override
+  String get openDeviceLocationSettings => 'Réglages de localisation';
+
+  @override
+  String get profileBookingsCardSubtitle =>
+      'Réservations pour lieux et circuits';
+
+  @override
+  String get profileBadgesCardSubtitle => 'Récompenses en visitant des lieux';
+
+  @override
+  String get favoritesEmptyTitle => 'Aucun favori pour l’instant';
+
+  @override
+  String get favoritesEmptyBody =>
+      'Enregistrez lieux, événements ou circuits avec le cœur — tout apparaît ici.';
+
+  @override
+  String get profileLoadFailed =>
+      'Chargement impossible. Vérifiez votre connexion.';
+
+  @override
+  String profilePlacesCheckIns(int count) {
+    return '$count lieux visités';
+  }
+
+  @override
+  String get postCaptionHelper =>
+      'Obligatoire — ajoutez une courte description';
 
   @override
   String get profileStoredLocally =>

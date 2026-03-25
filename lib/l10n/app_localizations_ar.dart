@@ -1243,7 +1243,53 @@ class AppLocalizationsAr extends AppLocalizations {
   String get session => 'الجلسة';
 
   @override
-  String get developerCredit => 'التطوير: عبدالرحمن حجّو';
+  String get developerCredit => 'التصميم وتجربة الاستخدام — عبدالرحمن حجّو';
+
+  @override
+  String get profileFavoritesTitle => 'المفضّلة';
+
+  @override
+  String get profileFavoritesMeta => 'أماكن وفعّاليات وجولات حفظتَها';
+
+  @override
+  String get favoritesSectionPlaces => 'الأماكن';
+
+  @override
+  String get favoritesSectionEvents => 'الفعّاليات';
+
+  @override
+  String get favoritesSectionTours => 'الجولات';
+
+  @override
+  String get postCaptionRequired => 'يرجى كتابة تعليق قبل النشر.';
+
+  @override
+  String get openDeviceLocationSettings => 'إعدادات الموقع';
+
+  @override
+  String get profileBookingsCardSubtitle => 'حجوزات للأماكن والجولات';
+
+  @override
+  String get profileBadgesCardSubtitle => 'مكافآت من زيارة الأماكن';
+
+  @override
+  String get favoritesEmptyTitle => 'لا مفضّلات بعد';
+
+  @override
+  String get favoritesEmptyBody =>
+      'احفظ الأماكن أو الفعّاليات أو الجولات بزرّ القلب — تظهر كلها هنا.';
+
+  @override
+  String get profileLoadFailed =>
+      'تعذّر التحميل. تحقّق من الاتصال وحاول مجدداً.';
+
+  @override
+  String profilePlacesCheckIns(int count) {
+    return '$count أماكن تمّت زيارتها';
+  }
+
+  @override
+  String get postCaptionHelper => 'مطلوب — أضف وصفاً قصيراً';
 
   @override
   String get profileStoredLocally =>

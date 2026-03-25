@@ -392,7 +392,26 @@
   "feedbackNoted": "Retour pris en compte. Nous garderons l'application douce et simple.",
   "happyEnjoying": "Content que vous appréciez Visit Tripoli 💙",
   "session": "Session",
-  "developerCredit": "Développé par Abdalrahman Hajjo",
+  "developerCredit": "Design et expérience — Abdalrahman Hajjo",
+  "profileFavoritesTitle": "Favoris",
+  "profileFavoritesMeta": "Lieux, événements et circuits enregistrés",
+  "favoritesSectionPlaces": "Lieux",
+  "favoritesSectionEvents": "Événements",
+  "favoritesSectionTours": "Circuits",
+  "postCaptionRequired": "Ajoutez une légende avant de publier.",
+  "openDeviceLocationSettings": "Réglages de localisation",
+  "profileBookingsCardSubtitle": "Réservations pour lieux et circuits",
+  "profileBadgesCardSubtitle": "Récompenses en visitant des lieux",
+  "favoritesEmptyTitle": "Aucun favori pour l’instant",
+  "favoritesEmptyBody": "Enregistrez lieux, événements ou circuits avec le cœur — tout apparaît ici.",
+  "profileLoadFailed": "Chargement impossible. Vérifiez votre connexion.",
+  "profilePlacesCheckIns": "{count} lieux visités",
+  "@profilePlacesCheckIns": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "postCaptionHelper": "Obligatoire — ajoutez une courte description",
   "profileStoredLocally": "Ce profil est stocké localement. Vous pouvez l'effacer à tout moment.",
   "explorer": "Explorateur",
   "memberSince": "Membre depuis",

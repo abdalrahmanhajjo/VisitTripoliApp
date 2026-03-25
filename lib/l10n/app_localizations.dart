@@ -2407,8 +2407,92 @@ abstract class AppLocalizations {
   /// No description provided for @developerCredit.
   ///
   /// In en, this message translates to:
-  /// **'Developed by Abdalrahman Hajjo'**
+  /// **'Design & experience — Abdalrahman Hajjo'**
   String get developerCredit;
+
+  /// No description provided for @profileFavoritesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get profileFavoritesTitle;
+
+  /// No description provided for @profileFavoritesMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'Places, events & tours you saved'**
+  String get profileFavoritesMeta;
+
+  /// No description provided for @favoritesSectionPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Places'**
+  String get favoritesSectionPlaces;
+
+  /// No description provided for @favoritesSectionEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get favoritesSectionEvents;
+
+  /// No description provided for @favoritesSectionTours.
+  ///
+  /// In en, this message translates to:
+  /// **'Tours'**
+  String get favoritesSectionTours;
+
+  /// No description provided for @postCaptionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please add a caption before posting.'**
+  String get postCaptionRequired;
+
+  /// No description provided for @openDeviceLocationSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Location settings'**
+  String get openDeviceLocationSettings;
+
+  /// No description provided for @profileBookingsCardSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reservations for places and tours'**
+  String get profileBookingsCardSubtitle;
+
+  /// No description provided for @profileBadgesCardSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rewards from visiting places'**
+  String get profileBadgesCardSubtitle;
+
+  /// No description provided for @favoritesEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing saved yet'**
+  String get favoritesEmptyTitle;
+
+  /// No description provided for @favoritesEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Save places, events, or tours with the heart — they all appear here together.'**
+  String get favoritesEmptyBody;
+
+  /// No description provided for @profileLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load. Check your connection and try again.'**
+  String get profileLoadFailed;
+
+  /// No description provided for @profilePlacesCheckIns.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} places checked in'**
+  String profilePlacesCheckIns(int count);
+
+  /// No description provided for @postCaptionHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Required — add a short description'**
+  String get postCaptionHelper;
 
   /// No description provided for @profileStoredLocally.
   ///

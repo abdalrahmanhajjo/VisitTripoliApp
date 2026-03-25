@@ -19,7 +19,9 @@ class MapProvider extends ChangeNotifier {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw Exception('Location services are disabled.');
+        throw Exception(
+          'Location is turned off on this device. Enable it in system settings, or choose a starting point on the map.',
+        );
       }
 
       LocationPermission permission = await Geolocator.checkPermission();

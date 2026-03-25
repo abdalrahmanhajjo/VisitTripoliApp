@@ -9,6 +9,7 @@ class AuthProvider extends ChangeNotifier {
   bool _onboardingCompleted = false;
   bool _emailVerified = true;
   bool _isBusinessOwner = false;
+  bool _isAdmin = false;
   String? _userId;
   String? _userEmail;
   String? _userName;
@@ -27,6 +28,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoggedIn => _isAuthenticated && (_authToken != null || _isGuest);
   bool get emailVerified => _emailVerified;
   bool get isBusinessOwner => _isBusinessOwner;
+  bool get isAdmin => _isAdmin;
   bool get needsEmailVerification =>
       _isAuthenticated && !_isGuest && !_emailVerified;
   String? get userId => _userId;
@@ -42,6 +44,7 @@ class AuthProvider extends ChangeNotifier {
     required bool onboardingCompleted,
     required bool emailVerified,
     required bool isBusinessOwner,
+    required bool isAdmin,
     required String? userId,
     required String? userEmail,
     required String? userName,
@@ -53,6 +56,7 @@ class AuthProvider extends ChangeNotifier {
     await _prefs.setBool('onboardingCompleted', onboardingCompleted);
     await _prefs.setBool('emailVerified', emailVerified);
     await _prefs.setBool('isBusinessOwner', isBusinessOwner);
+    await _prefs.setBool('isAdmin', isAdmin);
     await _prefs.setString('userId', userId ?? '');
     await _prefs.setString('userEmail', userEmail ?? '');
     await _prefs.setString('userName', userName ?? '');
@@ -66,6 +70,7 @@ class AuthProvider extends ChangeNotifier {
     _onboardingCompleted = _prefs.getBool('onboardingCompleted') ?? false;
     _emailVerified = _prefs.getBool('emailVerified') ?? true;
     _isBusinessOwner = _prefs.getBool('isBusinessOwner') ?? false;
+    _isAdmin = _prefs.getBool('isAdmin') ?? false;
     _userId = _prefs.getString('userId');
     _userEmail = _prefs.getString('userEmail');
     _userName = _prefs.getString('userName');
@@ -101,6 +106,7 @@ class AuthProvider extends ChangeNotifier {
       _emailVerified = user?['emailVerified'] == true;
       _onboardingCompleted = user?['onboardingCompleted'] == true;
       _isBusinessOwner = user?['isBusinessOwner'] == true;
+      _isAdmin = user?['isAdmin'] == true;
 
       await _saveAuthState(
         isAuthenticated: true,
@@ -108,6 +114,7 @@ class AuthProvider extends ChangeNotifier {
         onboardingCompleted: _onboardingCompleted,
         emailVerified: _emailVerified,
         isBusinessOwner: _isBusinessOwner,
+        isAdmin: _isAdmin,
         userId: _userId,
         userEmail: _userEmail,
         userName: _userName,
@@ -170,6 +177,7 @@ class AuthProvider extends ChangeNotifier {
       _onboardingCompleted = user?['onboardingCompleted'] == true;
       _isBusinessOwner = user?['isBusinessOwner'] == true;
       _emailVerified = user?['emailVerified'] == true;
+      _isAdmin = user?['isAdmin'] == true;
 
       await _saveAuthState(
         isAuthenticated: true,
@@ -177,6 +185,7 @@ class AuthProvider extends ChangeNotifier {
         onboardingCompleted: _onboardingCompleted,
         emailVerified: _emailVerified,
         isBusinessOwner: _isBusinessOwner,
+        isAdmin: _isAdmin,
         userId: _userId,
         userEmail: _userEmail,
         userName: _userName,
@@ -213,6 +222,7 @@ class AuthProvider extends ChangeNotifier {
       onboardingCompleted: _onboardingCompleted,
       emailVerified: true,
       isBusinessOwner: false,
+      isAdmin: false,
       userId: _userId,
       userEmail: null,
       userName: _userName,
@@ -246,6 +256,7 @@ class AuthProvider extends ChangeNotifier {
       _onboardingCompleted = user?['onboardingCompleted'] == true;
       _isBusinessOwner = user?['isBusinessOwner'] == true;
       _emailVerified = true;
+      _isAdmin = user?['isAdmin'] == true;
 
       await _saveAuthState(
         isAuthenticated: true,
@@ -253,6 +264,7 @@ class AuthProvider extends ChangeNotifier {
         onboardingCompleted: _onboardingCompleted,
         emailVerified: _emailVerified,
         isBusinessOwner: _isBusinessOwner,
+        isAdmin: _isAdmin,
         userId: _userId,
         userEmail: _userEmail,
         userName: _userName,
@@ -304,6 +316,7 @@ class AuthProvider extends ChangeNotifier {
       _onboardingCompleted = user?['onboardingCompleted'] == true;
       _isBusinessOwner = user?['isBusinessOwner'] == true;
       _emailVerified = true;
+      _isAdmin = user?['isAdmin'] == true;
 
       await _saveAuthState(
         isAuthenticated: true,
@@ -311,6 +324,7 @@ class AuthProvider extends ChangeNotifier {
         onboardingCompleted: _onboardingCompleted,
         emailVerified: _emailVerified,
         isBusinessOwner: _isBusinessOwner,
+        isAdmin: _isAdmin,
         userId: _userId,
         userEmail: _userEmail,
         userName: _userName,
@@ -344,9 +358,11 @@ class AuthProvider extends ChangeNotifier {
     }
     _onboardingCompleted = user['onboardingCompleted'] == true;
     _isBusinessOwner = user['isBusinessOwner'] == true;
+    _isAdmin = user['isAdmin'] == true;
     _prefs.setString('authToken', token);
     _prefs.setBool('emailVerified', true);
     _prefs.setBool('isBusinessOwner', _isBusinessOwner);
+    _prefs.setBool('isAdmin', _isAdmin);
     _prefs.setString('userId', _userId ?? '');
     _prefs.setString('userEmail', _userEmail ?? '');
     _prefs.setString('userName', _userName ?? '');
