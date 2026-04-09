@@ -39,9 +39,11 @@ async function requireBusinessOwner(req, res, next) {
   const userId = req.user?.userId;
   if (!userId) return res.status(401).json({ error: 'Authentication required' });
   try {
-    const { query } = require('../db');
-    const r = await query('SELECT is_business_owner FROM users WHERE id = $1', [userId]);
-    const user = r.rows[0];
+    const { collection } = require('../db');
+    const user = await collection('users').findOne(
+      { id: userId },
+      { projection: { _id: 0, is_business_owner: 1 } }
+    );
     if (!user || !user.is_business_owner) {
       return res.status(403).json({ error: 'Business owner access only. Regular users cannot use this feature.' });
     }

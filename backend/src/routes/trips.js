@@ -1,6 +1,6 @@
 const express = require('express');
 const { authMiddleware } = require('../middleware/auth');
-const { query } = require('../db');
+const { collection } = require('../db');
 
 const router = express.Router();
 
@@ -10,11 +10,11 @@ router.use(authMiddleware);
 router.get('/trips', async (req, res) => {
   try {
     const userId = req.user.userId;
-    const result = await query(
-      'SELECT id, name, start_date, end_date, description, days, created_at FROM trips WHERE user_id = $1 ORDER BY start_date DESC',
-      [userId]
-    );
-    const trips = result.rows.map(row => ({
+    const rows = await collection('trips')
+      .find({ user_id: userId }, { projection: { _id: 0 } })
+      .sort({ start_date: -1 })
+      .toArray();
+    const trips = rows.map(row => ({
       id: row.id,
       name: row.name,
       startDate: row.start_date,
@@ -40,12 +40,18 @@ router.post('/trips', async (req, res) => {
     }
     const id = `trip_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const daysJson = JSON.stringify(days || []);
-    await query(
-      'INSERT INTO trips (id, user_id, name, start_date, end_date, description, days) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-      [id, userId, name, startDate, endDate, description || null, daysJson]
-    );
-    const result = await query('SELECT id, name, start_date, end_date, description, days, created_at FROM trips WHERE id = $1', [id]);
-    const row = result.rows[0];
+    await collection('trips').insertOne({
+      id,
+      user_id: userId,
+      name,
+      start_date: startDate,
+      end_date: endDate,
+      description: description || null,
+      days: Array.isArray(days) ? days : JSON.parse(daysJson),
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    const row = await collection('trips').findOne({ id }, { projection: { _id: 0 } });
     res.status(201).json({
       id: row.id,
       name: row.name,
@@ -67,14 +73,21 @@ router.put('/trips/:id', async (req, res) => {
     const userId = req.user.userId;
     const { id } = req.params;
     const { name, startDate, endDate, description, days } = req.body;
-    const result = await query(
-      'UPDATE trips SET name = COALESCE($1, name), start_date = COALESCE($2, start_date), end_date = COALESCE($3, end_date), description = COALESCE($4, description), days = COALESCE($5::jsonb, days) WHERE id = $6 AND user_id = $7 RETURNING *',
-      [name, startDate, endDate, description, days ? JSON.stringify(days) : null, id, userId]
+    const set = { updated_at: new Date() };
+    if (name !== undefined) set.name = name;
+    if (startDate !== undefined) set.start_date = startDate;
+    if (endDate !== undefined) set.end_date = endDate;
+    if (description !== undefined) set.description = description;
+    if (days !== undefined) set.days = days;
+    const result = await collection('trips').findOneAndUpdate(
+      { id, user_id: userId },
+      { $set: set },
+      { returnDocument: 'after', projection: { _id: 0 } }
     );
-    if (result.rows.length === 0) {
+    if (!result.value) {
       return res.status(404).json({ error: 'Trip not found' });
     }
-    const row = result.rows[0];
+    const row = result.value;
     res.json({
       id: row.id,
       name: row.name,
@@ -95,8 +108,8 @@ router.delete('/trips/:id', async (req, res) => {
   try {
     const userId = req.user.userId;
     const { id } = req.params;
-    const result = await query('DELETE FROM trips WHERE id = $1 AND user_id = $2 RETURNING id', [id, userId]);
-    if (result.rows.length === 0) {
+    const result = await collection('trips').deleteOne({ id, user_id: userId });
+    if (!result.deletedCount) {
       return res.status(404).json({ error: 'Trip not found' });
     }
     res.status(204).send();

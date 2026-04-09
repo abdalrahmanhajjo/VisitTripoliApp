@@ -26,7 +26,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
 const { registerRoutes } = require('./registerRoutes');
-const { query, pool } = require('./db');
+const { connectMongo, ping, closeMongo } = require('./db');
 const { AppError } = require('./utils/AppError');
 
 const app = express();
@@ -90,11 +90,12 @@ app.use(express.json({ limit: '256kb' }));
 app.use(blockSuspiciousInput);
 
 const healthDbHandler = (req, res) => {
-  query('SELECT 1')
+  ping()
     .then(() =>
       res.json({
         status: 'ok',
         db: 'connected',
+        mongo: 'enabled',
         ...(req.requestId ? { requestId: req.requestId } : {}),
       })
     )
@@ -224,13 +225,13 @@ app.use((err, req, res, next) => {
 const HOST = process.env.HOST || '0.0.0.0';
 const server = app.listen(PORT, HOST, () => {
   logger.info(`Visit Tripoli API listening`, { host: HOST, port: PORT, env: process.env.NODE_ENV || 'development' });
-  query('SELECT 1')
+  connectMongo()
     .then(() => logger.info('Database pool reachable'))
     .catch((err) => {
       const detail = err?.message || err?.code || String(err);
       logger.error('Startup DB check failed', {
         detail,
-        hint: 'Set DATABASE_URL in backend/.env; run npm run db:migrate && npm run db:seed-all',
+        hint: 'Set MONGODB_URI and MONGODB_DB_NAME in backend/.env',
       });
     });
 });
@@ -251,10 +252,15 @@ function gracefulShutdown(signal) {
   logger.info(`${signal}: closing HTTP server`);
   server.close((closeErr) => {
     if (closeErr) logger.error('Server close error', { message: closeErr.message });
-    pool.end(() => {
-      logger.info('Database pool closed');
-      process.exit(closeErr ? 1 : 0);
-    });
+    closeMongo()
+      .then(() => {
+        logger.info('Database connection closed');
+        process.exit(closeErr ? 1 : 0);
+      })
+      .catch((err) => {
+        logger.error('Database close error', { message: err?.message || String(err) });
+        process.exit(1);
+      });
   });
   setTimeout(() => {
     logger.error('Forced exit after shutdown timeout');

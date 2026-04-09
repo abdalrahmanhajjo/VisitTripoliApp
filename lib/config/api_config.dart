@@ -1,11 +1,14 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// API and third-party config. Default is the cloud API; override via --dart-define or Settings → API Server URL.
 class ApiConfig {
+  static const String _cloudBaseUrl = 'https://tripoli-explorer-api.onrender.com';
+  static const String _localDevBaseUrl = 'http://localhost:3096';
+
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://tripoli-explorer-api.onrender.com',
+    defaultValue: _cloudBaseUrl,
   );
   static const String googleApiKey =
       String.fromEnvironment('GOOGLE_API_KEY', defaultValue: '');
@@ -91,6 +94,9 @@ class ApiConfig {
   /// API base URL. Uses cloud default unless explicitly overridden.
   static String get effectiveBaseUrl {
     if (_override != null && _override!.isNotEmpty) return _override!;
+    // Fastest dev path: use local backend (Mongo/ImageKit) by default.
+    // Production builds still use cloud URL unless API_BASE_URL is provided.
+    if (!kReleaseMode) return _localDevBaseUrl;
     return baseUrl;
   }
 

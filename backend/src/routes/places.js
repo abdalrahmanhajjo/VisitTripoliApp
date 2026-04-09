@@ -1,9 +1,10 @@
 const express = require('express');
-const { query } = require('../db');
+const { collection } = require('../db');
 const { responseCache } = require('../middleware/responseCache');
 const { getRequestLang } = require('../utils/requestLang');
 const { rowToPlace, getUploadsBaseUrl } = require('../utils/placeRow');
 const { isValidPlaceId } = require('../middleware/security');
+const { loadTranslationMap, withTranslation } = require('../utils/mongoTranslations');
 
 const router = express.Router();
 
@@ -20,21 +21,28 @@ router.get('/', responseCache(3 * 60 * 1000, { includeHost: true }), async (req,
     if (categoryId && !isValidPlaceId(categoryId)) {
       return res.status(400).json({ error: 'Invalid category id' });
     }
-    const whereClause = categoryId ? ' AND p.category_id = $2' : '';
-    const params = categoryId ? [lang, categoryId] : [lang];
-    const result = await query(
-      `SELECT p.id, p.latitude, p.longitude, p.images, p.rating, p.review_count, p.hours, p.search_name, p.category_id,
-              COALESCE(pt.name, p.name) AS name, COALESCE(pt.description, p.description) AS description,
-              COALESCE(pt.location, p.location) AS location, COALESCE(pt.category, p.category) AS category,
-              COALESCE(pt.duration, p.duration) AS duration, COALESCE(pt.price, p.price) AS price,
-              COALESCE(pt.best_time, p.best_time) AS best_time, COALESCE(pt.tags, p.tags) AS tags
-       FROM places p
-       LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $1
-       WHERE 1=1${whereClause}
-       ORDER BY p.name`,
-      params,
+    const filter = categoryId ? { category_id: categoryId } : {};
+    const placesRaw = await collection('places')
+      .find(filter, { projection: { _id: 0 } })
+      .sort({ name: 1 })
+      .toArray();
+    const ids = placesRaw.map((p) => p.id).filter(Boolean);
+    const trMap = await loadTranslationMap(collection('place_translations'), 'place_id', ids, lang);
+    const places = placesRaw.map((p) =>
+      rowToPlace(
+        withTranslation(p, trMap.get(p.id), [
+          'name',
+          'description',
+          'location',
+          'category',
+          'duration',
+          'price',
+          'best_time',
+          'tags',
+        ]),
+        baseUrl
+      )
     );
-    const places = result.rows.map((r) => rowToPlace(r, baseUrl));
     res.json({ popular: places, locations: places });
   } catch (err) {
     console.error(err);
@@ -53,21 +61,30 @@ router.get('/:id', async (req, res) => {
     }
     const baseUrl = getUploadsBaseUrl(req);
     const lang = getRequestLang(req);
-    const result = await query(
-      `SELECT p.id, p.latitude, p.longitude, p.images, p.rating, p.review_count, p.hours, p.search_name, p.category_id,
-              COALESCE(pt.name, p.name) AS name, COALESCE(pt.description, p.description) AS description,
-              COALESCE(pt.location, p.location) AS location, COALESCE(pt.category, p.category) AS category,
-              COALESCE(pt.duration, p.duration) AS duration, COALESCE(pt.price, p.price) AS price,
-              COALESCE(pt.best_time, p.best_time) AS best_time, COALESCE(pt.tags, p.tags) AS tags
-       FROM places p
-       LEFT JOIN place_translations pt ON pt.place_id = p.id AND pt.lang = $1
-       WHERE p.id = $2`,
-      [lang, req.params.id],
+    const base = await collection('places').findOne(
+      { id: req.params.id },
+      { projection: { _id: 0 } }
     );
-    if (result.rows.length === 0) {
+    if (!base) {
       return res.status(404).json({ error: 'Place not found' });
     }
-    res.json(rowToPlace(result.rows[0], baseUrl));
+    const tr = lang && lang !== 'en'
+      ? await collection('place_translations').findOne(
+          { place_id: req.params.id, lang },
+          { projection: { _id: 0 } }
+        )
+      : null;
+    const row = withTranslation(base, tr, [
+      'name',
+      'description',
+      'location',
+      'category',
+      'duration',
+      'price',
+      'best_time',
+      'tags',
+    ]);
+    res.json(rowToPlace(row, baseUrl));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch place' });

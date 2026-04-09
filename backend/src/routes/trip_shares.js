@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { authMiddleware } = require('../middleware/auth');
-const { query } = require('../db');
+const { collection } = require('../db');
 
 const router = express.Router();
 
@@ -13,7 +13,10 @@ router.post('/', authMiddleware, async (req, res) => {
     const tripIdStr = (tripId || '').toString().trim();
     if (!tripIdStr) return res.status(400).json({ error: 'tripId required' });
 
-    const trip = (await query('SELECT id FROM trips WHERE id = $1 AND user_id = $2', [tripIdStr, userId])).rows[0];
+    const trip = await collection('trips').findOne(
+      { id: tripIdStr, user_id: userId },
+      { projection: { _id: 0, id: 1 } }
+    );
     if (!trip) return res.status(404).json({ error: 'Trip not found' });
 
     const shareToken = crypto.randomBytes(32).toString('hex');
@@ -23,10 +26,13 @@ router.post('/', authMiddleware, async (req, res) => {
       if (h > 0) expiresAt = new Date(Date.now() + h * 60 * 60 * 1000);
     }
 
-    await query(
-      'INSERT INTO trip_shares (trip_id, share_token, expires_at, can_edit) VALUES ($1, $2, $3, $4)',
-      [tripIdStr, shareToken, expiresAt, !!canEdit]
-    );
+    await collection('trip_shares').insertOne({
+      trip_id: tripIdStr,
+      share_token: shareToken,
+      expires_at: expiresAt,
+      can_edit: !!canEdit,
+      created_at: new Date(),
+    });
 
     const baseUrl = process.env.APP_URL || 'https://tripoli-explorer.app';
     const shareUrl = `${baseUrl}/trip-share/${shareToken}`;
@@ -44,26 +50,28 @@ router.get('/:token', async (req, res) => {
     const token = (req.params.token || '').trim();
     if (!token) return res.status(400).json({ error: 'Token required' });
 
-    const share = (await query(
-      `SELECT ts.id, ts.trip_id, ts.share_token, ts.expires_at, ts.can_edit, t.name, t.start_date, t.end_date, t.description, t.days
-       FROM trip_shares ts
-       JOIN trips t ON t.id = ts.trip_id
-       WHERE ts.share_token = $1`,
-      [token]
-    )).rows[0];
+    const share = await collection('trip_shares').findOne(
+      { share_token: token },
+      { projection: { _id: 0 } }
+    );
 
     if (!share) return res.status(404).json({ error: 'Share not found' });
     if (share.expires_at && new Date(share.expires_at) < new Date()) {
       return res.status(410).json({ error: 'Share link expired' });
     }
+    const trip = await collection('trips').findOne(
+      { id: share.trip_id },
+      { projection: { _id: 0, id: 1, name: 1, start_date: 1, end_date: 1, description: 1, days: 1 } }
+    );
+    if (!trip) return res.status(404).json({ error: 'Trip not found' });
 
     res.json({
       tripId: share.trip_id,
-      name: share.name,
-      startDate: share.start_date,
-      endDate: share.end_date,
-      description: share.description,
-      days: share.days,
+      name: trip.name,
+      startDate: trip.start_date,
+      endDate: trip.end_date,
+      description: trip.description,
+      days: trip.days,
       canEdit: share.can_edit,
     });
   } catch (err) {

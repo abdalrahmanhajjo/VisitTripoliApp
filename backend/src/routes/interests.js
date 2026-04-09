@@ -1,18 +1,13 @@
 const express = require('express');
-const { query } = require('../db');
+const { collection } = require('../db');
 const { responseCache } = require('../middleware/responseCache');
 const { getRequestLang } = require('../utils/requestLang');
+const { toArray, loadTranslationMap, withTranslation } = require('../utils/mongoTranslations');
 
 const router = express.Router();
 
 function rowToInterest(row) {
-  let tags = [];
-  if (Array.isArray(row.tags)) tags = row.tags;
-  else if (row.tags) {
-    try {
-      tags = typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || []);
-    } catch (_) { tags = []; }
-  }
+  const tags = toArray(row.tags);
   return {
     id: row.id,
     name: row.name,
@@ -29,17 +24,15 @@ function rowToInterest(row) {
 router.get('/', responseCache(), async (req, res) => {
   try {
     const lang = getRequestLang(req);
-    const result = await query(
-      `SELECT i.id, i.icon, i.color, i.count, i.popularity,
-              COALESCE(it.name, i.name) AS name,
-              COALESCE(it.description, i.description) AS description,
-              COALESCE(it.tags, i.tags) AS tags
-       FROM interests i
-       LEFT JOIN interest_translations it ON it.interest_id = i.id AND it.lang = $1
-       ORDER BY i.popularity DESC, i.name`,
-      [lang]
+    const interestsRaw = await collection('interests')
+      .find({}, { projection: { _id: 0 } })
+      .sort({ popularity: -1, name: 1 })
+      .toArray();
+    const ids = interestsRaw.map((i) => i.id).filter(Boolean);
+    const trMap = await loadTranslationMap(collection('interest_translations'), 'interest_id', ids, lang);
+    const interests = interestsRaw.map((i) =>
+      rowToInterest(withTranslation(i, trMap.get(i.id), ['name', 'description', 'tags']))
     );
-    const interests = result.rows.map(rowToInterest);
     res.json({ interests });
   } catch (err) {
     console.error(err);

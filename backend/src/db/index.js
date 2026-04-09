@@ -1,43 +1,73 @@
-const { Pool } = require('pg');
+const { MongoClient } = require('mongodb');
 const logger = require('../utils/logger');
 
-let connectionString = process.env.DATABASE_URL || '';
-const isSupabase = connectionString.includes('supabase');
-const isProd = process.env.NODE_ENV === 'production';
-// Allow self-signed DB cert in dev (Supabase pooler). Set DB_ACCEPT_SELF_SIGNED=1 in .env if you still see cert errors.
-const acceptSelfSigned = !isProd || process.env.DB_ACCEPT_SELF_SIGNED === '1';
+const connectionString =
+  process.env.MONGODB_URI ||
+  process.env.DATABASE_URL ||
+  '';
 
-// Normalize SSL in connection string so Pool.ssl controls TLS.
-if (connectionString) {
-  try {
-    const url = new URL(connectionString);
-    if (isProd && !acceptSelfSigned) {
-      url.searchParams.set('sslmode', 'verify-full');
-    } else {
-      url.searchParams.delete('sslmode');
-    }
-    connectionString = url.toString();
-  } catch (_) { /* keep original */ }
+const dbName = process.env.MONGODB_DB_NAME || 'visittripoli';
+const maxPoolSize = process.env.DB_POOL_SIZE ? parseInt(process.env.DB_POOL_SIZE, 10) : 20;
+
+let _client = null;
+let _db = null;
+
+async function connectMongo() {
+  if (_db) return _db;
+  if (!connectionString) {
+    throw new Error('MONGODB_URI (or DATABASE_URL) is required');
+  }
+  _client = new MongoClient(connectionString, {
+    maxPoolSize,
+    minPoolSize: 2,
+    connectTimeoutMS: 20000,
+    socketTimeoutMS: 30000,
+    serverSelectionTimeoutMS: 10000,
+    retryReads: true,
+    retryWrites: true,
+  });
+  await _client.connect();
+  _db = _client.db(dbName);
+  logger.info('MongoDB connected', { dbName, maxPoolSize });
+  return _db;
 }
 
-const pool = new Pool({
-  connectionString: connectionString || undefined,
-  max: process.env.DB_POOL_SIZE ? parseInt(process.env.DB_POOL_SIZE, 10) : 20,
-  min: 2,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 20000,
-  statement_timeout: 15000,
-  allowExitOnIdle: true,
-  // SSL: in prod verify certs unless DB_ACCEPT_SELF_SIGNED=1; in dev allow self-signed chain.
-  ssl: isSupabase
-    ? { rejectUnauthorized: !acceptSelfSigned }
-    : isProd
-      ? { rejectUnauthorized: true }
-      : false,
-});
+function getDb() {
+  if (!_db) {
+    throw new Error('MongoDB is not connected yet. Call connectMongo() first.');
+  }
+  return _db;
+}
 
-pool.on('error', (err) => {
-  logger.error('Unexpected DB pool error', { message: err.message, code: err.code });
-});
+function collection(name) {
+  return getDb().collection(name);
+}
 
-module.exports = { pool, query: (text, params) => pool.query(text, params) };
+async function ping() {
+  const db = await connectMongo();
+  await db.command({ ping: 1 });
+  return true;
+}
+
+async function closeMongo() {
+  if (_client) {
+    await _client.close();
+    _client = null;
+    _db = null;
+  }
+}
+
+// Keep a compatibility export to surface accidental SQL usage quickly.
+async function query() {
+  throw new Error('SQL query() is no longer supported. Migrate this path to MongoDB.');
+}
+
+module.exports = {
+  connectMongo,
+  closeMongo,
+  getDb,
+  collection,
+  ping,
+  query,
+  pool: null,
+};
