@@ -10,7 +10,7 @@ const { query } = require('../db');
 const { getRequestLang } = require('../utils/requestLang');
 const { sanitizeFeedBody, isValidPlaceId, isValidUUID } = require('../middleware/security');
 const { imageFileFilter, videoFileFilter, MAX_IMAGE_SIZE, MAX_VIDEO_SIZE } = require('../middleware/secureUpload');
-const { uploadFeedImage, uploadFeedVideo, isConfigured: supabaseStorageConfigured } = require('../lib/supabaseStorage');
+const { uploadFeedImage, uploadFeedVideo, isConfigured: mediaStorageConfigured } = require('../lib/supabaseStorage');
 
 const router = express.Router();
 const isProd = process.env.NODE_ENV === 'production';
@@ -704,15 +704,15 @@ router.post('/', postLimiter, authMiddleware, sanitizeFeedBody, upload.fields([{
     let videoUrl = null;
     let type = 'news';
     if (videoFile) {
-      if (!supabaseStorageConfigured()) {
-        return res.status(503).json({ error: 'Video upload requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY' });
+      if (!mediaStorageConfigured()) {
+        return res.status(503).json({ error: 'Video upload requires ImageKit configuration' });
       }
       videoUrl = await uploadFeedVideo(videoFile.buffer, videoFile);
       type = 'video';
     }
     if (imageFile) {
-      if (!supabaseStorageConfigured()) {
-        return res.status(503).json({ error: 'Feed image upload requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY' });
+      if (!mediaStorageConfigured()) {
+        return res.status(503).json({ error: 'Feed image upload requires ImageKit configuration' });
       }
       imageUrl = await uploadFeedImage(imageFile.buffer, imageFile);
       if (type === 'news') type = 'image';
@@ -1066,8 +1066,8 @@ router.put('/:id', authMiddleware, requireUuidParam('id'), optionalUploadImage, 
     let type = row.type || 'image';
     if (removeImage) type = row.video_url ? 'video' : 'news';
     if (req.file) {
-      if (!supabaseStorageConfigured()) {
-        return res.status(503).json({ error: 'Feed image upload requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY' });
+      if (!mediaStorageConfigured()) {
+        return res.status(503).json({ error: 'Feed image upload requires ImageKit configuration' });
       }
       imageUrl = await uploadFeedImage(req.file.buffer, req.file);
       type = 'image';

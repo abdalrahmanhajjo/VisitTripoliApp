@@ -1,9 +1,8 @@
 /**
- * Supabase Storage for feed images.
- * Uploads to the feed-Images bucket and returns public URLs.
+ * ImageKit media storage adapter.
+ * Keeps legacy export names to avoid route-level refactors.
  */
-
-const { createClient } = require('@supabase/supabase-js');
+const ImageKit = require('@imagekit/nodejs');
 const crypto = require('crypto');
 const path = require('path');
 
@@ -12,157 +11,104 @@ const AVATARS_BUCKET = 'avatars';
 const VIDEOS_BUCKET = 'feed-videos';
 
 let _client = null;
-let _bucketEnsured = false;
-let _avatarsBucketEnsured = false;
-let _videosBucketEnsured = false;
 
 function getClient() {
   if (_client) return _client;
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for feed image uploads');
+  const publicKey = process.env.IMAGEKIT_PUBLIC_KEY;
+  const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
+  const urlEndpoint = process.env.IMAGEKIT_URL_ENDPOINT;
+  if (!publicKey || !privateKey || !urlEndpoint) {
+    throw new Error('IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY and IMAGEKIT_URL_ENDPOINT are required for media uploads');
   }
-  _client = createClient(url, key);
+  _client = new ImageKit({
+    publicKey,
+    privateKey,
+    urlEndpoint,
+  });
   return _client;
 }
 
-async function ensureBucket() {
-  if (_bucketEnsured) return;
-  const supabase = getClient();
-  const { error } = await supabase.storage.createBucket(BUCKET, {
-    public: true,
-    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-    fileSizeLimit: '10MB',
-  });
-  if (error && !String(error.message || '').toLowerCase().includes('already exists')) {
-    console.warn('[Supabase Storage] Could not create bucket:', error.message);
+function getExtension(mimetype, originalname, fallback = '.jpg') {
+  if (originalname) {
+    const ext = path.extname(originalname.toLowerCase());
+    if (ext) return ext;
   }
-  _bucketEnsured = true;
-}
-
-async function ensureAvatarsBucket() {
-  if (_avatarsBucketEnsured) return;
-  const supabase = getClient();
-  const { error } = await supabase.storage.createBucket(AVATARS_BUCKET, {
-    public: true,
-    allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-    fileSizeLimit: '2MB',
-  });
-  if (error && !String(error.message || '').toLowerCase().includes('already exists')) {
-    console.warn('[Supabase Storage] Could not create avatars bucket:', error.message);
-  }
-  _avatarsBucketEnsured = true;
-}
-
-async function ensureVideosBucket() {
-  if (_videosBucketEnsured) return;
-  const supabase = getClient();
-  const { error } = await supabase.storage.createBucket(VIDEOS_BUCKET, {
-    public: true,
-    allowedMimeTypes: ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo'],
-    fileSizeLimit: '100MB',
-  });
-  if (error && !String(error.message || '').toLowerCase().includes('already exists')) {
-    console.warn('[Supabase Storage] Could not create videos bucket:', error.message);
-  }
-  _videosBucketEnsured = true;
-}
-
-function getExtension(mimetype, originalname) {
   const map = {
     'image/jpeg': '.jpg',
     'image/png': '.png',
     'image/gif': '.gif',
     'image/webp': '.webp',
+    'video/mp4': '.mp4',
+    'video/webm': '.webm',
+    'video/quicktime': '.mov',
+    'video/x-msvideo': '.avi',
   };
-  if (map[mimetype]) return map[mimetype];
-  const ext = path.extname((originalname || '').toLowerCase());
-  if (['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(ext)) return ext === '.jpeg' ? '.jpg' : ext;
-  return '.jpg';
+  return map[mimetype] || fallback;
 }
 
-function getContentType(mimetype, originalname) {
-  if (mimetype && mimetype.startsWith('image/')) return mimetype;
-  const ext = path.extname((originalname || '').toLowerCase());
-  const map = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp' };
-  return map[ext] || 'image/jpeg';
+function getFolder(subFolder) {
+  const root = (process.env.IMAGEKIT_FOLDER || '/tripoli-explorer').trim();
+  const normalizedRoot = root.startsWith('/') ? root : `/${root}`;
+  const cleanSub = String(subFolder || '').replace(/^\/+/, '');
+  return `${normalizedRoot}/${cleanSub}`;
 }
 
-/**
- * Upload image buffer to Supabase Storage.
- * @param {Buffer} buffer - File buffer
- * @param {object} file - Multer file object { mimetype, originalname }
- * @returns {Promise<string>} Public URL
- */
+async function uploadToImageKit({ buffer, fileName, folder, isPrivateFile = false }) {
+  const imagekit = getClient();
+  const result = await imagekit.upload({
+    file: buffer,
+    fileName,
+    folder,
+    useUniqueFileName: true,
+    isPrivateFile,
+  });
+  return result.url;
+}
+
 async function uploadFeedImage(buffer, file) {
-  await ensureBucket();
-  const ext = getExtension(file.mimetype, file.originalname);
-  const name = crypto.randomBytes(16).toString('hex') + ext;
-  const supabase = getClient();
-  const contentType = getContentType(file.mimetype, file.originalname);
-  const { data, error } = await supabase.storage
-    .from(BUCKET)
-    .upload(name, buffer, {
-      contentType,
-      upsert: false,
-    });
-  if (error) throw error;
-  const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(data.path);
-  return urlData.publicUrl;
+  const ext = getExtension(file?.mimetype, file?.originalname, '.jpg');
+  const fileName = `${crypto.randomBytes(16).toString('hex')}${ext}`;
+  return uploadToImageKit({
+    buffer,
+    fileName,
+    folder: getFolder(BUCKET),
+  });
 }
 
-/**
- * Upload video buffer to Supabase Storage (feed-videos bucket).
- * @param {Buffer} buffer - File buffer
- * @param {object} file - Multer file object { mimetype, originalname }
- * @returns {Promise<string>} Public URL
- */
 async function uploadFeedVideo(buffer, file) {
-  await ensureVideosBucket();
-  const ext = path.extname((file.originalname || '').toLowerCase()) || '.mp4';
-  const name = crypto.randomBytes(16).toString('hex') + ext;
-  const supabase = getClient();
-  const contentType = file.mimetype || 'video/mp4';
-  const { data, error } = await supabase.storage
-    .from(VIDEOS_BUCKET)
-    .upload(name, buffer, {
-      contentType,
-      upsert: false,
-    });
-  if (error) throw error;
-  const { data: urlData } = supabase.storage.from(VIDEOS_BUCKET).getPublicUrl(data.path);
-  return urlData.publicUrl;
+  const ext = getExtension(file?.mimetype, file?.originalname, '.mp4');
+  const fileName = `${crypto.randomBytes(16).toString('hex')}${ext}`;
+  return uploadToImageKit({
+    buffer,
+    fileName,
+    folder: getFolder(VIDEOS_BUCKET),
+  });
 }
 
-/**
- * Upload profile avatar to Supabase avatars bucket.
- * Path: avatars/{userId}/{uuid}.jpg - user-scoped for security.
- * @param {Buffer} buffer - File buffer
- * @param {object} file - Multer file object { mimetype, originalname }
- * @param {string} userId - User UUID (for path isolation)
- * @returns {Promise<string>} Public URL
- */
 async function uploadProfileAvatar(buffer, file, userId) {
-  await ensureAvatarsBucket();
-  const ext = getExtension(file.mimetype, file.originalname);
-  const name = crypto.randomBytes(12).toString('hex') + ext;
-  const storagePath = `${userId}/${name}`;
-  const supabase = getClient();
-  const contentType = getContentType(file.mimetype, file.originalname);
-  const { error } = await supabase.storage
-    .from(AVATARS_BUCKET)
-    .upload(storagePath, buffer, {
-      contentType,
-      upsert: true,
-    });
-  if (error) throw error;
-  const { data: urlData } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(storagePath);
-  return urlData.publicUrl;
+  const ext = getExtension(file?.mimetype, file?.originalname, '.jpg');
+  const fileName = `${crypto.randomBytes(12).toString('hex')}${ext}`;
+  return uploadToImageKit({
+    buffer,
+    fileName,
+    folder: getFolder(`${AVATARS_BUCKET}/${userId}`),
+  });
 }
 
 function isConfigured() {
-  return !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return !!(
+    process.env.IMAGEKIT_PUBLIC_KEY
+    && process.env.IMAGEKIT_PRIVATE_KEY
+    && process.env.IMAGEKIT_URL_ENDPOINT
+  );
 }
 
-module.exports = { uploadFeedImage, uploadFeedVideo, uploadProfileAvatar, isConfigured, BUCKET, AVATARS_BUCKET, VIDEOS_BUCKET };
+module.exports = {
+  uploadFeedImage,
+  uploadFeedVideo,
+  uploadProfileAvatar,
+  isConfigured,
+  BUCKET,
+  AVATARS_BUCKET,
+  VIDEOS_BUCKET,
+};

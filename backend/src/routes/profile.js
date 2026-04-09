@@ -4,7 +4,7 @@ const path = require('path');
 const { authMiddleware } = require('../middleware/auth');
 const { query } = require('../db');
 const { imageFileFilter } = require('../middleware/secureUpload');
-const { uploadProfileAvatar, isConfigured: supabaseConfigured } = require('../lib/supabaseStorage');
+const { uploadProfileAvatar, isConfigured: mediaStorageConfigured } = require('../lib/supabaseStorage');
 const { validateUsername } = require('../utils/username');
 
 const router = express.Router();
@@ -24,7 +24,7 @@ router.post('/profile/avatar', avatarUpload.single('image'), async (req, res) =>
     if (!req.file || !req.file.buffer) {
       return res.status(400).json({ error: 'No image file provided' });
     }
-    if (!supabaseConfigured()) {
+    if (!mediaStorageConfigured()) {
       return res.status(503).json({ error: 'Avatar upload not configured' });
     }
     const userId = req.user.userId;
