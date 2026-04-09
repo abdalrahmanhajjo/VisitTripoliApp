@@ -208,7 +208,22 @@ class RouteService {
       final routes = json['routes'] as List<dynamic>?;
       if (routes == null || routes.isEmpty) return null;
 
-      final route = routes.first as Map<String, dynamic>;
+      Map<String, dynamic> route = routes.first as Map<String, dynamic>;
+      // Web parity: prefer the route with the fastest traffic-aware duration.
+      if (routes.length > 1) {
+        double best = double.infinity;
+        for (final candidate in routes.whereType<Map<String, dynamic>>()) {
+          final legs = candidate['legs'] as List<dynamic>? ?? const [];
+          var total = 0.0;
+          for (final leg in legs.whereType<Map<String, dynamic>>()) {
+            total += _googleLegDurationSeconds(leg);
+          }
+          if (total > 0 && total < best) {
+            best = total;
+            route = candidate;
+          }
+        }
+      }
       final legs = route['legs'] as List<dynamic>? ?? [];
 
       final polyObj = route['overview_polyline'] as Map<String, dynamic>?;

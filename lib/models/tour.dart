@@ -46,30 +46,46 @@ class Tour {
   });
 
   factory Tour.fromJson(Map<String, dynamic> json) {
+    final rawItinerary = json['itinerary'];
+    final itineraryItems = <TourItineraryItem>[];
+    if (rawItinerary is List) {
+      for (final item in rawItinerary) {
+        final parsed = TourItineraryItem.fromDynamic(item);
+        if (parsed != null) itineraryItems.add(parsed);
+      }
+    }
     return Tour(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      duration: json['duration'] as String,
-      durationHours: json['durationHours'] as int,
-      locations: json['locations'] as int,
-      rating: (json['rating'] as num).toDouble(),
-      reviews: json['reviews'] as int,
-      price: (json['price'] as num).toDouble(),
-      currency: json['currency'] as String,
-      priceDisplay: json['priceDisplay'] as String,
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      duration: json['duration']?.toString() ?? '',
+      durationHours: (json['durationHours'] as num?)?.toInt() ?? 0,
+      locations: (json['locations'] as num?)?.toInt() ?? 0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0,
+      reviews: (json['reviews'] as num?)?.toInt() ?? 0,
+      price: (json['price'] as num?)?.toDouble() ?? 0,
+      currency: json['currency']?.toString() ?? '',
+      priceDisplay: json['priceDisplay']?.toString() ?? '',
       badge: json['badge'] as String?,
       badgeColor: json['badgeColor'] as String?,
-      description: json['description'] as String,
-      image: json['image'] as String,
-      difficulty: json['difficulty'] as String,
-      languages: List<String>.from(json['languages'] as List),
-      includes: List<String>.from(json['includes'] as List),
-      excludes: List<String>.from(json['excludes'] as List),
-      highlights: List<String>.from(json['highlights'] as List),
-      itinerary: (json['itinerary'] as List)
-          .map((i) => TourItineraryItem.fromJson(i as Map<String, dynamic>))
-          .toList(),
-      placeIds: List<String>.from(json['placeIds'] ?? []),
+      description: json['description']?.toString() ?? '',
+      image: json['image']?.toString() ?? '',
+      difficulty: json['difficulty']?.toString() ?? '',
+      languages: (json['languages'] is List)
+          ? List<String>.from((json['languages'] as List).map((e) => e.toString()))
+          : const [],
+      includes: (json['includes'] is List)
+          ? List<String>.from((json['includes'] as List).map((e) => e.toString()))
+          : const [],
+      excludes: (json['excludes'] is List)
+          ? List<String>.from((json['excludes'] as List).map((e) => e.toString()))
+          : const [],
+      highlights: (json['highlights'] is List)
+          ? List<String>.from((json['highlights'] as List).map((e) => e.toString()))
+          : const [],
+      itinerary: itineraryItems,
+      placeIds: (json['placeIds'] is List)
+          ? List<String>.from((json['placeIds'] as List).map((e) => e.toString()))
+          : const [],
     );
   }
 
@@ -113,9 +129,46 @@ class TourItineraryItem {
 
   factory TourItineraryItem.fromJson(Map<String, dynamic> json) {
     return TourItineraryItem(
-      time: json['time'] as String,
-      activity: json['activity'] as String,
-      description: json['description'] as String,
+      time: json['time']?.toString() ?? '',
+      activity: json['activity']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+    );
+  }
+
+  /// Accepts either full object entries or plain string itinerary lines.
+  static TourItineraryItem? fromDynamic(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is Map<String, dynamic>) return TourItineraryItem.fromJson(raw);
+    if (raw is Map) {
+      return TourItineraryItem.fromJson(
+        raw.map((k, v) => MapEntry(k.toString(), v)),
+      );
+    }
+    if (raw is String) {
+      final line = raw.trim();
+      if (line.isEmpty) return null;
+      // Format support: "09:00 — Start: Tripoli introduction..."
+      final sep = line.contains('—') ? '—' : (line.contains('-') ? '-' : null);
+      if (sep != null) {
+        final parts = line.split(sep);
+        if (parts.length >= 2) {
+          return TourItineraryItem(
+            time: parts.first.trim(),
+            activity: parts[1].trim(),
+            description: line,
+          );
+        }
+      }
+      return TourItineraryItem(
+        time: '',
+        activity: line,
+        description: line,
+      );
+    }
+    return TourItineraryItem(
+      time: '',
+      activity: raw.toString(),
+      description: raw.toString(),
     );
   }
 

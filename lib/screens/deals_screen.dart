@@ -51,12 +51,21 @@ class _DealsScreenState extends State<DealsScreen> with SingleTickerProviderStat
     final auth = context.read<AuthProvider>();
     final token = auth.isLoggedIn && !auth.isGuest ? auth.authToken : null;
     try {
-      final futures = [
-        DealsService.instance.getCoupons(authToken: token),
-        DealsService.instance.getOffers(),
-        token != null ? DealsService.instance.getMyProposals(token) : Future.value(<OfferProposal>[]),
-      ];
-      final results = await Future.wait(futures);
+      final couponsFuture = DealsService.instance
+          .getCoupons(authToken: token)
+          .catchError((_) => <Coupon>[]);
+      final offersFuture =
+          DealsService.instance.getOffers().catchError((_) => <PlaceOffer>[]);
+      final proposalsFuture = token != null
+          ? DealsService.instance
+              .getMyProposals(token)
+              .catchError((_) => <OfferProposal>[])
+          : Future.value(<OfferProposal>[]);
+      final results = await Future.wait([
+        couponsFuture,
+        offersFuture,
+        proposalsFuture,
+      ]);
       if (mounted) {
         var coupons = results[0] as List<Coupon>;
         coupons = _sortCoupons(coupons);

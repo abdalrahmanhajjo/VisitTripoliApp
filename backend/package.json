@@ -1,7 +1,7 @@
 {
   "name": "tripoli-explorer-api",
   "version": "1.0.0",
-  "description": "Node.js + PostgreSQL backend for the Visit Tripoli Flutter app",
+  "description": "Node.js + MongoDB backend for the Visit Tripoli Flutter app",
   "engines": {
     "node": ">=18"
   },
@@ -13,24 +13,17 @@
     "restart:always": "pm2 restart tripoli-api",
     "status:always": "pm2 status tripoli-api",
     "dev": "node --watch src/index.js",
-    "db:migrate": "node src/db/migrate.js",
-    "db:migrate:reset-tokens": "node src/db/run-migration.js add_password_reset_tokens",
-    "db:migrate:verification": "node src/db/run-migration.js add_email_phone_verification",
-    "db:migrate:business-owner": "node src/db/run-migration.js add_is_business_owner",
-    "db:seed": "node src/db/seed.js",
-    "db:seed-trips": "node src/db/seed-trips-from-places.js",
-    "db:seed-tours": "node src/db/seed-tours-from-places.js",
-    "db:seed-reviews": "node src/db/seed-reviews.js",
-    "db:seed-all": "npm run db:seed && npm run db:seed-trips && npm run db:seed-tours && npm run db:seed-reviews",
-    "db:setup": "npm run db:migrate && npm run db:seed",
-    "db:fix-images": "node src/db/fix-places-images-type.js",
+    "db:migrate:legacy": "node scripts/mongo-migrate-legacy.js",
+    "db:indexes": "node scripts/mongo-create-indexes.js",
+    "db:check": "node scripts/mongo-data-check.js",
+    "db:setup": "npm run db:migrate:legacy && npm run db:indexes",
     "db:check-feed": "node scripts/check-feed-db.js",
     "db:dump-schema": "node scripts/dump-schema.js",
     "db:apply-supabase-schema": "node scripts/apply-supabase-schema.js",
     "setup": "node scripts/setup.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.99.0",
+    "@imagekit/nodejs": "^7.4.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
@@ -40,9 +33,9 @@
     "google-auth-library": "^10.5.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "^7.1.1",
     "multer": "^2.0.2",
     "nodemailer": "^8.0.1",
-    "pg": "^8.11.3",
     "twilio": "^5.12.1",
     "verify-apple-id-token": "^3.1.2"
   }

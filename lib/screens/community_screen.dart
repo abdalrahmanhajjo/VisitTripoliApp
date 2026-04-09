@@ -176,6 +176,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
               tooltip: 'Customer proposals',
               onPressed: () => context.push('/proposals'),
             ),
+          if (auth.isLoggedIn && !auth.isGuest)
+            IconButton(
+              icon: const Icon(Icons.forum_outlined),
+              tooltip: 'Messages',
+              onPressed: () => context.push('/messages'),
+            ),
           const AppProfileIconButton(),
         ],
       ),

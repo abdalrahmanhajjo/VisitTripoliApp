@@ -32,6 +32,7 @@ import '../l10n/app_localizations.dart';
 import '../utils/feedback_utils.dart';
 import '../utils/responsive_utils.dart';
 import '../utils/snackbar_utils.dart';
+import '../utils/places_image_precache.dart';
 import '../utils/app_tutorial_prefs.dart';
 import '../widgets/app_tutorial_prompt_dialog.dart';
 
@@ -803,6 +804,8 @@ class _ExploreScreenState extends State<ExploreScreen>
   bool _searchBarVisible = false;
   Timer? _searchLogTimer;
   bool _showGoToTop = false;
+  String _lastPlacesPrecacheKey = '';
+  DateTime _selectedEventsDay = DateTime.now();
 
   /// Staggered below-fold: 0=placeholder, 1=+Recommended, 2=+Tours, 3=+Categories (minimal TBT per frame).
   int _belowFoldPhase = 0;
@@ -1201,6 +1204,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                   ),
             )
             .toList();
+    _scheduleVisiblePlacesPrecache(filteredPlaces);
 
     final showAllSections = _filterId == 'all';
     final showRecommended = showAllSections || _filterId == 'popular';
@@ -1323,7 +1327,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     child: RepaintBoundary(
                       child: FadeTransition(
                         opacity: _heroFade,
-                        child: _buildEventsCalendarBar(context),
+                        child: _buildEventsCalendarBar(context, eventsProvider),
                       ),
                     ),
                   ),
@@ -1425,6 +1429,19 @@ class _ExploreScreenState extends State<ExploreScreen>
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 0),
     );
+  }
+
+  void _scheduleVisiblePlacesPrecache(List<Place> places) {
+    if (!mounted || places.isEmpty) return;
+    // Avoid re-running on every rebuild when visible cards are unchanged.
+    final sample = places.take(28).map((p) => p.id).join(',');
+    final key = '${places.length}|$sample';
+    if (key == _lastPlacesPrecacheKey) return;
+    _lastPlacesPrecacheKey = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      schedulePlacesImagePrecache(context, places.take(40).toList());
+    });
   }
 
   void _openFiltersSheet(BuildContext context) {
@@ -2208,10 +2225,37 @@ class _ExploreScreenState extends State<ExploreScreen>
     );
   }
 
-  /// Top bar: "Calendar of events" with arrow â€“ opens bottom sheet with events list.
-  Widget _buildEventsCalendarBar(BuildContext context) {
+  /// Weekly events-by-day bar with quick preview + open full events sheet.
+  Widget _buildEventsCalendarBar(
+      BuildContext context, EventsProvider eventsProvider) {
     final l10n = AppLocalizations.of(context)!;
     final horizontalPad = _Responsive.horizontalPadding(context);
+    final now = DateTime.now();
+    final weekStart = _startOfDay(now)
+        .subtract(Duration(days: (now.weekday - DateTime.monday) % 7));
+    final weekDays = List<DateTime>.generate(
+      7,
+      (i) => weekStart.add(Duration(days: i)),
+    );
+    final byDay = <DateTime, List<Event>>{
+      for (final day in weekDays) day: <Event>[],
+    };
+    for (final e in eventsProvider.events) {
+      final d = _startOfDay(e.startDate);
+      if (byDay.containsKey(d)) {
+        byDay[d]!.add(e);
+      }
+    }
+    for (final list in byDay.values) {
+      list.sort((a, b) => a.startDate.compareTo(b.startDate));
+    }
+    final selected = weekDays.firstWhere(
+      (d) => _isSameDay(d, _selectedEventsDay),
+      orElse: () => weekDays.first,
+    );
+    final selectedEvents = byDay[selected] ?? const <Event>[];
+    final locale = Localizations.localeOf(context).languageCode;
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPad),
       child: Material(
@@ -2220,7 +2264,7 @@ class _ExploreScreenState extends State<ExploreScreen>
           onTap: () => _showEventsCalendarSheet(context),
           borderRadius: BorderRadius.circular(14),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
             decoration: BoxDecoration(
               color: AppTheme.primaryColor.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(14),
@@ -2235,54 +2279,163 @@ class _ExploreScreenState extends State<ExploreScreen>
                 ),
               ],
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.calendar_month_rounded,
-                    size: 22,
-                    color: AppTheme.primaryColor,
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.calendar_month_rounded,
+                        size: 22,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            l10n.whatsHappening,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'This week by day',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 14,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 34,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: weekDays.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (context, i) {
+                      final day = weekDays[i];
+                      final active = _isSameDay(day, selected);
+                      final count = (byDay[day] ?? const <Event>[]).length;
+                      final dayLabel = DateFormat('EEE', locale).format(day);
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedEventsDay = day),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 160),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: active
+                                ? AppTheme.primaryColor.withValues(alpha: 0.18)
+                                : Colors.white.withValues(alpha: 0.75),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: active
+                                  ? AppTheme.primaryColor.withValues(alpha: 0.5)
+                                  : AppTheme.primaryColor.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                dayLabel,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight:
+                                      active ? FontWeight.w700 : FontWeight.w600,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                              if (count > 0) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    '$count',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
+                const SizedBox(height: 10),
+                if (eventsProvider.isLoading)
+                  const Text(
+                    'Loading weekly events...',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  )
+                else if (selectedEvents.isEmpty)
+                  Text(
+                    'No events on ${DateFormat('EEEE', locale).format(selected)}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  )
+                else
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        l10n.whatsHappening,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textPrimary,
+                    children: selectedEvents.take(2).map((e) {
+                      final time = DateFormat('h:mm a', locale).format(e.startDate);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '$time  •  ${e.name}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        l10n.eventsInTripoli,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.textSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                      );
+                    }).toList(),
                   ),
-                ),
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 14,
-                  color: AppTheme.primaryColor,
-                ),
               ],
             ),
           ),
@@ -2290,6 +2443,11 @@ class _ExploreScreenState extends State<ExploreScreen>
       ),
     );
   }
+
+  DateTime _startOfDay(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   void _showEventsCalendarSheet(BuildContext context) {
     HapticFeedback.lightImpact();
@@ -5150,9 +5308,8 @@ class _ExplorePlaceCard extends StatelessWidget {
                     // Full-bleed image (fills card; decode matches slot aspect)
                     Positioned.fill(
                       child: imageUrl != null
-                          ? AppImage(
-                              src: imageUrl,
-                              fit: BoxFit.cover,
+                          ? _PlaceCardImage(
+                              images: place.images,
                               cacheWidth: cacheW,
                               cacheHeight: cacheH,
                             )
@@ -5466,6 +5623,69 @@ class _ExplorePlaceCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Tries multiple place images so one bad URL doesn't leave a gray card.
+class _PlaceCardImage extends StatefulWidget {
+  final List<String> images;
+  final int cacheWidth;
+  final int cacheHeight;
+
+  const _PlaceCardImage({
+    required this.images,
+    required this.cacheWidth,
+    required this.cacheHeight,
+  });
+
+  @override
+  State<_PlaceCardImage> createState() => _PlaceCardImageState();
+}
+
+class _PlaceCardImageState extends State<_PlaceCardImage> {
+  int _index = 0;
+  bool _queuedFallback = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final candidates = widget.images.where((e) => e.trim().isNotEmpty).toList();
+    if (candidates.isEmpty) {
+      return Container(
+        color: AppTheme.surfaceVariant,
+        child: const Icon(
+          Icons.image_outlined,
+          size: 48,
+          color: AppTheme.textTertiary,
+        ),
+      );
+    }
+    final safeIndex = _index.clamp(0, candidates.length - 1);
+    final src = candidates[safeIndex];
+    return AppImage(
+      key: ValueKey(src),
+      src: src,
+      fit: BoxFit.cover,
+      cacheWidth: widget.cacheWidth,
+      cacheHeight: widget.cacheHeight,
+      placeholder: (_, __) => Container(color: AppTheme.surfaceVariant),
+      errorWidget: (_, __, ___) {
+        _scheduleFallback(candidates.length);
+        return Container(color: AppTheme.surfaceVariant);
+      },
+    );
+  }
+
+  void _scheduleFallback(int total) {
+    if (_queuedFallback || !mounted) return;
+    if (_index >= total - 1) return;
+    _queuedFallback = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _index += 1;
+        _queuedFallback = false;
+      });
+    });
   }
 }
 

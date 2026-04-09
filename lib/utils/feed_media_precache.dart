@@ -21,6 +21,8 @@ void scheduleFeedMediaPrecache(BuildContext context, List<FeedPost> posts) {
   final h = (w / (4 / 3)).round().clamp(150, 900);
   final cm = AppImageCacheManager.instance;
   final size = Size(w.toDouble(), h.toDouble());
+  final tw = size.width.round();
+  final th = size.height.round();
 
   WidgetsBinding.instance.addPostFrameCallback((_) {
     if (!context.mounted) return;
@@ -32,7 +34,11 @@ void scheduleFeedMediaPrecache(BuildContext context, List<FeedPost> posts) {
       for (final raw in p.displayImageUrls) {
         if (count >= maxImages) break;
         if (raw.isEmpty) continue;
-        final uri = _resolveMediaUrl(raw);
+        final uri = AppImageCacheManager.resolveNetworkImageUrl(
+          _resolveMediaUrl(raw),
+          targetWidth: tw,
+          targetHeight: th,
+        );
         precacheImage(
           CachedNetworkImageProvider(uri, cacheManager: cm),
           context,
@@ -47,7 +53,14 @@ void scheduleFeedMediaPrecache(BuildContext context, List<FeedPost> posts) {
           thumb.isNotEmpty &&
           count < maxImages) {
         precacheImage(
-          CachedNetworkImageProvider(_resolveMediaUrl(thumb), cacheManager: cm),
+          CachedNetworkImageProvider(
+            AppImageCacheManager.resolveNetworkImageUrl(
+              _resolveMediaUrl(thumb),
+              targetWidth: tw,
+              targetHeight: th,
+            ),
+            cacheManager: cm,
+          ),
           context,
           size: size,
         );

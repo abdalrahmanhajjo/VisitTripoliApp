@@ -160,13 +160,7 @@ class _ReelVideoImplState extends State<ReelVideoImpl> with WidgetsBindingObserv
     if (c == null) {
       return _PosterStack(
         thumbnailUrl: widget.thumbnailUrl,
-        child: const Center(
-          child: SizedBox(
-            width: 40,
-            height: 40,
-            child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white54),
-          ),
-        ),
+        child: const SizedBox.shrink(),
       );
     }
 
@@ -189,13 +183,7 @@ class _ReelVideoImplState extends State<ReelVideoImpl> with WidgetsBindingObserv
         if (!v.isInitialized || v.size.width <= 0 || v.size.height <= 0) {
           return _PosterStack(
             thumbnailUrl: widget.thumbnailUrl,
-            child: const Center(
-              child: SizedBox(
-                width: 40,
-                height: 40,
-                child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white54),
-              ),
-            ),
+            child: const SizedBox.shrink(),
           );
         }
 

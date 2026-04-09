@@ -309,22 +309,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onSendFeedback: () => _sendFeedbackEmail(profile),
                   ),
                   SizedBox(height: _ProfileResponsive.sectionGap(context)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    child: Center(
-                      child: Text(
-                        AppLocalizations.of(context)!.developerCredit,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          height: 1.4,
-                          color: AppTheme.textTertiary,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.15,
-                        ),
-                      ),
-                    ),
-                  ),
                   SizedBox(height: _ProfileResponsive.sectionGap(context) * 0.65),
                     _ProfileSessionCard(
                       onLogout: () async {

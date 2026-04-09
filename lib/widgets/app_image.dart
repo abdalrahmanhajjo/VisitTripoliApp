@@ -32,6 +32,8 @@ class AppImage extends StatelessWidget {
   final int? cacheHeight;
   /// Shorter fades feel snappier when images are already on disk.
   final Duration fadeInDuration;
+  static final Set<String> _failedUrls = <String>{};
+  static const int _maxFailedUrls = 512;
 
   static bool _isAsset(String s) =>
       s.startsWith('assets/') || s.startsWith('asset/');
@@ -56,21 +58,36 @@ class AppImage extends StatelessWidget {
             Container(color: Colors.grey[300]),
       );
     }
-    final url = AppImageCacheManager.resolveNetworkImageUrl(_resolveUrl(src));
+    final url = AppImageCacheManager.resolveNetworkImageUrl(
+      _resolveUrl(src),
+      targetWidth: cacheWidth,
+      targetHeight: cacheHeight,
+    );
+    if (_failedUrls.contains(url)) {
+      return errorWidget?.call(context, url, Object()) ??
+          Container(color: Colors.grey[300]);
+    }
     return CachedNetworkImage(
       imageUrl: url,
       cacheManager: AppImageCacheManager.instance,
       fit: fit,
       memCacheWidth: cacheWidth,
       memCacheHeight: cacheHeight,
+      maxWidthDiskCache: cacheWidth,
+      maxHeightDiskCache: cacheHeight,
       fadeInDuration: fadeInDuration,
       fadeOutDuration: const Duration(milliseconds: 60),
       placeholder: placeholder != null
           ? (c, u) => placeholder!(c, u)
           : (_, __) => Container(color: Colors.grey[300]),
-      errorWidget: errorWidget != null
-          ? (c, u, e) => errorWidget!(c, u, e)
-          : (_, __, ___) => Container(color: Colors.grey[300]),
+      errorWidget: (c, u, e) {
+        if (_failedUrls.length >= _maxFailedUrls) {
+          _failedUrls.remove(_failedUrls.first);
+        }
+        _failedUrls.add(u);
+        if (errorWidget != null) return errorWidget!(c, u, e);
+        return Container(color: Colors.grey[300]);
+      },
     );
   }
 }

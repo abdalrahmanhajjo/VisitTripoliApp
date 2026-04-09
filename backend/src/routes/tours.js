@@ -1,7 +1,8 @@
 const express = require('express');
-const { query } = require('../db');
+const { collection } = require('../db');
 const { responseCache } = require('../middleware/responseCache');
 const { getRequestLang } = require('../utils/requestLang');
+const { toArray, loadTranslationMap, withTranslation } = require('../utils/mongoTranslations');
 
 const router = express.Router();
 
@@ -22,12 +23,12 @@ function rowToTour(row) {
     description: row.description,
     image: row.image,
     difficulty: row.difficulty,
-    languages: Array.isArray(row.languages) ? row.languages : (row.languages ? JSON.parse(row.languages) : []),
-    includes: Array.isArray(row.includes) ? row.includes : (row.includes ? JSON.parse(row.includes) : []),
-    excludes: Array.isArray(row.excludes) ? row.excludes : (row.excludes ? JSON.parse(row.excludes) : []),
-    highlights: Array.isArray(row.highlights) ? row.highlights : (row.highlights ? JSON.parse(row.highlights) : []),
-    itinerary: Array.isArray(row.itinerary) ? row.itinerary : (row.itinerary ? JSON.parse(row.itinerary) : []),
-    placeIds: Array.isArray(row.place_ids) ? row.place_ids : (row.place_ids ? JSON.parse(row.place_ids) : [])
+    languages: toArray(row.languages),
+    includes: toArray(row.includes),
+    excludes: toArray(row.excludes),
+    highlights: toArray(row.highlights),
+    itinerary: toArray(row.itinerary),
+    placeIds: toArray(row.place_ids)
   };
 }
 
@@ -38,24 +39,28 @@ router.get('/', responseCache(), async (req, res) => {
   res.set('Cache-Control', `public, max-age=${CACHE_MAX_AGE}`);
   try {
     const lang = getRequestLang(req);
-    const result = await query(
-      `SELECT t.id, t.duration_hours, t.locations, t.rating, t.reviews, t.price, t.currency, t.image, t.place_ids,
-              COALESCE(tt.name, t.name) AS name, COALESCE(tt.duration, t.duration) AS duration,
-              COALESCE(tt.price_display, t.price_display) AS price_display,
-              COALESCE(tt.badge, t.badge) AS badge, t.badge_color,
-              COALESCE(tt.description, t.description) AS description,
-              COALESCE(tt.difficulty, t.difficulty) AS difficulty,
-              COALESCE(tt.includes, t.includes) AS includes,
-              COALESCE(tt.excludes, t.excludes) AS excludes,
-              COALESCE(tt.highlights, t.highlights) AS highlights,
-              COALESCE(tt.itinerary, t.itinerary) AS itinerary,
-              t.languages
-       FROM tours t
-       LEFT JOIN tour_translations tt ON tt.tour_id = t.id AND tt.lang = $1
-       ORDER BY t.name`,
-      [lang]
+    const toursRaw = await collection('tours')
+      .find({}, { projection: { _id: 0 } })
+      .sort({ name: 1 })
+      .toArray();
+    const ids = toursRaw.map((t) => t.id).filter(Boolean);
+    const trMap = await loadTranslationMap(collection('tour_translations'), 'tour_id', ids, lang);
+    const tours = toursRaw.map((t) =>
+      rowToTour(
+        withTranslation(t, trMap.get(t.id), [
+          'name',
+          'duration',
+          'price_display',
+          'badge',
+          'description',
+          'difficulty',
+          'includes',
+          'excludes',
+          'highlights',
+          'itinerary',
+        ])
+      )
     );
-    const tours = result.rows.map(rowToTour);
     res.json({ featured: tours });
   } catch (err) {
     console.error(err);
@@ -70,27 +75,32 @@ router.get('/', responseCache(), async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const lang = getRequestLang(req);
-    const result = await query(
-      `SELECT t.id, t.duration_hours, t.locations, t.rating, t.reviews, t.price, t.currency, t.image, t.place_ids,
-              COALESCE(tt.name, t.name) AS name, COALESCE(tt.duration, t.duration) AS duration,
-              COALESCE(tt.price_display, t.price_display) AS price_display,
-              COALESCE(tt.badge, t.badge) AS badge, t.badge_color,
-              COALESCE(tt.description, t.description) AS description,
-              COALESCE(tt.difficulty, t.difficulty) AS difficulty,
-              COALESCE(tt.includes, t.includes) AS includes,
-              COALESCE(tt.excludes, t.excludes) AS excludes,
-              COALESCE(tt.highlights, t.highlights) AS highlights,
-              COALESCE(tt.itinerary, t.itinerary) AS itinerary,
-              t.languages
-       FROM tours t
-       LEFT JOIN tour_translations tt ON tt.tour_id = t.id AND tt.lang = $1
-       WHERE t.id = $2`,
-      [lang, req.params.id]
+    const base = await collection('tours').findOne(
+      { id: req.params.id },
+      { projection: { _id: 0 } }
     );
-    if (result.rows.length === 0) {
+    if (!base) {
       return res.status(404).json({ error: 'Tour not found' });
     }
-    res.json(rowToTour(result.rows[0]));
+    const tr = lang && lang !== 'en'
+      ? await collection('tour_translations').findOne(
+          { tour_id: req.params.id, lang },
+          { projection: { _id: 0 } }
+        )
+      : null;
+    const row = withTranslation(base, tr, [
+      'name',
+      'duration',
+      'price_display',
+      'badge',
+      'description',
+      'difficulty',
+      'includes',
+      'excludes',
+      'highlights',
+      'itinerary',
+    ]);
+    res.json(rowToTour(row));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch tour' });

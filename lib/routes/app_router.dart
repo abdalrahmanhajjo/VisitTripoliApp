@@ -15,6 +15,7 @@ import '../screens/intro_screen.dart';
 import '../screens/language_selection_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/map_screen.dart';
+import '../screens/messages_screen.dart';
 import '../screens/place_details_screen.dart';
 import '../screens/place_posts_screen.dart';
 import '../screens/profile_screen.dart';
@@ -43,6 +44,7 @@ class AppRouter {
     '/map',
     '/community',
     '/deals',
+    '/messages',
   ];
   static const _guestRestrictedPaths = ['/trips', '/profile', '/ai-planner'];
 
@@ -66,6 +68,7 @@ class AppRouter {
       '/map',
       '/ai-planner',
       '/deals',
+      '/messages',
       '/settings',
       '/help',
       '/about',
@@ -222,6 +225,10 @@ class AppRouter {
         GoRoute(
           path: '/deals',
           builder: (context, state) => const DealsScreen(),
+        ),
+        GoRoute(
+          path: '/messages',
+          builder: (context, state) => const MessagesScreen(),
         ),
         GoRoute(
           path: '/map',

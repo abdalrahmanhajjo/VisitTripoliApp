@@ -28,17 +28,19 @@ import 'package:showcaseview/showcaseview.dart';
 import 'utils/app_text_scale.dart';
 import 'utils/feed_media_precache.dart';
 import 'utils/places_image_precache.dart';
+import 'utils/perf_trace.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  PerfTrace.mark('main.start');
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   // Tune image cache: limit count and bytes for smooth lists without excessive memory.
   PaintingBinding.instance.imageCache
     ..maximumSize = 200
     ..maximumSizeBytes = 200 << 20; // 200 MB
 
-  final prefs = await SharedPreferences.getInstance();
-  await ApiConfig.loadOverride(prefs);
+  final prefs = await PerfTrace.timeAsync('prefs.load', SharedPreferences.getInstance);
+  await PerfTrace.timeAsync('apiConfig.loadOverride', () => ApiConfig.loadOverride(prefs));
   final auth = AuthProvider(prefs);
   // Set API locale before data providers load so places/categories/etc. are translated from first load.
   final languageProvider = LanguageProvider(prefs);
@@ -51,10 +53,6 @@ void main() async {
   final interests = InterestsProvider();
 
   final profile = ProfileProvider(prefs);
-  await profile.initializeForAuth(userId: auth.userId, isGuest: auth.isGuest);
-
-  bindAuthForPushNotifications(auth);
-  await initializePushNotifications();
 
   runApp(
     MultiProvider(
@@ -81,6 +79,19 @@ void main() async {
       ),
     ),
   );
+  PerfTrace.mark('main.runApp');
+
+  // Defer non-critical startup work until after first frame.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    PerfTrace.timeAsync('profile.initializeForAuth', () {
+      return profile.initializeForAuth(
+        userId: auth.userId,
+        isGuest: auth.isGuest,
+      );
+    });
+    bindAuthForPushNotifications(auth);
+    PerfTrace.timeAsync('push.initialize', initializePushNotifications);
+  });
 }
 
 /// Keeps [ProfileProvider] in sync with the signed-in account so avatars and prefs are per-user.

@@ -30,36 +30,47 @@ class DetailHeroImage extends StatelessWidget {
           );
     }
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Positioned.fill(
-          child: AppImage(
-            key: ValueKey('hero_bg_$url'),
-            src: url,
-            fit: BoxFit.cover,
-            placeholder: (_, __) => Container(color: Colors.grey[300]),
-            errorWidget: (_, __, ___) => Container(color: Colors.grey[300]),
-          ),
-        ),
-        Positioned.fill(
-          child: ImageFiltered(
-            imageFilter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-            child: Container(
-              color: Colors.black.withValues(alpha: 0.08),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final dpr = MediaQuery.devicePixelRatioOf(context).clamp(1.0, 3.0);
+        final cw = (constraints.maxWidth * dpr).round().clamp(320, 2600);
+        final ch = (constraints.maxHeight * dpr).round().clamp(220, 2200);
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: AppImage(
+                key: ValueKey('hero_bg_$url'),
+                src: url,
+                fit: BoxFit.cover,
+                cacheWidth: cw,
+                cacheHeight: ch,
+                placeholder: (_, __) => Container(color: Colors.grey[300]),
+                errorWidget: (_, __, ___) => Container(color: Colors.grey[300]),
+              ),
             ),
-          ),
-        ),
-        Center(
-          child: AppImage(
-            key: ValueKey('hero_fg_$url'),
-            src: url,
-            fit: BoxFit.contain,
-            placeholder: (_, __) => const SizedBox.shrink(),
-            errorWidget: (_, __, ___) => Container(color: Colors.grey[300]),
-          ),
-        ),
-      ],
+            Positioned.fill(
+              child: ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.08),
+                ),
+              ),
+            ),
+            Center(
+              child: AppImage(
+                key: ValueKey('hero_fg_$url'),
+                src: url,
+                fit: BoxFit.contain,
+                cacheWidth: cw,
+                cacheHeight: ch,
+                placeholder: (_, __) => const SizedBox.shrink(),
+                errorWidget: (_, __, ___) => Container(color: Colors.grey[300]),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

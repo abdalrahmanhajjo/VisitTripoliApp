@@ -30,20 +30,27 @@ class Event {
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
+    DateTime parseDate(dynamic value) {
+      if (value is DateTime) return value;
+      if (value == null) return DateTime.fromMillisecondsSinceEpoch(0);
+      final parsed = DateTime.tryParse(value.toString());
+      return parsed ?? DateTime.fromMillisecondsSinceEpoch(0);
+    }
+
     return Event(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String,
-      startDate: DateTime.parse(json['startDate'] as String),
-      endDate: DateTime.parse(json['endDate'] as String),
-      location: json['location'] as String,
-      image: json['image'] as String?,
-      category: json['category'] as String,
-      organizer: json['organizer'] as String?,
-      price: json['price'] != null ? (json['price'] as num).toDouble() : null,
-      priceDisplay: json['priceDisplay'] as String?,
-      status: json['status'] as String?,
-      placeId: json['placeId'] as String?,
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      startDate: parseDate(json['startDate']),
+      endDate: parseDate(json['endDate']),
+      location: json['location']?.toString() ?? '',
+      image: json['image']?.toString(),
+      category: json['category']?.toString() ?? '',
+      organizer: json['organizer']?.toString(),
+      price: json['price'] != null ? (json['price'] as num?)?.toDouble() : null,
+      priceDisplay: json['priceDisplay']?.toString(),
+      status: json['status']?.toString(),
+      placeId: json['placeId']?.toString(),
     );
   }
 

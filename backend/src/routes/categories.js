@@ -1,9 +1,10 @@
 const express = require('express');
-const { query } = require('../db');
+const { collection } = require('../db');
 const { responseCache } = require('../middleware/responseCache');
 const { getRequestLang } = require('../utils/requestLang');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { AppError } = require('../utils/AppError');
+const { toArray, loadTranslationMap, withTranslation } = require('../utils/mongoTranslations');
 
 const router = express.Router();
 
@@ -13,7 +14,7 @@ function rowToCategory(row) {
     name: row.name,
     icon: row.icon,
     description: row.description || '',
-    tags: Array.isArray(row.tags) ? row.tags : (row.tags ? JSON.parse(row.tags) : []),
+    tags: toArray(row.tags),
     count: row.count ?? 0,
     color: row.color || '#666666'
   };
@@ -26,17 +27,15 @@ router.get('/', responseCache(), asyncHandler(async (req, res) => {
   res.set('Cache-Control', `public, max-age=${CACHE_MAX_AGE}`);
   const lang = getRequestLang(req);
   try {
-    const result = await query(
-      `SELECT c.id, c.icon, c.count, c.color,
-              COALESCE(ct.name, c.name) AS name,
-              COALESCE(ct.description, c.description) AS description,
-              COALESCE(ct.tags, c.tags) AS tags
-       FROM categories c
-       LEFT JOIN category_translations ct ON ct.category_id = c.id AND ct.lang = $1
-       ORDER BY c.name`,
-      [lang]
+    const categoriesRaw = await collection('categories')
+      .find({}, { projection: { _id: 0 } })
+      .sort({ name: 1 })
+      .toArray();
+    const ids = categoriesRaw.map((c) => c.id).filter(Boolean);
+    const trMap = await loadTranslationMap(collection('category_translations'), 'category_id', ids, lang);
+    const categories = categoriesRaw.map((c) =>
+      rowToCategory(withTranslation(c, trMap.get(c.id), ['name', 'description', 'tags']))
     );
-    const categories = result.rows.map(rowToCategory);
     res.json({ categories });
   } catch (err) {
     console.error(err);

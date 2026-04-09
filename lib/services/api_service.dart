@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
+import '../utils/perf_trace.dart';
 
 class ApiException implements Exception {
   final int statusCode;
@@ -115,11 +116,19 @@ class ApiService {
   Future<http.Response> _requestWithRetry(
     Future<http.Response> Function() request, {
     int maxRetries = _maxRetries,
+    String traceLabel = 'api.request',
   }) async {
+    final sw = Stopwatch()..start();
     Object? lastError;
     for (var i = 0; i < maxRetries; i++) {
       try {
         final response = await request().timeout(_defaultTimeout);
+        sw.stop();
+        PerfTrace.mark(traceLabel, extras: {
+          'status': response.statusCode,
+          'attempt': i + 1,
+          'ms': sw.elapsedMilliseconds,
+        });
         return response;
       } on TimeoutException catch (e) {
         lastError = e;
@@ -136,6 +145,12 @@ class ApiService {
         );
       }
     }
+    sw.stop();
+    PerfTrace.mark(traceLabel, extras: {
+      'failed': true,
+      'ms': sw.elapsedMilliseconds,
+      'retries': maxRetries,
+    });
     throw lastError is Exception
         ? lastError
         : Exception(lastError?.toString() ?? 'Request failed after retries');
@@ -170,6 +185,7 @@ class ApiService {
           headers: headers,
         ),
         maxRetries: _maxRetriesListGet,
+        traceLabel: 'api.getPlaces',
       );
       if (response.statusCode != 200) {
         throw ApiException(response.statusCode, response.body);
@@ -363,7 +379,7 @@ class ApiService {
     final response = await _requestWithRetry(() => _client.get(
           Uri.parse(_urlWithLang('$_baseUrl/api/events', locale)),
           headers: headers,
-        ));
+        ), traceLabel: 'api.getEvents');
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
@@ -619,12 +635,25 @@ class ApiService {
 
   /// GET /api/coupons - List coupons (pass authToken for used_by_me)
   Future<Map<String, dynamic>> getCoupons({String? authToken}) async {
-    final response = await _requestWithRetry(() => _client.get(
-          Uri.parse('$_baseUrl${_urlWithLang('/api/coupons')}'),
-          headers: _headers(authToken: authToken),
-        ));
-    if (response.statusCode != 200) throw ApiException(response.statusCode, _parseError(response.body));
-    return json.decode(response.body) as Map<String, dynamic>;
+    final paths = <String>['/api/coupons', '/api/deals/coupons'];
+    ApiException? lastError;
+    for (final path in paths) {
+      final response = await _requestWithRetry(() => _client.get(
+            Uri.parse('$_baseUrl${_urlWithLang(path)}'),
+            headers: _headers(authToken: authToken),
+          ));
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is List) return {'coupons': decoded};
+        return {'coupons': const <dynamic>[]};
+      }
+      if (response.statusCode == 404) continue;
+      lastError = ApiException(response.statusCode, _parseError(response.body));
+      break;
+    }
+    if (lastError != null) throw lastError;
+    return {'coupons': const <dynamic>[]};
   }
 
   /// POST /api/coupons/validate
@@ -655,12 +684,25 @@ class ApiService {
 
   /// GET /api/offers - List place offers
   Future<Map<String, dynamic>> getOffers() async {
-    final response = await _requestWithRetry(() => _client.get(
-          Uri.parse('$_baseUrl${_urlWithLang('/api/offers')}'),
-          headers: _headers(),
-        ));
-    if (response.statusCode != 200) throw ApiException(response.statusCode, _parseError(response.body));
-    return json.decode(response.body) as Map<String, dynamic>;
+    final paths = <String>['/api/offers', '/api/deals/offers'];
+    ApiException? lastError;
+    for (final path in paths) {
+      final response = await _requestWithRetry(() => _client.get(
+            Uri.parse('$_baseUrl${_urlWithLang(path)}'),
+            headers: _headers(),
+          ));
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is List) return {'offers': decoded};
+        return {'offers': const <dynamic>[]};
+      }
+      if (response.statusCode == 404) continue;
+      lastError = ApiException(response.statusCode, _parseError(response.body));
+      break;
+    }
+    if (lastError != null) throw lastError;
+    return {'offers': const <dynamic>[]};
   }
 
   /// POST /api/offers/propose - Send offer proposal to restaurant
@@ -672,42 +714,100 @@ class ApiService {
     };
     if (discountType != null) body['suggested_discount_type'] = discountType;
     if (discountValue != null) body['suggested_discount_value'] = discountValue;
-    final response = await _requestWithRetry(() => _client.post(
-          Uri.parse('$_baseUrl/api/offers/propose'),
-          headers: _headers(authToken: authToken),
-          body: json.encode(body),
-        ));
-    if (response.statusCode != 201) throw ApiException(response.statusCode, _parseError(response.body));
+    final paths = <String>[
+      '/api/offers/propose',
+      '/api/messages/propose',
+      '/api/proposals/propose',
+    ];
+    ApiException? lastError;
+    for (final path in paths) {
+      final response = await _requestWithRetry(() => _client.post(
+            Uri.parse('$_baseUrl$path'),
+            headers: _headers(authToken: authToken),
+            body: json.encode(body),
+          ));
+      if (response.statusCode == 200 || response.statusCode == 201) return;
+      if (response.statusCode == 404) continue;
+      lastError = ApiException(response.statusCode, _parseError(response.body));
+      break;
+    }
+    throw lastError ?? ApiException(404, 'Offer proposal endpoint not found');
   }
 
   /// GET /api/offers/place-proposals - Proposals for places owned by business owner
   Future<Map<String, dynamic>> getPlaceProposals(String authToken) async {
-    final response = await _requestWithRetry(() => _client.get(
-          Uri.parse('$_baseUrl${_urlWithLang('/api/offers/place-proposals')}'),
-          headers: _headers(authToken: authToken),
-        ));
-    if (response.statusCode != 200) throw ApiException(response.statusCode, _parseError(response.body));
-    return json.decode(response.body) as Map<String, dynamic>;
+    final paths = <String>[
+      '/api/offers/place-proposals',
+      '/api/messages/place-proposals',
+      '/api/proposals/place-proposals',
+    ];
+    ApiException? lastError;
+    for (final path in paths) {
+      final response = await _requestWithRetry(() => _client.get(
+            Uri.parse('$_baseUrl${_urlWithLang(path)}'),
+            headers: _headers(authToken: authToken),
+          ));
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is List) return {'proposals': decoded};
+        return {'proposals': const <dynamic>[]};
+      }
+      if (response.statusCode == 404) continue;
+      lastError = ApiException(response.statusCode, _parseError(response.body));
+      break;
+    }
+    if (lastError != null) throw lastError;
+    return {'proposals': const <dynamic>[]};
   }
 
   /// PUT /api/offers/proposals/:id/respond - Restaurant owner responds to proposal
   Future<void> respondToProposal(String authToken, String proposalId, String response) async {
-    final res = await _requestWithRetry(() => _client.put(
-          Uri.parse('$_baseUrl/api/offers/proposals/$proposalId/respond'),
-          headers: _headers(authToken: authToken),
-          body: json.encode({'response': response}),
-        ));
-    if (res.statusCode != 200) throw ApiException(res.statusCode, _parseError(res.body));
+    final paths = <String>[
+      '/api/offers/proposals/$proposalId/respond',
+      '/api/messages/proposals/$proposalId/respond',
+      '/api/proposals/$proposalId/respond',
+    ];
+    ApiException? lastError;
+    for (final path in paths) {
+      final res = await _requestWithRetry(() => _client.put(
+            Uri.parse('$_baseUrl$path'),
+            headers: _headers(authToken: authToken),
+            body: json.encode({'response': response}),
+          ));
+      if (res.statusCode == 200) return;
+      if (res.statusCode == 404) continue;
+      lastError = ApiException(res.statusCode, _parseError(res.body));
+      break;
+    }
+    throw lastError ?? ApiException(404, 'Proposal response endpoint not found');
   }
 
   /// GET /api/offers/my-proposals - User's proposals with restaurant responses
   Future<Map<String, dynamic>> getMyProposals(String authToken) async {
-    final response = await _requestWithRetry(() => _client.get(
-          Uri.parse('$_baseUrl${_urlWithLang('/api/offers/my-proposals')}'),
-          headers: _headers(authToken: authToken),
-        ));
-    if (response.statusCode != 200) throw ApiException(response.statusCode, _parseError(response.body));
-    return json.decode(response.body) as Map<String, dynamic>;
+    final paths = <String>[
+      '/api/offers/my-proposals',
+      '/api/messages/my-proposals',
+      '/api/proposals/my-proposals',
+    ];
+    ApiException? lastError;
+    for (final path in paths) {
+      final response = await _requestWithRetry(() => _client.get(
+            Uri.parse('$_baseUrl${_urlWithLang(path)}'),
+            headers: _headers(authToken: authToken),
+          ));
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is List) return {'proposals': decoded};
+        return {'proposals': const <dynamic>[]};
+      }
+      if (response.statusCode == 404) continue;
+      lastError = ApiException(response.statusCode, _parseError(response.body));
+      break;
+    }
+    if (lastError != null) throw lastError;
+    return {'proposals': const <dynamic>[]};
   }
 
   /// GET /api/offers/place/:id
@@ -988,6 +1088,37 @@ class ApiService {
           headers: _headers(authToken: authToken),
         ));
     return response.statusCode == 200 || response.statusCode == 204;
+  }
+
+  /// GET /api/user/trip-share-requests - collaborative trip requests.
+  Future<Map<String, dynamic>> getTripShareRequests(String authToken) async {
+    final response = await _requestWithRetry(() => _client.get(
+          Uri.parse('$_baseUrl/api/user/trip-share-requests'),
+          headers: _headers(authToken: authToken),
+        ));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, _parseError(response.body));
+    }
+    final decoded = json.decode(response.body);
+    return decoded is Map<String, dynamic>
+        ? decoded
+        : const <String, dynamic>{'incoming': <dynamic>[], 'sent': <dynamic>[]};
+  }
+
+  /// POST /api/user/trip-share-requests/:id/respond - accept/reject.
+  Future<void> respondTripShareRequest(
+    String authToken,
+    String requestId,
+    String action,
+  ) async {
+    final response = await _requestWithRetry(() => _client.post(
+          Uri.parse('$_baseUrl/api/user/trip-share-requests/$requestId/respond'),
+          headers: _headers(authToken: authToken),
+          body: json.encode({'action': action}),
+        ));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, _parseError(response.body));
+    }
   }
 
   /// POST /api/upload/image - Upload image (same storage as places).

@@ -1,11 +1,35 @@
+const jwt = require('jsonwebtoken');
+
 /**
  * Protects admin routes. Expects X-Admin-Key header matching ADMIN_SECRET.
  * In production: ADMIN_SECRET is required, requests without valid key are rejected.
  * In development: if ADMIN_SECRET is not set, allows all (dev mode).
  */
-function adminAuth(req, res, next) {
+async function adminAuth(req, res, next) {
   const secret = process.env.ADMIN_SECRET;
   const isProd = process.env.NODE_ENV === 'production';
+  const bearer = req.headers.authorization?.startsWith('Bearer ')
+    ? req.headers.authorization.slice(7).trim()
+    : null;
+
+  // Compatibility bridge: allow JWT admin-role auth if valid and user is admin.
+  if (bearer) {
+    try {
+      const decoded = jwt.verify(bearer, process.env.JWT_SECRET, {
+        algorithms: ['HS256'],
+      });
+      if (decoded?.userId) {
+        const { collection } = require('../db');
+        const user = await collection('users').findOne(
+          { id: decoded.userId },
+          { projection: { _id: 0, is_admin: 1 } },
+        );
+        if (user?.is_admin === true) return next();
+      }
+    } catch (_) {
+      // fall through to key-based auth
+    }
+  }
 
   if (isProd && !secret) {
     return res.status(503).json({
