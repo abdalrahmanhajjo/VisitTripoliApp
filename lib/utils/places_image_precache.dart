@@ -37,8 +37,13 @@ void schedulePlacesImagePrecache(BuildContext context, List<Place> places) {
       for (final raw in place.images.take(2)) {
         if (count >= maxImages) break;
         if (raw.isEmpty) continue;
-        final uri =
-            AppImageCacheManager.resolveNetworkImageUrl(_resolvePlaceImageUrl(raw));
+        final tw = size.width.round();
+        final th = size.height.round();
+        final uri = AppImageCacheManager.resolveNetworkImageUrl(
+          _resolvePlaceImageUrl(raw),
+          targetWidth: tw,
+          targetHeight: th,
+        );
         if (uri.isEmpty) continue;
         precacheImage(
           CachedNetworkImageProvider(uri, cacheManager: cm),

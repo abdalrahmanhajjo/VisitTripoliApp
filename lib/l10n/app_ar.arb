@@ -685,6 +685,95 @@
   "mapHideSteps": "إخفاء الخطوات",
   "mapViewOnMapLowercase": "عرض على الخريطة",
   "mapPlaceDetails": "تفاصيل المكان",
+  "mapSearchNoMatches": "لا توجد أماكن تطابق بحثك. جرّب كلمات أخرى أو غيّر التصفية.",
+  "mapOpenPlaceDetails": "فتح تفاصيل المكان",
+  "mapDeckPreviousPlace": "المكان السابق",
+  "mapDeckNextPlace": "المكان التالي",
+  "mapCloseDirections": "إغلاق الاتجاهات",
+  "mapSwapStartDestination": "تبديل نقطة الانطلاق والوجهة",
+  "mapTooltipZoomIn": "تكبير",
+  "mapTooltipZoomOut": "تصغير",
+  "mapTooltipMyLocation": "توسيط على موقعي",
+  "mapTooltipMapType": "نوع الخريطة",
+  "mapTooltipFitAllPlaces": "إظهار كل الأماكن",
+  "mapTooltipShowTraffic": "إظهار المرور",
+  "mapTooltipHideTraffic": "إخفاء المرور",
+  "mapArrangeByNearest": "ترتيب حسب الأقرب",
+  "mapPlacesOnMapCount": "{count, plural, zero{لا أماكن على الخريطة} one{مكان واحد على الخريطة} two{مكانان على الخريطة} few{{count} أماكن على الخريطة} many{{count} مكاناً على الخريطة} other{{count} مكان على الخريطة}}",
+  "@mapPlacesOnMapCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "mapNoPlacesFound": "لا توجد أماكن",
+  "mapNoPlacesFoundHint": "جرّب بحثاً أو فئة مختلفة",
+  "mapTapMapChooseStartShort": "المس الخريطة لاختيار نقطة الانطلاق",
+  "mapTripRouteTitle": "مسار الرحلة",
+  "mapTourRouteTitle": "مسار الجولة",
+  "mapSelectedMapPoint": "نقطة مختارة على الخريطة",
+  "mapDestination": "الوجهة",
+  "mapYourLocation": "موقعك",
+  "mapMyLocationLive": "موقعي",
+  "mapLocationNeededForDirections": "نحتاج الموقع للاتجاهات. فعّل تحديد الموقع أو اختر نقطة بداية على الخريطة.",
+  "mapDismissLocationBanner": "إغلاق",
+  "mapDeckDistanceFromYou": "المسافة: {distance}",
+  "@mapDeckDistanceFromYou": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "mapDeckFromPrevious": "من السابق: {distance}",
+  "@mapDeckFromPrevious": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "mapDeckRouteApprox": "مسار {distance}",
+  "@mapDeckRouteApprox": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "mapDeckNearbyPlaces": "أماكن قريبة",
+  "mapSemanticsPlaceCardHint": "عرض التفاصيل والاتجاهات والمزيد",
+  "mapMapTypeTitle": "نوع الخريطة",
+  "mapStyleStandard": "قياسي",
+  "mapStyleStandardDesc": "خريطة طرق افتراضية",
+  "mapStyleSatellite": "قمر صناعي",
+  "mapStyleSatelliteDesc": "صور جوية",
+  "mapStyleHybrid": "مختلط",
+  "mapStyleHybridDesc": "قمر صناعي + الطرق",
+  "mapStyleTerrain": "تضاريس",
+  "mapStyleTerrainDesc": "عرض طبوغرافي",
+  "mapTourStopProgress": "المحطة {current} من {total}",
+  "@mapTourStopProgress": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "mapPreviousStop": "المحطة السابقة",
+  "mapNextStop": "المحطة التالية",
+  "mapDriveMode": "قيادة",
+  "mapWalkMode": "مشي",
+  "mapStartNavigation": "ابدأ",
+  "mapMultiStopTourName": "جولة بـ {count} محطات",
+  "@mapMultiStopTourName": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "mapTourCategory": "جولة",
+  "mapMultipleLocations": "مواقع متعددة",
+  "mapPreviousOrigin": "نقطة الانطلاق السابقة",
+  "mapStartDefault": "البداية",
+  "mapChooseLocation": "اختر الموقع",
+  "mapRouteDistanceAway": "على بُعد {distance}",
+  "@mapRouteDistanceAway": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
   "placeNotFoundTitle": "المكان غير موجود",
   "placeNotFoundBody": "لم يتم العثور على المكان",
   "placeNewBadge": "شارة جديدة: {names}",

@@ -88,6 +88,27 @@ app.use(cors({
 
 app.use(express.json({ limit: '256kb' }));
 app.use(blockSuspiciousInput);
+app.use((req, res, next) => {
+  if (!req.originalUrl.startsWith('/api/')) return next();
+  const start = process.hrtime.bigint();
+  res.on('finish', () => {
+    const ms = Number(process.hrtime.bigint() - start) / 1e6;
+    if (
+      req.originalUrl.startsWith('/api/feed') ||
+      req.originalUrl.startsWith('/api/places') ||
+      req.originalUrl.startsWith('/api/auth/') ||
+      req.originalUrl.startsWith('/api/admin/stats')
+    ) {
+      logger.info('API timing', {
+        method: req.method,
+        path: req.originalUrl,
+        status: res.statusCode,
+        ms: Number(ms.toFixed(1)),
+      });
+    }
+  });
+  next();
+});
 
 const healthDbHandler = (req, res) => {
   ping()
@@ -223,33 +244,51 @@ app.use((err, req, res, next) => {
 });
 
 const HOST = process.env.HOST || '0.0.0.0';
-const server = app.listen(PORT, HOST, () => {
-  logger.info(`Visit Tripoli API listening`, { host: HOST, port: PORT, env: process.env.NODE_ENV || 'development' });
-  connectMongo()
-    .then(() => logger.info('Database pool reachable'))
-    .catch((err) => {
-      const detail = err?.message || err?.code || String(err);
-      logger.error('Startup DB check failed', {
-        detail,
-        hint: 'Set MONGODB_URI and MONGODB_DB_NAME in backend/.env',
-      });
-    });
-});
+let server = null;
 
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    logger.error(`Port ${PORT} in use`, {
-      hint: 'Stop the other process or set PORT in backend/.env',
-      windows: `netstat -ano | findstr :${PORT} then taskkill /PID <pid> /F`,
+async function startServer() {
+  try {
+    await connectMongo();
+    logger.info('Database pool reachable');
+  } catch (err) {
+    const detail = err?.message || err?.code || String(err);
+    logger.error('Startup DB check failed', {
+      detail,
+      hint: 'Set MONGODB_URI and MONGODB_DB_NAME in backend/.env',
     });
-  } else {
-    logger.error('HTTP server error', { message: err.message, code: err.code });
+    process.exit(1);
   }
-  process.exit(1);
-});
+
+  server = app.listen(PORT, HOST, () => {
+    logger.info('Visit Tripoli API listening', {
+      host: HOST,
+      port: PORT,
+      env: process.env.NODE_ENV || 'development',
+    });
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error(`Port ${PORT} in use`, {
+        hint: 'Stop the other process or set PORT in backend/.env',
+        windows: `netstat -ano | findstr :${PORT} then taskkill /PID <pid> /F`,
+      });
+    } else {
+      logger.error('HTTP server error', { message: err.message, code: err.code });
+    }
+    process.exit(1);
+  });
+}
+
+startServer();
 
 function gracefulShutdown(signal) {
   logger.info(`${signal}: closing HTTP server`);
+  if (!server) {
+    return closeMongo()
+      .then(() => process.exit(0))
+      .catch(() => process.exit(1));
+  }
   server.close((closeErr) => {
     if (closeErr) logger.error('Server close error', { message: closeErr.message });
     closeMongo()

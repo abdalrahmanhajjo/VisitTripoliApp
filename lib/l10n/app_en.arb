@@ -684,6 +684,95 @@
   "mapHideSteps": "Hide steps",
   "mapViewOnMapLowercase": "View on map",
   "mapPlaceDetails": "Place details",
+  "mapSearchNoMatches": "No places match your search. Try different words or clear the filter.",
+  "mapOpenPlaceDetails": "Open place details",
+  "mapDeckPreviousPlace": "Previous place",
+  "mapDeckNextPlace": "Next place",
+  "mapCloseDirections": "Close directions",
+  "mapSwapStartDestination": "Swap start and destination",
+  "mapTooltipZoomIn": "Zoom in",
+  "mapTooltipZoomOut": "Zoom out",
+  "mapTooltipMyLocation": "Center on my location",
+  "mapTooltipMapType": "Map type",
+  "mapTooltipFitAllPlaces": "Show all pins",
+  "mapTooltipShowTraffic": "Show traffic",
+  "mapTooltipHideTraffic": "Hide traffic",
+  "mapArrangeByNearest": "Arrange by nearest places",
+  "mapPlacesOnMapCount": "{count, plural, one{1 place on map} other{{count} places on map}}",
+  "@mapPlacesOnMapCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "mapNoPlacesFound": "No places found",
+  "mapNoPlacesFoundHint": "Try a different search or category",
+  "mapTapMapChooseStartShort": "Tap the map to choose a start point",
+  "mapTripRouteTitle": "Trip route",
+  "mapTourRouteTitle": "Tour route",
+  "mapSelectedMapPoint": "Selected map point",
+  "mapDestination": "Destination",
+  "mapYourLocation": "Your location",
+  "mapMyLocationLive": "My location",
+  "mapLocationNeededForDirections": "Location needed for directions. Enable GPS or pick a start point on the map.",
+  "mapDismissLocationBanner": "Dismiss",
+  "mapDeckDistanceFromYou": "Distance: {distance}",
+  "@mapDeckDistanceFromYou": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "mapDeckFromPrevious": "From previous: {distance}",
+  "@mapDeckFromPrevious": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "mapDeckRouteApprox": "{distance} route",
+  "@mapDeckRouteApprox": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "mapDeckNearbyPlaces": "Nearby places",
+  "mapSemanticsPlaceCardHint": "Open details, directions, and more",
+  "mapMapTypeTitle": "Map type",
+  "mapStyleStandard": "Standard",
+  "mapStyleStandardDesc": "Default road map",
+  "mapStyleSatellite": "Satellite",
+  "mapStyleSatelliteDesc": "Aerial imagery",
+  "mapStyleHybrid": "Hybrid",
+  "mapStyleHybridDesc": "Satellite + roads",
+  "mapStyleTerrain": "Terrain",
+  "mapStyleTerrainDesc": "Topographic view",
+  "mapTourStopProgress": "Stop {current} of {total}",
+  "@mapTourStopProgress": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "mapPreviousStop": "Previous stop",
+  "mapNextStop": "Next stop",
+  "mapDriveMode": "Drive",
+  "mapWalkMode": "Walk",
+  "mapStartNavigation": "Start",
+  "mapMultiStopTourName": "{count}-stop tour",
+  "@mapMultiStopTourName": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "mapTourCategory": "Tour",
+  "mapMultipleLocations": "Multiple locations",
+  "mapPreviousOrigin": "Previous start",
+  "mapStartDefault": "Start",
+  "mapChooseLocation": "Choose location",
+  "mapRouteDistanceAway": "{distance} away",
+  "@mapRouteDistanceAway": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
   "placeNotFoundTitle": "Place Not Found",
   "placeNotFoundBody": "Place not found",
   "placeNewBadge": "New badge: {names}",

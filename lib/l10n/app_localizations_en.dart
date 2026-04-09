@@ -2060,6 +2060,187 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapPlaceDetails => 'Place details';
 
   @override
+  String get mapSearchNoMatches =>
+      'No places match your search. Try different words or clear the filter.';
+
+  @override
+  String get mapOpenPlaceDetails => 'Open place details';
+
+  @override
+  String get mapDeckPreviousPlace => 'Previous place';
+
+  @override
+  String get mapDeckNextPlace => 'Next place';
+
+  @override
+  String get mapCloseDirections => 'Close directions';
+
+  @override
+  String get mapSwapStartDestination => 'Swap start and destination';
+
+  @override
+  String get mapTooltipZoomIn => 'Zoom in';
+
+  @override
+  String get mapTooltipZoomOut => 'Zoom out';
+
+  @override
+  String get mapTooltipMyLocation => 'Center on my location';
+
+  @override
+  String get mapTooltipMapType => 'Map type';
+
+  @override
+  String get mapTooltipFitAllPlaces => 'Show all pins';
+
+  @override
+  String get mapTooltipShowTraffic => 'Show traffic';
+
+  @override
+  String get mapTooltipHideTraffic => 'Hide traffic';
+
+  @override
+  String get mapArrangeByNearest => 'Arrange by nearest places';
+
+  @override
+  String mapPlacesOnMapCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count places on map',
+      one: '1 place on map',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mapNoPlacesFound => 'No places found';
+
+  @override
+  String get mapNoPlacesFoundHint => 'Try a different search or category';
+
+  @override
+  String get mapTapMapChooseStartShort => 'Tap the map to choose a start point';
+
+  @override
+  String get mapTripRouteTitle => 'Trip route';
+
+  @override
+  String get mapTourRouteTitle => 'Tour route';
+
+  @override
+  String get mapSelectedMapPoint => 'Selected map point';
+
+  @override
+  String get mapDestination => 'Destination';
+
+  @override
+  String get mapYourLocation => 'Your location';
+
+  @override
+  String get mapMyLocationLive => 'My location';
+
+  @override
+  String get mapLocationNeededForDirections =>
+      'Location needed for directions. Enable GPS or pick a start point on the map.';
+
+  @override
+  String get mapDismissLocationBanner => 'Dismiss';
+
+  @override
+  String mapDeckDistanceFromYou(String distance) {
+    return 'Distance: $distance';
+  }
+
+  @override
+  String mapDeckFromPrevious(String distance) {
+    return 'From previous: $distance';
+  }
+
+  @override
+  String mapDeckRouteApprox(String distance) {
+    return '$distance route';
+  }
+
+  @override
+  String get mapDeckNearbyPlaces => 'Nearby places';
+
+  @override
+  String get mapSemanticsPlaceCardHint => 'Open details, directions, and more';
+
+  @override
+  String get mapMapTypeTitle => 'Map type';
+
+  @override
+  String get mapStyleStandard => 'Standard';
+
+  @override
+  String get mapStyleStandardDesc => 'Default road map';
+
+  @override
+  String get mapStyleSatellite => 'Satellite';
+
+  @override
+  String get mapStyleSatelliteDesc => 'Aerial imagery';
+
+  @override
+  String get mapStyleHybrid => 'Hybrid';
+
+  @override
+  String get mapStyleHybridDesc => 'Satellite + roads';
+
+  @override
+  String get mapStyleTerrain => 'Terrain';
+
+  @override
+  String get mapStyleTerrainDesc => 'Topographic view';
+
+  @override
+  String mapTourStopProgress(int current, int total) {
+    return 'Stop $current of $total';
+  }
+
+  @override
+  String get mapPreviousStop => 'Previous stop';
+
+  @override
+  String get mapNextStop => 'Next stop';
+
+  @override
+  String get mapDriveMode => 'Drive';
+
+  @override
+  String get mapWalkMode => 'Walk';
+
+  @override
+  String get mapStartNavigation => 'Start';
+
+  @override
+  String mapMultiStopTourName(int count) {
+    return '$count-stop tour';
+  }
+
+  @override
+  String get mapTourCategory => 'Tour';
+
+  @override
+  String get mapMultipleLocations => 'Multiple locations';
+
+  @override
+  String get mapPreviousOrigin => 'Previous start';
+
+  @override
+  String get mapStartDefault => 'Start';
+
+  @override
+  String get mapChooseLocation => 'Choose location';
+
+  @override
+  String mapRouteDistanceAway(String distance) {
+    return '$distance away';
+  }
+
+  @override
   String get placeNotFoundTitle => 'Place Not Found';
 
   @override

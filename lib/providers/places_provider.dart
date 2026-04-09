@@ -75,9 +75,7 @@ class PlacesProvider extends ChangeNotifier {
         authToken: authToken,
         locale: ApiService.instance.currentLocale,
       );
-      _savedPlaces = list
-          .map((item) => _placeFromJson(item as Map<String, dynamic>))
-          .toList();
+      _savedPlaces = _parsePlacesList(list);
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading saved places from server: $e');
@@ -90,8 +88,7 @@ class PlacesProvider extends ChangeNotifier {
     if (s != null && s.isNotEmpty) {
       try {
         final List<dynamic> jsonData = json.decode(s);
-        _savedPlaces =
-            jsonData.map((json) => Place.fromJson(json as Map<String, dynamic>)).toList();
+        _savedPlaces = _parsePlacesList(jsonData);
         notifyListeners();
       } catch (e) {
         debugPrint('Error loading saved places: $e');
@@ -112,9 +109,7 @@ class PlacesProvider extends ChangeNotifier {
       if (raw == null || raw.isEmpty) return;
       final list = json.decode(raw) as List<dynamic>?;
       if (list == null || list.isEmpty) return;
-      _places = list
-          .map((item) => _placeFromJson(item as Map<String, dynamic>))
-          .toList();
+      _places = _parsePlacesList(list);
       notifyListeners();
     } catch (_) {}
   }
@@ -294,5 +289,21 @@ class PlacesProvider extends ChangeNotifier {
 
   bool isPlaceSaved(String placeId) {
     return _savedPlaces.any((p) => p.id == placeId);
+  }
+
+  List<Place> _parsePlacesList(List<dynamic> raw) {
+    final out = <Place>[];
+    for (final item in raw) {
+      try {
+        if (item is Map<String, dynamic>) {
+          out.add(_placeFromJson(item));
+        } else if (item is Map) {
+          out.add(_placeFromJson(item.map((k, v) => MapEntry(k.toString(), v))));
+        }
+      } catch (_) {
+        // Skip malformed rows to keep list rendering stable.
+      }
+    }
+    return out;
   }
 }

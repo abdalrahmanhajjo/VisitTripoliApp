@@ -2042,6 +2042,191 @@ class AppLocalizationsAr extends AppLocalizations {
   String get mapPlaceDetails => 'تفاصيل المكان';
 
   @override
+  String get mapSearchNoMatches =>
+      'لا توجد أماكن تطابق بحثك. جرّب كلمات أخرى أو غيّر التصفية.';
+
+  @override
+  String get mapOpenPlaceDetails => 'فتح تفاصيل المكان';
+
+  @override
+  String get mapDeckPreviousPlace => 'المكان السابق';
+
+  @override
+  String get mapDeckNextPlace => 'المكان التالي';
+
+  @override
+  String get mapCloseDirections => 'إغلاق الاتجاهات';
+
+  @override
+  String get mapSwapStartDestination => 'تبديل نقطة الانطلاق والوجهة';
+
+  @override
+  String get mapTooltipZoomIn => 'تكبير';
+
+  @override
+  String get mapTooltipZoomOut => 'تصغير';
+
+  @override
+  String get mapTooltipMyLocation => 'توسيط على موقعي';
+
+  @override
+  String get mapTooltipMapType => 'نوع الخريطة';
+
+  @override
+  String get mapTooltipFitAllPlaces => 'إظهار كل الأماكن';
+
+  @override
+  String get mapTooltipShowTraffic => 'إظهار المرور';
+
+  @override
+  String get mapTooltipHideTraffic => 'إخفاء المرور';
+
+  @override
+  String get mapArrangeByNearest => 'ترتيب حسب الأقرب';
+
+  @override
+  String mapPlacesOnMapCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count مكان على الخريطة',
+      many: '$count مكاناً على الخريطة',
+      few: '$count أماكن على الخريطة',
+      two: 'مكانان على الخريطة',
+      one: 'مكان واحد على الخريطة',
+      zero: 'لا أماكن على الخريطة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mapNoPlacesFound => 'لا توجد أماكن';
+
+  @override
+  String get mapNoPlacesFoundHint => 'جرّب بحثاً أو فئة مختلفة';
+
+  @override
+  String get mapTapMapChooseStartShort => 'المس الخريطة لاختيار نقطة الانطلاق';
+
+  @override
+  String get mapTripRouteTitle => 'مسار الرحلة';
+
+  @override
+  String get mapTourRouteTitle => 'مسار الجولة';
+
+  @override
+  String get mapSelectedMapPoint => 'نقطة مختارة على الخريطة';
+
+  @override
+  String get mapDestination => 'الوجهة';
+
+  @override
+  String get mapYourLocation => 'موقعك';
+
+  @override
+  String get mapMyLocationLive => 'موقعي';
+
+  @override
+  String get mapLocationNeededForDirections =>
+      'نحتاج الموقع للاتجاهات. فعّل تحديد الموقع أو اختر نقطة بداية على الخريطة.';
+
+  @override
+  String get mapDismissLocationBanner => 'إغلاق';
+
+  @override
+  String mapDeckDistanceFromYou(String distance) {
+    return 'المسافة: $distance';
+  }
+
+  @override
+  String mapDeckFromPrevious(String distance) {
+    return 'من السابق: $distance';
+  }
+
+  @override
+  String mapDeckRouteApprox(String distance) {
+    return 'مسار $distance';
+  }
+
+  @override
+  String get mapDeckNearbyPlaces => 'أماكن قريبة';
+
+  @override
+  String get mapSemanticsPlaceCardHint => 'عرض التفاصيل والاتجاهات والمزيد';
+
+  @override
+  String get mapMapTypeTitle => 'نوع الخريطة';
+
+  @override
+  String get mapStyleStandard => 'قياسي';
+
+  @override
+  String get mapStyleStandardDesc => 'خريطة طرق افتراضية';
+
+  @override
+  String get mapStyleSatellite => 'قمر صناعي';
+
+  @override
+  String get mapStyleSatelliteDesc => 'صور جوية';
+
+  @override
+  String get mapStyleHybrid => 'مختلط';
+
+  @override
+  String get mapStyleHybridDesc => 'قمر صناعي + الطرق';
+
+  @override
+  String get mapStyleTerrain => 'تضاريس';
+
+  @override
+  String get mapStyleTerrainDesc => 'عرض طبوغرافي';
+
+  @override
+  String mapTourStopProgress(int current, int total) {
+    return 'المحطة $current من $total';
+  }
+
+  @override
+  String get mapPreviousStop => 'المحطة السابقة';
+
+  @override
+  String get mapNextStop => 'المحطة التالية';
+
+  @override
+  String get mapDriveMode => 'قيادة';
+
+  @override
+  String get mapWalkMode => 'مشي';
+
+  @override
+  String get mapStartNavigation => 'ابدأ';
+
+  @override
+  String mapMultiStopTourName(int count) {
+    return 'جولة بـ $count محطات';
+  }
+
+  @override
+  String get mapTourCategory => 'جولة';
+
+  @override
+  String get mapMultipleLocations => 'مواقع متعددة';
+
+  @override
+  String get mapPreviousOrigin => 'نقطة الانطلاق السابقة';
+
+  @override
+  String get mapStartDefault => 'البداية';
+
+  @override
+  String get mapChooseLocation => 'اختر الموقع';
+
+  @override
+  String mapRouteDistanceAway(String distance) {
+    return 'على بُعد $distance';
+  }
+
+  @override
   String get placeNotFoundTitle => 'المكان غير موجود';
 
   @override

@@ -2095,6 +2095,189 @@ class AppLocalizationsFr extends AppLocalizations {
   String get mapPlaceDetails => 'Détails du lieu';
 
   @override
+  String get mapSearchNoMatches =>
+      'Aucun lieu ne correspond à votre recherche. Essayez d\'autres mots ou changez le filtre.';
+
+  @override
+  String get mapOpenPlaceDetails => 'Ouvrir les détails du lieu';
+
+  @override
+  String get mapDeckPreviousPlace => 'Lieu précédent';
+
+  @override
+  String get mapDeckNextPlace => 'Lieu suivant';
+
+  @override
+  String get mapCloseDirections => 'Fermer l\'itinéraire';
+
+  @override
+  String get mapSwapStartDestination => 'Échanger départ et destination';
+
+  @override
+  String get mapTooltipZoomIn => 'Zoom avant';
+
+  @override
+  String get mapTooltipZoomOut => 'Zoom arrière';
+
+  @override
+  String get mapTooltipMyLocation => 'Centrer sur ma position';
+
+  @override
+  String get mapTooltipMapType => 'Type de carte';
+
+  @override
+  String get mapTooltipFitAllPlaces => 'Voir tous les lieux';
+
+  @override
+  String get mapTooltipShowTraffic => 'Afficher le trafic';
+
+  @override
+  String get mapTooltipHideTraffic => 'Masquer le trafic';
+
+  @override
+  String get mapArrangeByNearest => 'Trier par lieu le plus proche';
+
+  @override
+  String mapPlacesOnMapCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lieux sur la carte',
+      one: '1 lieu sur la carte',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get mapNoPlacesFound => 'Aucun lieu trouvé';
+
+  @override
+  String get mapNoPlacesFoundHint => 'Essayez une autre recherche ou catégorie';
+
+  @override
+  String get mapTapMapChooseStartShort =>
+      'Touchez la carte pour choisir le départ';
+
+  @override
+  String get mapTripRouteTitle => 'Itinéraire du voyage';
+
+  @override
+  String get mapTourRouteTitle => 'Itinéraire du circuit';
+
+  @override
+  String get mapSelectedMapPoint => 'Point sélectionné sur la carte';
+
+  @override
+  String get mapDestination => 'Destination';
+
+  @override
+  String get mapYourLocation => 'Votre position';
+
+  @override
+  String get mapMyLocationLive => 'Ma position';
+
+  @override
+  String get mapLocationNeededForDirections =>
+      'La position est nécessaire pour l\'itinéraire. Activez le GPS ou choisissez un point de départ sur la carte.';
+
+  @override
+  String get mapDismissLocationBanner => 'Fermer';
+
+  @override
+  String mapDeckDistanceFromYou(String distance) {
+    return 'Distance : $distance';
+  }
+
+  @override
+  String mapDeckFromPrevious(String distance) {
+    return 'Depuis le précédent : $distance';
+  }
+
+  @override
+  String mapDeckRouteApprox(String distance) {
+    return 'Parcours $distance';
+  }
+
+  @override
+  String get mapDeckNearbyPlaces => 'Lieux à proximité';
+
+  @override
+  String get mapSemanticsPlaceCardHint =>
+      'Ouvrir les détails, l\'itinéraire et plus';
+
+  @override
+  String get mapMapTypeTitle => 'Type de carte';
+
+  @override
+  String get mapStyleStandard => 'Standard';
+
+  @override
+  String get mapStyleStandardDesc => 'Carte routière classique';
+
+  @override
+  String get mapStyleSatellite => 'Satellite';
+
+  @override
+  String get mapStyleSatelliteDesc => 'Imagerie aérienne';
+
+  @override
+  String get mapStyleHybrid => 'Hybride';
+
+  @override
+  String get mapStyleHybridDesc => 'Satellite et routes';
+
+  @override
+  String get mapStyleTerrain => 'Relief';
+
+  @override
+  String get mapStyleTerrainDesc => 'Vue topographique';
+
+  @override
+  String mapTourStopProgress(int current, int total) {
+    return 'Étape $current sur $total';
+  }
+
+  @override
+  String get mapPreviousStop => 'Étape précédente';
+
+  @override
+  String get mapNextStop => 'Étape suivante';
+
+  @override
+  String get mapDriveMode => 'Voiture';
+
+  @override
+  String get mapWalkMode => 'Marche';
+
+  @override
+  String get mapStartNavigation => 'Démarrer';
+
+  @override
+  String mapMultiStopTourName(int count) {
+    return 'Circuit de $count étapes';
+  }
+
+  @override
+  String get mapTourCategory => 'Circuit';
+
+  @override
+  String get mapMultipleLocations => 'Plusieurs lieux';
+
+  @override
+  String get mapPreviousOrigin => 'Départ précédent';
+
+  @override
+  String get mapStartDefault => 'Départ';
+
+  @override
+  String get mapChooseLocation => 'Choisir un lieu';
+
+  @override
+  String mapRouteDistanceAway(String distance) {
+    return 'À $distance';
+  }
+
+  @override
   String get placeNotFoundTitle => 'Lieu introuvable';
 
   @override

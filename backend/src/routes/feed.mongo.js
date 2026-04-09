@@ -102,8 +102,8 @@ async function enrichPosts(posts, userId, lang, req) {
       videoUrl: absUrl(baseUrl, p.video_url),
       type: p.type || 'image',
       createdAt: p.created_at,
-      likeCount: likeMap.get(p.id) || 0,
-      commentCount: commentMap.get(p.id) || 0,
+      likeCount: p.like_count ?? (likeMap.get(p.id) || 0),
+      commentCount: p.comment_count ?? (commentMap.get(p.id) || 0),
       likedByMe: likedSet.has(p.id),
       savedByMe: savedSet.has(p.id),
       hideLikes: p.hide_likes === true,
@@ -192,17 +192,55 @@ router.get('/reels', optionalAuthMiddleware, async (req, res) => {
 });
 
 router.get('/saved', authMiddleware, async (req, res) => {
-  const ids = (await collection('feed_saves').find({ user_id: req.user.userId }, { projection: { _id: 0, post_id: 1 } }).toArray()).map((x) => x.post_id);
-  const posts = await collection('feed_posts').find({ id: { $in: ids }, moderation_status: 'approved' }, { projection: { _id: 0 } }).sort({ created_at: -1 }).toArray();
+  const limit = Math.min(parseInt(req.query.limit, 10) || FEED_LIMIT_DEFAULT, FEED_LIMIT_MAX);
+  const beforeParsed = parseFeedBeforeParam(req.query.before);
+  if (!beforeParsed.ok) return res.status(400).json({ error: 'Invalid cursor' });
+  const saveFilter = { user_id: req.user.userId };
+  if (beforeParsed.value) {
+    const ref = await collection('feed_saves').findOne(
+      { user_id: req.user.userId, post_id: beforeParsed.value },
+      { projection: { _id: 0, created_at: 1 } }
+    );
+    if (ref?.created_at) saveFilter.created_at = { $lt: ref.created_at };
+  }
+  const saveRows = await collection('feed_saves')
+    .find(saveFilter, { projection: { _id: 0, post_id: 1, created_at: 1 } })
+    .sort({ created_at: -1 })
+    .limit(limit)
+    .toArray();
+  const ids = saveRows.map((x) => x.post_id);
+  const posts = await collection('feed_posts').find({ id: { $in: ids }, moderation_status: 'approved' }, { projection: { _id: 0 } }).toArray();
+  const order = new Map(ids.map((id, i) => [id, i]));
+  posts.sort((a, b) => (order.get(a.id) ?? 999999) - (order.get(b.id) ?? 999999));
   const mapped = await enrichPosts(posts, req.user.userId, getRequestLang(req), req);
-  res.json({ posts: mapped, nextCursor: null, hasMore: false });
+  const nextCursor = mapped.length === limit ? mapped[mapped.length - 1].id : null;
+  res.json({ posts: mapped, nextCursor, hasMore: !!nextCursor });
 });
 
 router.get('/liked', authMiddleware, async (req, res) => {
-  const ids = (await collection('feed_likes').find({ user_id: req.user.userId }, { projection: { _id: 0, post_id: 1 } }).toArray()).map((x) => x.post_id);
-  const posts = await collection('feed_posts').find({ id: { $in: ids }, moderation_status: 'approved' }, { projection: { _id: 0 } }).sort({ created_at: -1 }).toArray();
+  const limit = Math.min(parseInt(req.query.limit, 10) || FEED_LIMIT_DEFAULT, FEED_LIMIT_MAX);
+  const beforeParsed = parseFeedBeforeParam(req.query.before);
+  if (!beforeParsed.ok) return res.status(400).json({ error: 'Invalid cursor' });
+  const likeFilter = { user_id: req.user.userId };
+  if (beforeParsed.value) {
+    const ref = await collection('feed_likes').findOne(
+      { user_id: req.user.userId, post_id: beforeParsed.value },
+      { projection: { _id: 0, created_at: 1 } }
+    );
+    if (ref?.created_at) likeFilter.created_at = { $lt: ref.created_at };
+  }
+  const likeRows = await collection('feed_likes')
+    .find(likeFilter, { projection: { _id: 0, post_id: 1, created_at: 1 } })
+    .sort({ created_at: -1 })
+    .limit(limit)
+    .toArray();
+  const ids = likeRows.map((x) => x.post_id);
+  const posts = await collection('feed_posts').find({ id: { $in: ids }, moderation_status: 'approved' }, { projection: { _id: 0 } }).toArray();
+  const order = new Map(ids.map((id, i) => [id, i]));
+  posts.sort((a, b) => (order.get(a.id) ?? 999999) - (order.get(b.id) ?? 999999));
   const mapped = await enrichPosts(posts, req.user.userId, getRequestLang(req), req);
-  res.json({ posts: mapped, nextCursor: null, hasMore: false });
+  const nextCursor = mapped.length === limit ? mapped[mapped.length - 1].id : null;
+  res.json({ posts: mapped, nextCursor, hasMore: !!nextCursor });
 });
 
 router.get('/pending-moderation', authMiddleware, async (req, res) => {
@@ -306,6 +344,7 @@ router.post('/:id/like', authMiddleware, requireUuidParam('id'), async (req, res
   if (exists) await collection('feed_likes').deleteOne({ post_id: postId, user_id: userId });
   else await collection('feed_likes').insertOne({ post_id: postId, user_id: userId, created_at: new Date() });
   const likeCount = await collection('feed_likes').countDocuments({ post_id: postId });
+  await collection('feed_posts').updateOne({ id: postId }, { $set: { like_count: likeCount, updated_at: new Date() } });
   res.json({ liked: !exists, likeCount });
 });
 
@@ -315,8 +354,16 @@ router.get('/:id/comments', requireUuidParam('id'), async (req, res) => {
   if (!vis.ok) return res.status(vis.code).json({ error: vis.message });
   const userId = req.headers.authorization?.startsWith('Bearer ') ? verifyAccessTokenOptional(req.headers.authorization.slice(7).trim()) : null;
   const limit = Math.min(parseInt(req.query.limit, 10) || 40, 200);
+  const beforeParsed = parseFeedBeforeParam(req.query.before);
+  if (!beforeParsed.ok) return res.status(400).json({ error: 'Invalid cursor' });
   const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
-  const comments = await collection('feed_comments').find({ post_id: postId }, { projection: { _id: 0 } }).sort({ created_at: -1 }).skip(offset).limit(limit).toArray();
+  const filter = { post_id: postId };
+  if (beforeParsed.value) {
+    const ref = await collection('feed_comments').findOne({ id: beforeParsed.value }, { projection: { _id: 0, created_at: 1 } });
+    if (ref?.created_at) filter.created_at = { $lt: ref.created_at };
+  }
+  const query = collection('feed_comments').find(filter, { projection: { _id: 0 } }).sort({ created_at: -1 }).limit(limit);
+  const comments = beforeParsed.value ? await query.toArray() : await query.skip(offset).toArray();
   const cids = comments.map((c) => c.id);
   const [users, profiles, likeAgg, myLikes] = await Promise.all([
     collection('users').find({ id: { $in: comments.map((c) => c.user_id).filter(Boolean) } }, { projection: { _id: 0, id: 1, name: 1, avatar_url: 1 } }).toArray(),
@@ -350,8 +397,15 @@ router.get('/:id/comments', requireUuidParam('id'), async (req, res) => {
       likedByMe: mySet.has(c.id),
     };
   });
-  const nextOffset = offset + out.length;
-  res.json({ comments: out, total, nextOffset: nextOffset < total ? nextOffset : null, hasMore: nextOffset < total });
+  const nextOffset = beforeParsed.value ? null : (offset + out.length);
+  const nextCursor = out.length === limit ? out[out.length - 1].id : null;
+  res.json({
+    comments: out,
+    total,
+    nextOffset: nextOffset != null && nextOffset < total ? nextOffset : null,
+    nextCursor,
+    hasMore: beforeParsed.value ? !!nextCursor : (nextOffset < total),
+  });
 });
 
 router.post('/:id/comments', authMiddleware, requireUuidParam('id'), async (req, res) => {
@@ -383,6 +437,7 @@ router.post('/:id/comments', authMiddleware, requireUuidParam('id'), async (req,
     updated_at: null,
   };
   await collection('feed_comments').insertOne(doc);
+  await collection('feed_posts').updateOne({ id: postId }, { $inc: { comment_count: 1 }, $set: { updated_at: new Date() } });
   res.status(201).json({
     id: doc.id,
     postId: doc.post_id,
@@ -411,6 +466,7 @@ router.delete('/comments/:commentId', authMiddleware, requireUuidParam('commentI
   const isAdmin = (await collection('users').findOne({ id: userId }, { projection: { _id: 0, is_admin: 1 } }))?.is_admin;
   if (c.user_id !== userId && post?.user_id !== userId && !isAdmin) return res.status(403).json({ error: 'You can only delete your own comments or comments on your posts' });
   await collection('feed_comments').deleteOne({ id: commentId });
+  await collection('feed_posts').updateOne({ id: c.post_id }, { $inc: { comment_count: -1 }, $set: { updated_at: new Date() } });
   res.json({ deleted: true });
 });
 
@@ -530,6 +586,25 @@ router.delete('/:id', authMiddleware, requireUuidParam('id'), async (req, res) =
   } else if (row.user_id !== userId && !isAdmin) return res.status(403).json({ error: 'You can only delete your own posts' });
   await collection('feed_posts').deleteOne({ id: postId });
   res.json({ deleted: true });
+});
+
+// Web parity aliases (`/post/:postId/...`) for VisitTipoliWeb contracts.
+router.post('/post/:postId/like', async (req, res) => {
+  req.url = `/${req.params.postId}/like`;
+  return router.handle(req, res);
+});
+router.post('/post/:postId/save', async (req, res) => {
+  req.url = `/${req.params.postId}/save`;
+  return router.handle(req, res);
+});
+router.get('/post/:postId/comments', async (req, res) => {
+  const qp = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  req.url = `/${req.params.postId}/comments${qp}`;
+  return router.handle(req, res);
+});
+router.post('/post/:postId/comments', async (req, res) => {
+  req.url = `/${req.params.postId}/comments`;
+  return router.handle(req, res);
 });
 
 module.exports = router;

@@ -54,13 +54,8 @@ class PlaceCard extends StatelessWidget {
                                 fit: BoxFit.cover,
                                 cacheWidth: cw,
                                 cacheHeight: ch,
-                                placeholder: (_, __) => Container(
-                                  color: AppTheme.surfaceVariant,
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  ),
-                                ),
+                                placeholder: (_, __) =>
+                                    Container(color: AppTheme.surfaceVariant),
                                 errorWidget: (_, __, e) => Container(
                                   color: AppTheme.surfaceVariant,
                                   child: const Icon(Icons.image_not_supported,

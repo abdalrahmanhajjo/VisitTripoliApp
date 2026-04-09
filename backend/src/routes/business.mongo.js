@@ -55,6 +55,16 @@ router.get('/places', async (req, res) => {
   const rows = await collection('places').find({ id: { $in: ids } }, { projection: { _id: 0 } }).sort({ name: 1 }).toArray();
   res.json(rows);
 });
+
+// Web parity endpoint: business profile summary.
+router.get('/me', async (req, res) => {
+  const user = await collection('users').findOne(
+    { id: req.user.userId },
+    { projection: { _id: 0, id: 1, name: 1, email: 1, is_business_owner: 1 } },
+  );
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  return res.json(user);
+});
 router.get('/places/:id', validatePlaceIdParam('id'), async (req, res) => {
   try {
     await assertOwnsPlace(req.user.userId, req.params.id);
@@ -83,6 +93,12 @@ router.get('/feed-posts', async (req, res) => {
   const rows = await collection('feed_posts').find({ place_id: { $in: ids } }, { projection: { _id: 0 } }).sort({ created_at: -1 }).limit(100).toArray();
   const baseUrl = getBaseUrl(req);
   res.json(rows.map((r) => rowToPost(r, baseUrl)));
+});
+
+// Web parity aliases
+router.get('/feed', async (req, res) => {
+  req.url = '/feed-posts';
+  return router.handle(req, res);
 });
 
 router.post('/feed-posts', postLimiter, sanitizeFeedBody, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
@@ -126,6 +142,22 @@ router.post('/feed-posts', postLimiter, sanitizeFeedBody, upload.fields([{ name:
   } catch (err) {
     return res.status(err.statusCode || 500).json({ error: err.message });
   }
+});
+
+router.post('/feed', postLimiter, sanitizeFeedBody, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
+  req.url = '/feed-posts';
+  return router.handle(req, res);
+});
+
+// Lightweight compatibility: surface customer proposals in business namespace.
+router.get('/proposals', async (req, res) => {
+  const ownedIds = (await collection('place_owners').find({ user_id: req.user.userId }, { projection: { _id: 0, place_id: 1 } }).toArray()).map((x) => x.place_id);
+  const proposals = await collection('offer_proposals')
+    .find({ place_id: { $in: ownedIds } }, { projection: { _id: 0 } })
+    .sort({ created_at: -1 })
+    .limit(100)
+    .toArray();
+  return res.json({ proposals });
 });
 
 module.exports = router;

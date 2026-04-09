@@ -1451,6 +1451,9 @@ class _SimilarPlaceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cardW = ResponsiveUtils.similarCardWidth(context);
     final imgH = ResponsiveUtils.similarCardImageHeight(context);
+    final dpr = MediaQuery.devicePixelRatioOf(context).clamp(1.0, 3.0);
+    final cacheW = (cardW * dpr).round().clamp(120, 2400);
+    final cacheH = (imgH * dpr).round().clamp(120, 2400);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -1468,6 +1471,8 @@ class _SimilarPlaceCard extends StatelessWidget {
                     ? AppImage(
                         src: place.images.first,
                         fit: BoxFit.cover,
+                        cacheWidth: cacheW,
+                        cacheHeight: cacheH,
                         placeholder: (_, __) =>
                             Container(color: Colors.grey[300]),
                         errorWidget: (_, __, ___) =>
@@ -1476,12 +1481,19 @@ class _SimilarPlaceCard extends StatelessWidget {
                     : Container(color: Colors.grey[300]),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              place.name,
-              style: Theme.of(context).textTheme.titleSmall,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            const SizedBox(height: 6),
+            Expanded(
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Text(
+                  place.name,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        height: 1.15,
+                      ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
           ],
         ),

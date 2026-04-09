@@ -138,7 +138,7 @@ class FeedProvider extends ChangeNotifier {
     String sort = 'recent',
   }) async {
     final normalized = sort == 'trending' ? 'trending' : 'recent';
-    if (_loading && !refresh) return;
+    if (_loading) return;
 
     if (normalized != _feedSort) {
       if (_posts.isNotEmpty) {
@@ -149,6 +149,11 @@ class FeedProvider extends ChangeNotifier {
       _nextTrendingOffset = null;
       _posts = [];
     } else if (refresh) {
+      // Avoid redundant refresh churn when there is no content yet.
+      if (_posts.isEmpty) {
+        _nextCursor = null;
+        _nextTrendingOffset = null;
+      }
       _nextCursor = null;
       _nextTrendingOffset = null;
     }
@@ -158,9 +163,7 @@ class FeedProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (refresh && _posts.isNotEmpty) {
-        await AppImageCacheManager.evictUrlsForPosts(_posts);
-      }
+      // Keep disk/memory caches warm; rely on URL/version invalidation.
       final FeedResponse res;
       if (_feedSort == 'trending') {
         res = await _service.getFeed(
@@ -239,9 +242,7 @@ class FeedProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (refresh && _savedPosts.isNotEmpty) {
-        await AppImageCacheManager.evictUrlsForPosts(_savedPosts);
-      }
+      // Avoid eager cache eviction during refresh.
       final limit = _savedPosts.isEmpty ? _initialLimit : _pageLimit;
       final res = await _service.getSavedFeed(
         authToken: authToken,
@@ -293,9 +294,7 @@ class FeedProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (refresh && _likedPosts.isNotEmpty) {
-        await AppImageCacheManager.evictUrlsForPosts(_likedPosts);
-      }
+      // Avoid eager cache eviction during refresh.
       final limit = _likedPosts.isEmpty ? _initialLimit : _pageLimit;
       final res = await _service.getLikedFeed(
         authToken: authToken,
@@ -347,9 +346,7 @@ class FeedProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (refresh && _reels.isNotEmpty) {
-        await AppImageCacheManager.evictUrlsForPosts(_reels);
-      }
+      // Avoid eager cache eviction during refresh.
       final res = await _service.getReels(
         authToken: authToken,
         before: refresh ? null : _reelsNextCursor,
@@ -400,9 +397,7 @@ class FeedProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (refresh && _placePosts.isNotEmpty) {
-        await AppImageCacheManager.evictUrlsForPosts(_placePosts);
-      }
+      // Avoid eager cache eviction during refresh.
       final limit = _placePosts.isEmpty ? _initialLimit : _pageLimit;
       final res = await _service.getPlacePosts(
         placeId: placeId,

@@ -685,6 +685,95 @@
   "mapHideSteps": "Masquer les étapes",
   "mapViewOnMapLowercase": "Voir sur la carte",
   "mapPlaceDetails": "Détails du lieu",
+  "mapSearchNoMatches": "Aucun lieu ne correspond à votre recherche. Essayez d'autres mots ou changez le filtre.",
+  "mapOpenPlaceDetails": "Ouvrir les détails du lieu",
+  "mapDeckPreviousPlace": "Lieu précédent",
+  "mapDeckNextPlace": "Lieu suivant",
+  "mapCloseDirections": "Fermer l'itinéraire",
+  "mapSwapStartDestination": "Échanger départ et destination",
+  "mapTooltipZoomIn": "Zoom avant",
+  "mapTooltipZoomOut": "Zoom arrière",
+  "mapTooltipMyLocation": "Centrer sur ma position",
+  "mapTooltipMapType": "Type de carte",
+  "mapTooltipFitAllPlaces": "Voir tous les lieux",
+  "mapTooltipShowTraffic": "Afficher le trafic",
+  "mapTooltipHideTraffic": "Masquer le trafic",
+  "mapArrangeByNearest": "Trier par lieu le plus proche",
+  "mapPlacesOnMapCount": "{count, plural, one{1 lieu sur la carte} other{{count} lieux sur la carte}}",
+  "@mapPlacesOnMapCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "mapNoPlacesFound": "Aucun lieu trouvé",
+  "mapNoPlacesFoundHint": "Essayez une autre recherche ou catégorie",
+  "mapTapMapChooseStartShort": "Touchez la carte pour choisir le départ",
+  "mapTripRouteTitle": "Itinéraire du voyage",
+  "mapTourRouteTitle": "Itinéraire du circuit",
+  "mapSelectedMapPoint": "Point sélectionné sur la carte",
+  "mapDestination": "Destination",
+  "mapYourLocation": "Votre position",
+  "mapMyLocationLive": "Ma position",
+  "mapLocationNeededForDirections": "La position est nécessaire pour l'itinéraire. Activez le GPS ou choisissez un point de départ sur la carte.",
+  "mapDismissLocationBanner": "Fermer",
+  "mapDeckDistanceFromYou": "Distance : {distance}",
+  "@mapDeckDistanceFromYou": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "mapDeckFromPrevious": "Depuis le précédent : {distance}",
+  "@mapDeckFromPrevious": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "mapDeckRouteApprox": "Parcours {distance}",
+  "@mapDeckRouteApprox": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
+  "mapDeckNearbyPlaces": "Lieux à proximité",
+  "mapSemanticsPlaceCardHint": "Ouvrir les détails, l'itinéraire et plus",
+  "mapMapTypeTitle": "Type de carte",
+  "mapStyleStandard": "Standard",
+  "mapStyleStandardDesc": "Carte routière classique",
+  "mapStyleSatellite": "Satellite",
+  "mapStyleSatelliteDesc": "Imagerie aérienne",
+  "mapStyleHybrid": "Hybride",
+  "mapStyleHybridDesc": "Satellite et routes",
+  "mapStyleTerrain": "Relief",
+  "mapStyleTerrainDesc": "Vue topographique",
+  "mapTourStopProgress": "Étape {current} sur {total}",
+  "@mapTourStopProgress": {
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "mapPreviousStop": "Étape précédente",
+  "mapNextStop": "Étape suivante",
+  "mapDriveMode": "Voiture",
+  "mapWalkMode": "Marche",
+  "mapStartNavigation": "Démarrer",
+  "mapMultiStopTourName": "Circuit de {count} étapes",
+  "@mapMultiStopTourName": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "mapTourCategory": "Circuit",
+  "mapMultipleLocations": "Plusieurs lieux",
+  "mapPreviousOrigin": "Départ précédent",
+  "mapStartDefault": "Départ",
+  "mapChooseLocation": "Choisir un lieu",
+  "mapRouteDistanceAway": "À {distance}",
+  "@mapRouteDistanceAway": {
+    "placeholders": {
+      "distance": { "type": "String" }
+    }
+  },
   "placeNotFoundTitle": "Lieu introuvable",
   "placeNotFoundBody": "Lieu introuvable",
   "placeNewBadge": "Nouveau badge : {names}",

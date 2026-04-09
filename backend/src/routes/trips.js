@@ -119,4 +119,48 @@ router.delete('/trips/:id', async (req, res) => {
   }
 });
 
+// Web parity stubs for collaborative trip sharing workflow.
+router.get('/trip-share-requests', async (req, res) => {
+  const userId = req.user.userId;
+  const incoming = await collection('trip_share_requests')
+    .find({ to_user_id: userId }, { projection: { _id: 0 } })
+    .sort({ created_at: -1 })
+    .toArray();
+  const sent = await collection('trip_share_requests')
+    .find({ from_user_id: userId }, { projection: { _id: 0 } })
+    .sort({ created_at: -1 })
+    .toArray();
+  res.json({ incoming, sent });
+});
+
+router.get('/trip-share-users', async (_req, res) => {
+  const users = await collection('users')
+    .find({}, { projection: { _id: 0, id: 1, name: 1, email: 1 } })
+    .sort({ name: 1 })
+    .limit(500)
+    .toArray();
+  res.json({ users });
+});
+
+router.post('/trip-share-requests/:id/respond', async (req, res) => {
+  const userId = req.user.userId;
+  const id = req.params.id;
+  const action = String(req.body?.action || '').toLowerCase();
+  if (!['accept', 'reject'].includes(action)) {
+    return res.status(400).json({ error: 'action must be accept or reject' });
+  }
+  const update = await collection('trip_share_requests').updateOne(
+    { id, to_user_id: userId, status: 'pending' },
+    {
+      $set: {
+        status: action === 'accept' ? 'accepted' : 'rejected',
+        responded_at: new Date(),
+        updated_at: new Date(),
+      },
+    },
+  );
+  if (!update.matchedCount) return res.status(404).json({ error: 'Request not found' });
+  return res.json({ ok: true });
+});
+
 module.exports = router;

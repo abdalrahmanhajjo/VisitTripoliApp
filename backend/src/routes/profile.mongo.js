@@ -53,7 +53,7 @@ router.get('/profile', async (req, res) => {
   });
 });
 
-router.put('/profile', async (req, res) => {
+async function updateProfileHandler(req, res) {
   try {
     const userId = req.user.userId;
     const { name, username, email, city, bio, mood, pace, analytics, showTips, appRating, onboardingCompleted, avatarUrl } = req.body || {};
@@ -116,7 +116,11 @@ router.put('/profile', async (req, res) => {
   } catch {
     res.status(500).json({ error: 'Failed to update profile' });
   }
-});
+}
+
+router.put('/profile', updateProfileHandler);
+// Web parity alias: web uses PATCH for profile updates.
+router.patch('/profile', updateProfileHandler);
 
 router.post('/push-token', async (req, res) => {
   const userId = req.user.userId;

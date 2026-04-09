@@ -21,12 +21,58 @@ class AppImageCacheManager {
   );
 
   /// Normalizes relative API paths and full URLs for cache keys and eviction.
-  static String resolveNetworkImageUrl(String raw) {
+  static String resolveNetworkImageUrl(
+    String raw, {
+    int? targetWidth,
+    int? targetHeight,
+  }) {
     if (raw.isEmpty) return raw;
-    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return _optimizedImageUrl(
+        raw,
+        targetWidth: targetWidth,
+        targetHeight: targetHeight,
+      );
+    }
     final base = ApiConfig.effectiveBaseUrl.replaceAll(RegExp(r'/$'), '');
-    if (raw.startsWith('/')) return '$base$raw';
-    return '$base/$raw';
+    final resolved = raw.startsWith('/') ? '$base$raw' : '$base/$raw';
+    return _optimizedImageUrl(
+      resolved,
+      targetWidth: targetWidth,
+      targetHeight: targetHeight,
+    );
+  }
+
+  static String _optimizedImageUrl(
+    String url, {
+    int? targetWidth,
+    int? targetHeight,
+  }) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !(uri.hasScheme && uri.host.isNotEmpty)) return url;
+
+    // Only transform known ImageKit CDN URLs; keep other hosts untouched.
+    final host = uri.host.toLowerCase();
+    final isImageKit = host.contains('imagekit');
+    if (!isImageKit) return url;
+
+    // Don't re-apply if transformation already exists.
+    if (uri.queryParameters.containsKey('tr') || uri.path.contains('/tr:')) {
+      return url;
+    }
+
+    final w = (targetWidth ?? 0).clamp(0, 2800);
+    final h = (targetHeight ?? 0).clamp(0, 2800);
+    final parts = <String>[
+      if (w > 0) 'w-$w',
+      if (h > 0) 'h-$h',
+      // Keep quality balanced for speed while preserving detail.
+      'q-72',
+      'f-auto',
+    ];
+    final next = Map<String, String>.from(uri.queryParameters);
+    next['tr'] = parts.join(',');
+    return uri.replace(queryParameters: next).toString();
   }
 
   /// Removes a URL from disk cache and Flutter's [ImageCache] (memory).

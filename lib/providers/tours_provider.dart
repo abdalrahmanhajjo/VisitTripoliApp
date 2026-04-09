@@ -39,8 +39,7 @@ class ToursProvider extends ChangeNotifier {
       if (raw == null || raw.isEmpty) return;
       final list = json.decode(raw) as List<dynamic>?;
       if (list == null || list.isEmpty) return;
-      _tours =
-          list.map((e) => Tour.fromJson(e as Map<String, dynamic>)).toList();
+      _tours = _parseToursList(list);
       notifyListeners();
     } catch (_) {}
   }
@@ -61,8 +60,7 @@ class ToursProvider extends ChangeNotifier {
         locale: locale,
         forceRefresh: forceRefresh,
       );
-      _tours =
-          list.map((e) => Tour.fromJson(e as Map<String, dynamic>)).toList();
+      _tours = _parseToursList(list);
       try {
         await writeLocaleScopedJson(
           scopedPrefix: _toursCachePrefix,
@@ -131,5 +129,21 @@ class ToursProvider extends ChangeNotifier {
     } catch (_) {
       return null;
     }
+  }
+
+  List<Tour> _parseToursList(List<dynamic> raw) {
+    final out = <Tour>[];
+    for (final e in raw) {
+      try {
+        if (e is Map<String, dynamic>) {
+          out.add(Tour.fromJson(e));
+        } else if (e is Map) {
+          out.add(Tour.fromJson(e.map((k, v) => MapEntry(k.toString(), v))));
+        }
+      } catch (_) {
+        // Skip malformed rows so one bad record doesn't break whole list.
+      }
+    }
+    return out;
   }
 }

@@ -6,6 +6,7 @@ import 'package:http_parser/http_parser.dart';
 
 import '../config/api_config.dart';
 import 'api_service.dart';
+import '../utils/perf_trace.dart';
 
 const List<String> _imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
@@ -67,6 +68,7 @@ class FeedService {
   FeedService._();
   static final FeedService _instance = FeedService._();
   static FeedService get instance => _instance;
+  final http.Client _client = http.Client();
 
   String get _baseUrl {
     var url = ApiConfig.effectiveBaseUrl;
@@ -121,7 +123,11 @@ class FeedService {
         'sort': sort,
       }),
     );
-    final response = await http.get(uri, headers: _feedGetHeaders(authToken));
+    final response = await PerfTrace.timeAsync(
+      'feed.getFeed',
+      () => _client.get(uri, headers: _feedGetHeaders(authToken)),
+      extras: {'limit': limit, 'sort': sort},
+    );
     if (response.statusCode != 200) {
       throw FeedException(response.statusCode, _parseError(response.body));
     }
@@ -141,7 +147,27 @@ class FeedService {
         'limit': limit.toString(),
       }),
     );
-    final response = await http.get(uri, headers: _feedGetHeaders(authToken));
+    final response = await PerfTrace.timeAsync(
+      'feed.getReels',
+      () => _client.get(uri, headers: _feedGetHeaders(authToken)),
+      extras: {'limit': limit},
+    );
+    if (response.statusCode == 404) {
+      // Backward-compat fallback for deployments that have not shipped /feed/reels yet.
+      final fallback = await getFeed(
+        authToken: authToken,
+        limit: (limit * 4).clamp(1, 50).toInt(),
+        sort: 'recent',
+      );
+      final videos = fallback.posts.where((p) => p.type == 'video').toList();
+      return FeedResponse(
+        posts: videos.length > limit ? videos.sublist(0, limit) : videos,
+        nextCursor: null,
+        nextOffset: null,
+        hasMore: false,
+        sort: 'recent',
+      );
+    }
     if (response.statusCode != 200) {
       throw FeedException(response.statusCode, _parseError(response.body));
     }
@@ -162,7 +188,11 @@ class FeedService {
         'limit': limit.toString(),
       }),
     );
-    final response = await http.get(uri, headers: _feedGetHeaders(authToken));
+    final response = await PerfTrace.timeAsync(
+      'feed.getPlacePosts',
+      () => _client.get(uri, headers: _feedGetHeaders(authToken)),
+      extras: {'limit': limit},
+    );
     if (response.statusCode != 200) {
       throw FeedException(response.statusCode, _parseError(response.body));
     }

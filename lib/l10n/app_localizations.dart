@@ -3928,6 +3928,324 @@ abstract class AppLocalizations {
   /// **'Place details'**
   String get mapPlaceDetails;
 
+  /// No description provided for @mapSearchNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No places match your search. Try different words or clear the filter.'**
+  String get mapSearchNoMatches;
+
+  /// No description provided for @mapOpenPlaceDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Open place details'**
+  String get mapOpenPlaceDetails;
+
+  /// No description provided for @mapDeckPreviousPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous place'**
+  String get mapDeckPreviousPlace;
+
+  /// No description provided for @mapDeckNextPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Next place'**
+  String get mapDeckNextPlace;
+
+  /// No description provided for @mapCloseDirections.
+  ///
+  /// In en, this message translates to:
+  /// **'Close directions'**
+  String get mapCloseDirections;
+
+  /// No description provided for @mapSwapStartDestination.
+  ///
+  /// In en, this message translates to:
+  /// **'Swap start and destination'**
+  String get mapSwapStartDestination;
+
+  /// No description provided for @mapTooltipZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get mapTooltipZoomIn;
+
+  /// No description provided for @mapTooltipZoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get mapTooltipZoomOut;
+
+  /// No description provided for @mapTooltipMyLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Center on my location'**
+  String get mapTooltipMyLocation;
+
+  /// No description provided for @mapTooltipMapType.
+  ///
+  /// In en, this message translates to:
+  /// **'Map type'**
+  String get mapTooltipMapType;
+
+  /// No description provided for @mapTooltipFitAllPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all pins'**
+  String get mapTooltipFitAllPlaces;
+
+  /// No description provided for @mapTooltipShowTraffic.
+  ///
+  /// In en, this message translates to:
+  /// **'Show traffic'**
+  String get mapTooltipShowTraffic;
+
+  /// No description provided for @mapTooltipHideTraffic.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide traffic'**
+  String get mapTooltipHideTraffic;
+
+  /// No description provided for @mapArrangeByNearest.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrange by nearest places'**
+  String get mapArrangeByNearest;
+
+  /// No description provided for @mapPlacesOnMapCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 place on map} other{{count} places on map}}'**
+  String mapPlacesOnMapCount(int count);
+
+  /// No description provided for @mapNoPlacesFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No places found'**
+  String get mapNoPlacesFound;
+
+  /// No description provided for @mapNoPlacesFoundHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different search or category'**
+  String get mapNoPlacesFoundHint;
+
+  /// No description provided for @mapTapMapChooseStartShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the map to choose a start point'**
+  String get mapTapMapChooseStartShort;
+
+  /// No description provided for @mapTripRouteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip route'**
+  String get mapTripRouteTitle;
+
+  /// No description provided for @mapTourRouteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tour route'**
+  String get mapTourRouteTitle;
+
+  /// No description provided for @mapSelectedMapPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected map point'**
+  String get mapSelectedMapPoint;
+
+  /// No description provided for @mapDestination.
+  ///
+  /// In en, this message translates to:
+  /// **'Destination'**
+  String get mapDestination;
+
+  /// No description provided for @mapYourLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Your location'**
+  String get mapYourLocation;
+
+  /// No description provided for @mapMyLocationLive.
+  ///
+  /// In en, this message translates to:
+  /// **'My location'**
+  String get mapMyLocationLive;
+
+  /// No description provided for @mapLocationNeededForDirections.
+  ///
+  /// In en, this message translates to:
+  /// **'Location needed for directions. Enable GPS or pick a start point on the map.'**
+  String get mapLocationNeededForDirections;
+
+  /// No description provided for @mapDismissLocationBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get mapDismissLocationBanner;
+
+  /// No description provided for @mapDeckDistanceFromYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance: {distance}'**
+  String mapDeckDistanceFromYou(String distance);
+
+  /// No description provided for @mapDeckFromPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'From previous: {distance}'**
+  String mapDeckFromPrevious(String distance);
+
+  /// No description provided for @mapDeckRouteApprox.
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} route'**
+  String mapDeckRouteApprox(String distance);
+
+  /// No description provided for @mapDeckNearbyPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby places'**
+  String get mapDeckNearbyPlaces;
+
+  /// No description provided for @mapSemanticsPlaceCardHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Open details, directions, and more'**
+  String get mapSemanticsPlaceCardHint;
+
+  /// No description provided for @mapMapTypeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Map type'**
+  String get mapMapTypeTitle;
+
+  /// No description provided for @mapStyleStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get mapStyleStandard;
+
+  /// No description provided for @mapStyleStandardDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Default road map'**
+  String get mapStyleStandardDesc;
+
+  /// No description provided for @mapStyleSatellite.
+  ///
+  /// In en, this message translates to:
+  /// **'Satellite'**
+  String get mapStyleSatellite;
+
+  /// No description provided for @mapStyleSatelliteDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Aerial imagery'**
+  String get mapStyleSatelliteDesc;
+
+  /// No description provided for @mapStyleHybrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Hybrid'**
+  String get mapStyleHybrid;
+
+  /// No description provided for @mapStyleHybridDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Satellite + roads'**
+  String get mapStyleHybridDesc;
+
+  /// No description provided for @mapStyleTerrain.
+  ///
+  /// In en, this message translates to:
+  /// **'Terrain'**
+  String get mapStyleTerrain;
+
+  /// No description provided for @mapStyleTerrainDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Topographic view'**
+  String get mapStyleTerrainDesc;
+
+  /// No description provided for @mapTourStopProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop {current} of {total}'**
+  String mapTourStopProgress(int current, int total);
+
+  /// No description provided for @mapPreviousStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous stop'**
+  String get mapPreviousStop;
+
+  /// No description provided for @mapNextStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Next stop'**
+  String get mapNextStop;
+
+  /// No description provided for @mapDriveMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Drive'**
+  String get mapDriveMode;
+
+  /// No description provided for @mapWalkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Walk'**
+  String get mapWalkMode;
+
+  /// No description provided for @mapStartNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get mapStartNavigation;
+
+  /// No description provided for @mapMultiStopTourName.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}-stop tour'**
+  String mapMultiStopTourName(int count);
+
+  /// No description provided for @mapTourCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Tour'**
+  String get mapTourCategory;
+
+  /// No description provided for @mapMultipleLocations.
+  ///
+  /// In en, this message translates to:
+  /// **'Multiple locations'**
+  String get mapMultipleLocations;
+
+  /// No description provided for @mapPreviousOrigin.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous start'**
+  String get mapPreviousOrigin;
+
+  /// No description provided for @mapStartDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get mapStartDefault;
+
+  /// No description provided for @mapChooseLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose location'**
+  String get mapChooseLocation;
+
+  /// No description provided for @mapRouteDistanceAway.
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} away'**
+  String mapRouteDistanceAway(String distance);
+
   /// No description provided for @placeNotFoundTitle.
   ///
   /// In en, this message translates to:

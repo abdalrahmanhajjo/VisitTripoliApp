@@ -31,4 +31,10 @@ server/.env
 # Large local assets (do not commit)
 /Places/
 backend/uploads/
+
+# Local web reference snapshots / temp (not part of app source)
+_reference_visittripoliweb_zip/
+_reference_visittripoliweb2/
+_tmp_web_*
+visittripoliweb-main.zip
 # (But keep all other project files)

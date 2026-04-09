@@ -28,6 +28,10 @@ function registerRoutes(app) {
   app.use('/api/auth', authRoutes);
   app.use('/api/coupons', couponsRoutes);
   app.use('/api/offers', offersRoutes);
+  // Web parity aliases
+  app.use('/api/promotions', offersRoutes);
+  app.use('/api/messages', offersRoutes);
+  app.use('/api/proposals', offersRoutes);
   app.use('/api/bookings', bookingsRoutes);
   app.use('/api/badges', badgesRoutes);
   app.use('/api/admin', adminRoutes);

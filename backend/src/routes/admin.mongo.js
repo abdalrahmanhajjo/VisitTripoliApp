@@ -46,7 +46,6 @@ router.delete('/categories/:id', async (req, res) => {
 });
 
 router.get('/places', async (_req, res) => {
-  await backfillMissingCheckinTokens();
   const rows = await collection('places').find({}, { projection: { _id: 0 } }).sort({ name: 1 }).toArray();
   res.json(rows);
 });

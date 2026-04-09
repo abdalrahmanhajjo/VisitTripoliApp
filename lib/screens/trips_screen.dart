@@ -60,6 +60,7 @@ class _TripsScreenState extends State<TripsScreen> {
   final TextEditingController _tripFilterController = TextEditingController();
   /// When false, trips whose [TripPhase] is past are omitted from the list.
   bool _showPastTrips = false;
+  List<Map<String, dynamic>> _incomingShareRequests = const [];
 
   @override
   void initState() {
@@ -67,7 +68,24 @@ class _TripsScreenState extends State<TripsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       Provider.of<TripsProvider>(context, listen: false).loadTrips();
+      _loadShareRequests();
     });
+  }
+
+  Future<void> _loadShareRequests() async {
+    final auth = context.read<AuthProvider>();
+    final token = auth.authToken;
+    if (token == null || token.isEmpty || auth.isGuest) return;
+    try {
+      final data = await ApiService.instance.getTripShareRequests(token);
+      if (!mounted) return;
+      setState(() {
+        _incomingShareRequests = ((data['incoming'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      });
+    } catch (_) {}
   }
 
   @override
@@ -191,6 +209,19 @@ class _TripsScreenState extends State<TripsScreen> {
                       totalPlaces: summaryPlaces,
                     ),
                     const SizedBox(height: 12),
+                    if (_incomingShareRequests.isNotEmpty)
+                      _TripShareRequestsCard(
+                        requests: _incomingShareRequests,
+                        onRespond: (id, action) async {
+                          final token = context.read<AuthProvider>().authToken;
+                          if (token == null || token.isEmpty) return;
+                          await ApiService.instance
+                              .respondTripShareRequest(token, id, action);
+                          await _loadShareRequests();
+                        },
+                      ),
+                    if (_incomingShareRequests.isNotEmpty)
+                      const SizedBox(height: 12),
                     if (trips.isEmpty)
                       _TripsEmptyState(
                           onCreate: () => _openCreateTripModal(context))
@@ -854,6 +885,70 @@ class _TripsSummary extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+class _TripShareRequestsCard extends StatelessWidget {
+  final List<Map<String, dynamic>> requests;
+  final Future<void> Function(String id, String action) onRespond;
+
+  const _TripShareRequestsCard({
+    required this.requests,
+    required this.onRespond,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: _tripsPanelDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Collaboration requests',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...requests.take(3).map((r) {
+            final id = (r['id'] ?? '').toString();
+            final from = (r['from_name'] ?? r['from_user_name'] ?? 'Traveler').toString();
+            final tripName = (r['trip_name'] ?? 'Trip').toString();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '$from invited you to collaborate on "$tripName"',
+                      style: const TextStyle(
+                        color: AppTheme.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => onRespond(id, 'reject'),
+                    child: const Text('Decline'),
+                  ),
+                  FilledButton(
+                    onPressed: () => onRespond(id, 'accept'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                    ),
+                    child: const Text('Accept'),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 }

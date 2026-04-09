@@ -37,8 +37,7 @@ class EventsProvider extends ChangeNotifier {
       if (raw == null || raw.isEmpty) return;
       final list = json.decode(raw) as List<dynamic>?;
       if (list == null || list.isEmpty) return;
-      _events =
-          list.map((e) => Event.fromJson(e as Map<String, dynamic>)).toList();
+      _events = _parseEventsList(list);
       notifyListeners();
     } catch (_) {}
   }
@@ -58,8 +57,7 @@ class EventsProvider extends ChangeNotifier {
         authToken: authToken,
         locale: locale,
       );
-      _events =
-          list.map((e) => Event.fromJson(e as Map<String, dynamic>)).toList();
+      _events = _parseEventsList(list);
       try {
         await writeLocaleScopedJson(
           scopedPrefix: _eventsCachePrefix,
@@ -121,5 +119,21 @@ class EventsProvider extends ChangeNotifier {
     } catch (_) {
       return null;
     }
+  }
+
+  List<Event> _parseEventsList(List<dynamic> raw) {
+    final out = <Event>[];
+    for (final e in raw) {
+      try {
+        if (e is Map<String, dynamic>) {
+          out.add(Event.fromJson(e));
+        } else if (e is Map) {
+          out.add(Event.fromJson(e.map((k, v) => MapEntry(k.toString(), v))));
+        }
+      } catch (_) {
+        // Skip malformed rows so one bad record doesn't break Explore.
+      }
+    }
+    return out;
   }
 }

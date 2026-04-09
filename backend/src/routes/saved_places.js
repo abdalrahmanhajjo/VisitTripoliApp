@@ -42,6 +42,16 @@ router.get('/saved-places', async (req, res) => {
   }
 });
 
+// Web parity aliases (`favourites`/`favorites`) for the same saved places domain.
+router.get('/favourites', async (req, res) => {
+  req.url = '/saved-places';
+  return router.handle(req, res);
+});
+router.get('/favorites', async (req, res) => {
+  req.url = '/saved-places';
+  return router.handle(req, res);
+});
+
 // PUT /api/user/saved-places/:placeId — idempotent save
 router.put('/saved-places/:placeId', async (req, res) => {
   try {
@@ -65,6 +75,15 @@ router.put('/saved-places/:placeId', async (req, res) => {
   }
 });
 
+router.put('/favourites/:placeId', async (req, res) => {
+  req.url = `/saved-places/${req.params.placeId}`;
+  return router.handle(req, res);
+});
+router.put('/favorites/:placeId', async (req, res) => {
+  req.url = `/saved-places/${req.params.placeId}`;
+  return router.handle(req, res);
+});
+
 // DELETE /api/user/saved-places/:placeId
 router.delete('/saved-places/:placeId', async (req, res) => {
   try {
@@ -77,6 +96,15 @@ router.delete('/saved-places/:placeId', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Failed to remove saved place' });
   }
+});
+
+router.delete('/favourites/:placeId', async (req, res) => {
+  req.url = `/saved-places/${req.params.placeId}`;
+  return router.handle(req, res);
+});
+router.delete('/favorites/:placeId', async (req, res) => {
+  req.url = `/saved-places/${req.params.placeId}`;
+  return router.handle(req, res);
 });
 
 module.exports = router;
