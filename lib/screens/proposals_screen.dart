@@ -64,7 +64,7 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.surfaceColor,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
@@ -140,14 +140,14 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('Customer Proposals', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new),
           onPressed: () => context.pop(),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceColor,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
       ),
@@ -203,9 +203,15 @@ class _ProposalsScreenState extends State<ProposalsScreen> {
                           return Container(
                             margin: const EdgeInsets.only(bottom: 12),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: AppTheme.surfaceColor,
                               borderRadius: BorderRadius.circular(16),
-                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.textPrimary.withValues(alpha: 0.06),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                )
+                              ],
                             ),
                             child: Padding(
                               padding: const EdgeInsets.all(16),

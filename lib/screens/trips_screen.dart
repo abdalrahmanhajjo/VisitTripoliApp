@@ -1,15 +1,22 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/app_state.dart';
+import '../providers/app_tour_segment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/trips_provider.dart';
 import '../models/trip.dart';
 import '../services/api_service.dart';
+import '../utils/app_tour_showcase.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/themed_showcase.dart';
 import '../widgets/app_profile_icon_button.dart';
 import '../theme/app_theme.dart';
 import '../utils/app_share.dart';
@@ -29,30 +36,24 @@ class _TripsResponsive {
 BoxDecoration _tripsPanelDecoration() {
   return BoxDecoration(
     color: AppTheme.surfaceColor,
-    borderRadius: BorderRadius.circular(24),
-    boxShadow: [
-      BoxShadow(
-        color: AppTheme.textPrimary.withValues(alpha: 0.04),
-        blurRadius: 20,
-        offset: const Offset(0, 4),
-      ),
-      BoxShadow(
-        color: AppTheme.textPrimary.withValues(alpha: 0.02),
-        blurRadius: 40,
-        offset: const Offset(0, 12),
-      ),
-    ],
+    borderRadius: BorderRadius.circular(16),
+    boxShadow: AppTheme.premiumCardShadow,
   );
 }
 
 class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
 
+  static final GlobalKey tutorialHeaderKey = GlobalKey();
+  static final GlobalKey tutorialNewTripKey = GlobalKey();
+  static final GlobalKey tutorialCalendarKey = GlobalKey();
+
   @override
   State<TripsScreen> createState() => _TripsScreenState();
 }
 
 class _TripsScreenState extends State<TripsScreen> {
+  bool _tripsTourKickoff = false;
   DateTime _calendarMonth = DateTime.now();
   DateTime? _selectedDate;
   bool _calendarVisible = false;
@@ -61,6 +62,7 @@ class _TripsScreenState extends State<TripsScreen> {
   /// When false, trips whose [TripPhase] is past are omitted from the list.
   bool _showPastTrips = false;
   List<Map<String, dynamic>> _incomingShareRequests = const [];
+  final Set<String> _respondingShareRequestIds = <String>{};
 
   @override
   void initState() {
@@ -69,7 +71,33 @@ class _TripsScreenState extends State<TripsScreen> {
       if (!mounted) return;
       Provider.of<TripsProvider>(context, listen: false).loadTrips();
       _loadShareRequests();
+      unawaited(_maybeRunSpotlightTour());
     });
+  }
+
+  Future<void> _maybeRunSpotlightTour() async {
+    if (_tripsTourKickoff || !mounted) return;
+    final appState = context.read<AppStateProvider>();
+    if (!appState.isFullAppTourActive ||
+        appState.activeTourSegment != AppTourSegment.trips) {
+      return;
+    }
+    _tripsTourKickoff = true;
+    await Future.delayed(const Duration(milliseconds: 560));
+    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    startAppTourShowcase(
+      context: context,
+      prefs: prefs,
+      keys: [
+        AppBottomNav.tripsKey,
+        TripsScreen.tutorialHeaderKey,
+        TripsScreen.tutorialNewTripKey,
+        TripsScreen.tutorialCalendarKey,
+      ],
+      advanceFromSegment: AppTourSegment.trips,
+    );
   }
 
   Future<void> _loadShareRequests() async {
@@ -101,6 +129,7 @@ class _TripsScreenState extends State<TripsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
     final tripsProvider = Provider.of<TripsProvider>(context);
     final trips = tripsProvider.trips;
     final filteredForStats = _filteredTripsForList(tripsProvider);
@@ -164,12 +193,19 @@ class _TripsScreenState extends State<TripsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _TripsCalendarToggle(
-                      isExpanded: _calendarVisible,
-                      calendarMonth: _calendarMonth,
-                      selectedDate: _selectedDate,
-                      onToggle: () =>
-                          setState(() => _calendarVisible = !_calendarVisible),
+                    ThemedShowcase(
+                      showcaseKey: TripsScreen.tutorialCalendarKey,
+                      title: AppLocalizations.of(context)!
+                          .appTutorialTripsCalendarTitle,
+                      description: AppLocalizations.of(context)!
+                          .appTutorialTripsCalendarBody,
+                      child: _TripsCalendarToggle(
+                        isExpanded: _calendarVisible,
+                        calendarMonth: _calendarMonth,
+                        selectedDate: _selectedDate,
+                        onToggle: () => setState(
+                            () => _calendarVisible = !_calendarVisible),
+                      ),
                     ),
                     AnimatedCrossFade(
                       firstChild: const SizedBox.shrink(),
@@ -209,18 +245,35 @@ class _TripsScreenState extends State<TripsScreen> {
                       totalPlaces: summaryPlaces,
                     ),
                     const SizedBox(height: 12),
-                    if (_incomingShareRequests.isNotEmpty)
+                    if (auth.isLoggedIn && !auth.isGuest)
                       _TripShareRequestsCard(
                         requests: _incomingShareRequests,
+                        respondingIds: _respondingShareRequestIds,
                         onRespond: (id, action) async {
                           final token = context.read<AuthProvider>().authToken;
                           if (token == null || token.isEmpty) return;
-                          await ApiService.instance
-                              .respondTripShareRequest(token, id, action);
-                          await _loadShareRequests();
+                          if (_respondingShareRequestIds.contains(id)) return;
+                          setState(() => _respondingShareRequestIds.add(id));
+                          try {
+                            await ApiService.instance
+                                .respondTripShareRequest(token, id, action);
+                            await _loadShareRequests();
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to respond: ${e.toString()}'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          } finally {
+                            if (mounted) {
+                              setState(() => _respondingShareRequestIds.remove(id));
+                            }
+                          }
                         },
                       ),
-                    if (_incomingShareRequests.isNotEmpty)
+                    if (auth.isLoggedIn && !auth.isGuest)
                       const SizedBox(height: 12),
                     if (trips.isEmpty)
                       _TripsEmptyState(
@@ -451,92 +504,104 @@ class _TripsHeader extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          FontAwesomeIcons.suitcase,
-                          size: 20,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Flexible(
-                        child: Text(
-                          AppLocalizations.of(context)!.myTrips,
-                          style: TextStyle(
-                            fontSize: isCompact ? 20 : 24,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: -0.5,
+              child: ThemedShowcase(
+                showcaseKey: TripsScreen.tutorialHeaderKey,
+                title: AppLocalizations.of(context)!.appTutorialTripsHeaderTitle,
+                description:
+                    AppLocalizations.of(context)!.appTutorialTripsHeaderBody,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
+                          child: const Icon(
+                            FontAwesomeIcons.suitcase,
+                            size: 20,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    AppLocalizations.of(context)!.planAdventuresAddPlaces,
-                    style: TextStyle(
-                      fontSize: isCompact ? 11 : 13,
-                      color: Colors.white.withValues(alpha: 0.9),
-                      height: 1.2,
+                        const SizedBox(width: 12),
+                        Flexible(
+                          child: Text(
+                            AppLocalizations.of(context)!.myTrips,
+                            style: TextStyle(
+                              fontSize: isCompact ? 20 : 24,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: -0.5,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ],
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                    const SizedBox(height: 6),
+                    Text(
+                      AppLocalizations.of(context)!.planAdventuresAddPlaces,
+                      style: TextStyle(
+                        fontSize: isCompact ? 11 : 13,
+                        color: Colors.white.withValues(alpha: 0.9),
+                        height: 1.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(width: 8),
             const AppProfileIconButton(iconColor: Colors.white, iconSize: 22),
             const SizedBox(width: 8),
-            Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              child: InkWell(
-                onTap: () {
-                  HapticFeedback.mediumImpact();
-                  onNewTrip();
-                },
+            ThemedShowcase(
+              showcaseKey: TripsScreen.tutorialNewTripKey,
+              title: AppLocalizations.of(context)!.appTutorialTripsNewTripTitle,
+              description:
+                  AppLocalizations.of(context)!.appTutorialTripsNewTripBody,
+              child: Material(
+                color: AppTheme.surfaceColor,
                 borderRadius: BorderRadius.circular(14),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: narrow ? 14 : 16,
-                    vertical: 12,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.add_rounded,
-                        size: narrow ? 18 : 20,
-                        color: AppTheme.primaryColor,
-                      ),
-                      if (!narrow) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          AppLocalizations.of(context)!.newTrip,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.primaryColor,
-                          ),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    onNewTrip();
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: narrow ? 14 : 16,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.add_rounded,
+                          size: narrow ? 18 : 20,
+                          color: AppTheme.primaryColor,
                         ),
+                        if (!narrow) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            AppLocalizations.of(context)!.newTrip,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -891,15 +956,21 @@ class _TripsSummary extends StatelessWidget {
 
 class _TripShareRequestsCard extends StatelessWidget {
   final List<Map<String, dynamic>> requests;
+  final Set<String> respondingIds;
   final Future<void> Function(String id, String action) onRespond;
 
   const _TripShareRequestsCard({
     required this.requests,
+    required this.respondingIds,
     required this.onRespond,
   });
 
   @override
   Widget build(BuildContext context) {
+    final pending = requests.where((r) {
+      final status = (r['status'] ?? '').toString().toLowerCase();
+      return status == 'pending';
+    }).toList(growable: false);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: _tripsPanelDecoration(),
@@ -915,10 +986,19 @@ class _TripShareRequestsCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          ...requests.take(3).map((r) {
+          if (pending.isEmpty)
+            const Text(
+              'No pending requests.',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ...pending.take(10).map((r) {
             final id = (r['id'] ?? '').toString();
             final from = (r['from_name'] ?? r['from_user_name'] ?? 'Traveler').toString();
             final tripName = (r['trip_name'] ?? 'Trip').toString();
+            final isBusy = respondingIds.contains(id);
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
@@ -933,15 +1013,24 @@ class _TripShareRequestsCard extends StatelessWidget {
                     ),
                   ),
                   TextButton(
-                    onPressed: () => onRespond(id, 'reject'),
+                    onPressed: isBusy ? null : () => onRespond(id, 'reject'),
                     child: const Text('Decline'),
                   ),
                   FilledButton(
-                    onPressed: () => onRespond(id, 'accept'),
+                    onPressed: isBusy ? null : () => onRespond(id, 'accept'),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                     ),
-                    child: const Text('Accept'),
+                    child: isBusy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Accept'),
                   ),
                 ],
               ),
@@ -1135,7 +1224,7 @@ class _TripsNoMatchState extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppTheme.borderColor),
       ),
@@ -1176,7 +1265,7 @@ class _TripsPastHiddenState extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppTheme.borderColor),
       ),
@@ -1224,7 +1313,7 @@ class _TripsEmptyState extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppTheme.borderColor),
         boxShadow: [

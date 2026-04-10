@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:showcaseview/showcaseview.dart';
 import '../constants/app_images.dart';
 import '../widgets/app_image.dart';
 import '../providers/places_provider.dart';
@@ -34,7 +33,11 @@ import '../utils/responsive_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/places_image_precache.dart';
 import '../utils/app_tutorial_prefs.dart';
-import '../widgets/app_tutorial_prompt_dialog.dart';
+import '../utils/app_tour_showcase.dart';
+import '../widgets/app_onboarding_flow.dart';
+import '../widgets/themed_showcase.dart';
+import '../providers/app_state.dart';
+import '../providers/app_tour_segment.dart';
 
 /// Places whose names, tags, or text match [query] (for search suggestions).
 List<Place> _placesMatchingSearchQuery(
@@ -238,6 +241,13 @@ class _Responsive {
 
 /// Consistent spacing and layout for the Explore page. Scales down on small phones.
 class _ExploreLayout {
+  static const double panelRadius = 24;
+  static const double mediaCardRadius = 20;
+  static const double controlRadius = 14;
+  static const double sheetRadius = 28;
+  static const double sheetHorizontalPadding = 20;
+  static const double sheetBottomPadding = 24;
+
   static double sectionTitleSize(BuildContext context) {
     if (_Responsive.isSmallPhone(context)) return 16;
     if (_Responsive.isCompact(context)) return 17;
@@ -324,7 +334,7 @@ class _ExploreStyles {
   static BoxDecoration panelDecoration() {
     return BoxDecoration(
       color: AppTheme.backgroundColor,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(_ExploreLayout.panelRadius),
       border: Border.all(
         color: AppTheme.textPrimary.withValues(alpha: 0.06),
         width: 1,
@@ -368,7 +378,7 @@ class _ExploreSkeletonCard extends StatelessWidget {
         height: height,
         decoration: BoxDecoration(
           color: AppTheme.backgroundColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(_ExploreLayout.mediaCardRadius),
           boxShadow: [
             BoxShadow(
               color: AppTheme.textPrimary.withValues(alpha: 0.05),
@@ -378,7 +388,7 @@ class _ExploreSkeletonCard extends StatelessWidget {
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(_ExploreLayout.mediaCardRadius),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -783,6 +793,8 @@ class ExploreScreen extends StatefulWidget {
   /// Keys for the first-launch app tour ([Showcase]).
   static final GlobalKey tutorialDiscoverKey = GlobalKey();
   static final GlobalKey tutorialProfileKey = GlobalKey();
+  static final GlobalKey tutorialSearchKey = GlobalKey();
+  static final GlobalKey tutorialFilterKey = GlobalKey();
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -892,58 +904,54 @@ class _ExploreScreenState extends State<ExploreScreen>
 
   Future<void> _checkTutorial() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final appState = context.read<AppStateProvider>();
+    if (appState.consumeTutorialSpotlightIfPending()) {
+      _runAppTutorial(prefs);
+      return;
+    }
+    if (appState.isFullAppTourActive &&
+        appState.activeTourSegment == AppTourSegment.explore) {
+      Future.delayed(const Duration(milliseconds: 450), () {
+        if (mounted) _runAppTutorial(prefs);
+      });
+      return;
+    }
     if (!await AppTutorialPrefs.shouldOfferTutorial(prefs)) return;
     if (!mounted) return;
-    final choice = await showAppTutorialPromptDialog(context);
+    final result = await showAppOnboardingFlow(context);
     if (!mounted) return;
-    if (choice != true) {
+    if (result == AppOnboardingResult.skipped ||
+        result == AppOnboardingResult.finishedWithoutSpotlight ||
+        result == null) {
       await AppTutorialPrefs.markResolved(prefs);
       return;
     }
-    _runAppTutorial(prefs);
+    if (result == AppOnboardingResult.startSpotlight) {
+      appState.startFullAppTour();
+      _runAppTutorial(prefs);
+    }
   }
 
   void _runAppTutorial(SharedPreferences prefs) {
     if (!mounted) return;
-    final ShowcaseView view;
-    try {
-      view = ShowcaseView.get();
-    } catch (_) {
-      return;
-    }
-    var finished = false;
-    late void Function() onFinish;
-    late void Function(GlobalKey?) onDismiss;
-
-    onFinish = () {
-      if (finished) return;
-      finished = true;
-      view.removeOnFinishCallback(onFinish);
-      view.removeOnDismissCallback(onDismiss);
-      AppTutorialPrefs.markResolved(prefs);
-    };
-
-    onDismiss = (GlobalKey? _) {
-      if (finished) return;
-      finished = true;
-      view.removeOnFinishCallback(onFinish);
-      view.removeOnDismissCallback(onDismiss);
-      AppTutorialPrefs.markResolved(prefs);
-    };
-
-    view.addOnFinishCallback(onFinish);
-    view.addOnDismissCallback(onDismiss);
-    view.startShowCase(
-      [
+    final appState = context.read<AppStateProvider>();
+    startAppTourShowcase(
+      context: context,
+      prefs: prefs,
+      keys: [
         ExploreScreen.tutorialProfileKey,
         ExploreScreen.tutorialDiscoverKey,
+        ExploreScreen.tutorialSearchKey,
+        ExploreScreen.tutorialFilterKey,
         AppBottomNav.exploreKey,
         AppBottomNav.communityKey,
         AppBottomNav.mapKey,
         AppBottomNav.aiPlannerKey,
         AppBottomNav.tripsKey,
       ],
-      delay: const Duration(milliseconds: 400),
+      advanceFromSegment:
+          appState.isFullAppTourActive ? AppTourSegment.explore : null,
     );
   }
 
@@ -1478,7 +1486,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     const BorderRadius.vertical(top: Radius.circular(28)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
+                    color: AppTheme.textPrimary.withValues(alpha: 0.08),
                     blurRadius: 24,
                     offset: const Offset(0, -4),
                   ),
@@ -1964,8 +1972,8 @@ class _ExploreScreenState extends State<ExploreScreen>
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Showcase(
-                    key: ExploreScreen.tutorialProfileKey,
+                  ThemedShowcase(
+                    showcaseKey: ExploreScreen.tutorialProfileKey,
                     title: l10n.appTutorialProfileTitle,
                     description: l10n.appTutorialProfileDesc,
                     child: const AppProfileIconButton(
@@ -1975,8 +1983,8 @@ class _ExploreScreenState extends State<ExploreScreen>
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Showcase(
-                      key: ExploreScreen.tutorialDiscoverKey,
+                    child: ThemedShowcase(
+                      showcaseKey: ExploreScreen.tutorialDiscoverKey,
                       title: l10n.appTutorialDiscoverTitle,
                       description: l10n.appTutorialDiscoverDesc,
                       child: Column(
@@ -2007,62 +2015,75 @@ class _ExploreScreenState extends State<ExploreScreen>
                     ),
                   ),
                   // Search icon
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        setState(() => _searchBarVisible = true);
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted) _searchFocusNode.requestFocus();
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Icon(
-                          Icons.search_rounded,
-                          size: 24,
-                          color: AppTheme.textPrimary.withValues(alpha: 0.85),
+                  ThemedShowcase(
+                    showcaseKey: ExploreScreen.tutorialSearchKey,
+                    title: l10n.appTutorialSearchTitle,
+                    description: l10n.appTutorialSearchDesc,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          setState(() => _searchBarVisible = true);
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) _searchFocusNode.requestFocus();
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Icon(
+                            Icons.search_rounded,
+                            size: 24,
+                            color:
+                                AppTheme.textPrimary.withValues(alpha: 0.85),
+                          ),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 4),
                   // Filter icon (opens filter sheet)
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => _openFiltersSheet(context),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Icon(
-                              Icons.tune_rounded,
-                              size: 24,
-                              color: _getActiveFilterCount() > 0
-                                  ? AppTheme.primaryColor
-                                  : AppTheme.textPrimary.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          if (_getActiveFilterCount() > 0)
-                            Positioned(
-                              top: 6,
-                              right: 6,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: AppTheme.surfaceColor, width: 1.2),
-                                ),
+                  ThemedShowcase(
+                    showcaseKey: ExploreScreen.tutorialFilterKey,
+                    title: l10n.appTutorialFilterTitle,
+                    description: l10n.appTutorialFilterDesc,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _openFiltersSheet(context),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: Icon(
+                                Icons.tune_rounded,
+                                size: 24,
+                                color: _getActiveFilterCount() > 0
+                                    ? AppTheme.primaryColor
+                                    : AppTheme.textPrimary
+                                        .withValues(alpha: 0.7),
                               ),
                             ),
-                        ],
+                            if (_getActiveFilterCount() > 0)
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: AppTheme.surfaceColor,
+                                        width: 1.2),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -2476,7 +2497,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     const BorderRadius.vertical(top: Radius.circular(24)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: AppTheme.textPrimary.withValues(alpha: 0.1),
                     blurRadius: 20,
                     offset: const Offset(0, -4),
                   ),
@@ -2658,7 +2679,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     const BorderRadius.vertical(top: Radius.circular(24)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: AppTheme.textPrimary.withValues(alpha: 0.1),
                     blurRadius: 20,
                     offset: const Offset(0, -4),
                   ),
@@ -2828,9 +2849,13 @@ class _ExploreScreenState extends State<ExploreScreen>
     }).toList();
 
     if (recommended.isNotEmpty) {
-      display = recommended.length > 6
-          ? (recommended..shuffle()).take(6).toList()
-          : recommended;
+      display = [...recommended]
+        ..sort((a, b) {
+          final byRating = (b.rating ?? 0).compareTo(a.rating ?? 0);
+          if (byRating != 0) return byRating;
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        });
+      display = display.take(6).toList();
       title = AppLocalizations.of(context)!.recommendedForYou;
       subtitle = AppLocalizations.of(context)!
           .basedOnInterests(userInterests.take(3).join(', '));
@@ -5748,10 +5773,12 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
       ),
       decoration: BoxDecoration(
         color: AppTheme.backgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(_ExploreLayout.sheetRadius),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: AppTheme.textPrimary.withValues(alpha: 0.08),
             blurRadius: 24,
             offset: const Offset(0, -4),
           ),
@@ -5763,7 +5790,12 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(
+                _ExploreLayout.sheetHorizontalPadding,
+                8,
+                _ExploreLayout.sheetHorizontalPadding,
+                16,
+              ),
               child: Text(
                 l10n.addToTrip,
                 style: const TextStyle(
@@ -5774,7 +5806,9 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(
+                horizontal: _ExploreLayout.sheetHorizontalPadding,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -5788,7 +5822,8 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
                       filled: true,
                       fillColor: AppTheme.surfaceVariant,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius:
+                            BorderRadius.circular(_ExploreLayout.controlRadius),
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(
@@ -5833,7 +5868,12 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
                   ? (hasResults
                       ? ListView.builder(
                           shrinkWrap: true,
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                          padding: const EdgeInsets.fromLTRB(
+                            _ExploreLayout.sheetHorizontalPadding,
+                            0,
+                            _ExploreLayout.sheetHorizontalPadding,
+                            16,
+                          ),
                           itemCount: filtered.length,
                           itemBuilder: (context, i) {
                             final trip = filtered[i];
@@ -5843,7 +5883,8 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
                               color: Colors.transparent,
                               child: InkWell(
                                 onTap: () => widget.onTripSelected(trip),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(
+                                    _ExploreLayout.controlRadius),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 12, horizontal: 4),
@@ -5959,7 +6000,12 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
                     ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              padding: const EdgeInsets.fromLTRB(
+                _ExploreLayout.sheetHorizontalPadding,
+                8,
+                _ExploreLayout.sheetHorizontalPadding,
+                _ExploreLayout.sheetBottomPadding,
+              ),
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -5969,7 +6015,8 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                        borderRadius: BorderRadius.circular(
+                            _ExploreLayout.controlRadius)),
                   ),
                 ),
               ),
@@ -6118,10 +6165,12 @@ class _AddPlaceTimeSheetState extends State<_AddPlaceTimeSheet> {
           BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
       decoration: BoxDecoration(
         color: AppTheme.backgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(_ExploreLayout.sheetRadius),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: AppTheme.textPrimary.withValues(alpha: 0.08),
             blurRadius: 24,
             offset: const Offset(0, -4),
           ),
@@ -6130,7 +6179,12 @@ class _AddPlaceTimeSheetState extends State<_AddPlaceTimeSheet> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          padding: const EdgeInsets.fromLTRB(
+            _ExploreLayout.sheetHorizontalPadding,
+            8,
+            _ExploreLayout.sheetHorizontalPadding,
+            _ExploreLayout.sheetBottomPadding,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -6152,7 +6206,8 @@ class _AddPlaceTimeSheetState extends State<_AddPlaceTimeSheet> {
                     filled: true,
                     fillColor: AppTheme.surfaceVariant,
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                        borderRadius:
+                            BorderRadius.circular(_ExploreLayout.controlRadius)),
                   ),
                   items: widget.dates
                       .map((d) => DropdownMenuItem(
@@ -6227,12 +6282,12 @@ class _TimeChip extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(_ExploreLayout.controlRadius),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
             color: AppTheme.surfaceVariant,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(_ExploreLayout.controlRadius),
             border: Border.all(color: AppTheme.borderColor),
           ),
           child: Column(

@@ -450,7 +450,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
       builder: (ctx) => Container(
         padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SafeArea(
@@ -1280,7 +1280,7 @@ class _KeyInfoSection extends StatelessWidget {
             offset: const Offset(0, 3),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: AppTheme.textPrimary.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

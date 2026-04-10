@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tripoli_explorer/l10n/app_localizations.dart';
 import '../config/api_config.dart';
 import '../providers/language_provider.dart';
+import '../theme/app_theme.dart';
 import '../utils/responsive_utils.dart';
 
 Future<void> _showServerUrlDialog(BuildContext context) async {
@@ -91,10 +92,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFf8fafc),
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: Text(l10n.settings),
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceColor,
         elevation: 0,
       ),
       body: ListView(
@@ -269,10 +270,10 @@ class _SettingsSection extends StatelessWidget {
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
             title,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: Colors.grey[600],
+              color: AppTheme.textSecondary,
               letterSpacing: 0.5,
             ),
           ),
@@ -303,11 +304,11 @@ class _SettingsTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: AppTheme.textPrimary.withValues(alpha: 0.03),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -334,11 +335,11 @@ class _SettingsTile extends StatelessWidget {
         subtitle: subtitle != null
             ? Text(
                 subtitle!,
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
               )
             : null,
-        trailing:
-            trailing ?? const Icon(Icons.chevron_right, color: Colors.grey),
+        trailing: trailing ??
+            const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
         onTap: onTap,
       ),
     );

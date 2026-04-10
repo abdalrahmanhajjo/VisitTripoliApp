@@ -156,10 +156,16 @@ class _DealsScreenState extends State<DealsScreen> with SingleTickerProviderStat
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppTheme.surfaceColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.textPrimary.withValues(alpha: 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
                 ),
                 child: QrImageView(
                   data: qrData,
@@ -195,14 +201,14 @@ class _DealsScreenState extends State<DealsScreen> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: Text(
           l10n.dealsAndOffers,
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 22),
         ),
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceColor,
         surfaceTintColor: Colors.transparent,
         bottom: TabBar(
           controller: _tabController,
@@ -301,7 +307,7 @@ class _CouponsTab extends StatelessWidget {
                       decoration: InputDecoration(
                         hintText: l10n.dealsEnterCodeHint,
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: AppTheme.surfaceColor,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
@@ -334,9 +340,15 @@ class _CouponsTab extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppTheme.surfaceColor,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 2))],
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.textPrimary.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                )
+              ],
             ),
             child: Column(
               children: [
@@ -371,9 +383,15 @@ class _CouponCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.textPrimary.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          )
+        ],
         border: used ? Border.all(color: AppTheme.textTertiary.withValues(alpha: 0.4), width: 1) : null,
       ),
       child: Stack(
@@ -612,7 +630,7 @@ class _OffersTab extends StatelessWidget {
       builder: (ctx) => Container(
         padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SafeArea(
@@ -628,7 +646,7 @@ class _OffersTab extends StatelessWidget {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: AppTheme.borderColor,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -781,11 +799,11 @@ class _OffersTab extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: AppTheme.textPrimary.withValues(alpha: 0.06),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),
@@ -982,9 +1000,15 @@ class _ProposalsTab extends StatelessWidget {
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.surfaceColor,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))],
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.textPrimary.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              )
+            ],
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -1146,7 +1170,7 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
     return Container(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceColor,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(
@@ -1161,7 +1185,10 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
                   width: 40,
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(
+                    color: AppTheme.borderColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
               Row(
@@ -1179,7 +1206,10 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
               if (widget.places.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Text(l10n.dealsNoRestaurantsAvailable, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
                 )
               else
@@ -1187,7 +1217,7 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
                   initialValue: _selectedPlaceId,
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: Colors.grey.shade50,
+                    fillColor: AppTheme.surfaceVariant.withValues(alpha: 0.5),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   ),
@@ -1204,7 +1234,7 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
                 decoration: InputDecoration(
                   hintText: l10n.dealsPhoneHintExample,
                   filled: true,
-                  fillColor: Colors.grey.shade50,
+                  fillColor: AppTheme.surfaceVariant.withValues(alpha: 0.5),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
@@ -1218,7 +1248,7 @@ class _ProposeOfferSheetState extends State<_ProposeOfferSheet> {
                 decoration: InputDecoration(
                   hintText: l10n.dealsMessageHintExample,
                   filled: true,
-                  fillColor: Colors.grey.shade50,
+                  fillColor: AppTheme.surfaceVariant.withValues(alpha: 0.5),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   contentPadding: const EdgeInsets.all(16),
                 ),

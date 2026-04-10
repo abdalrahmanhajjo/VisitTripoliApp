@@ -200,14 +200,15 @@ class _PlacePostsScreenState extends State<PlacePostsScreen> {
               child: Container(
                 height: 24,
                 width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0x0D000000),
+                      color: AppTheme.textPrimary.withValues(alpha: 0.05),
                       blurRadius: 12,
-                      offset: Offset(0, -2),
+                      offset: const Offset(0, -2),
                     ),
                   ],
                 ),
@@ -445,7 +446,7 @@ class _PlaceHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Container(
-      color: Colors.white,
+      color: AppTheme.surfaceColor,
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -454,10 +455,10 @@ class _PlaceHeader extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white,
+              color: AppTheme.surfaceColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.12),
+                  color: AppTheme.textPrimary.withValues(alpha: 0.12),
                   blurRadius: 16,
                   offset: const Offset(0, 4),
                 ),
@@ -549,7 +550,7 @@ class _PlaceHeader extends StatelessWidget {
                       initialValue: currentSort,
                       onSelected: onSortChanged,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      color: Colors.white,
+                      color: AppTheme.surfaceColor,
                       elevation: 8,
                       position: PopupMenuPosition.under,
                       child: Container(
@@ -872,14 +873,21 @@ class _FullPostDialogState extends State<_FullPostDialog> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 12),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.borderColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
             ListTile(
               leading: const Icon(Icons.delete_outline_rounded, color: AppTheme.errorColor),
               title: Text(l10n.postDeleteTitle, style: const TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.w600)),

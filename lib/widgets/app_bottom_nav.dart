@@ -4,9 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:tripoli_explorer/l10n/app_localizations.dart';
 import '../providers/activity_log_provider.dart';
 import '../providers/auth_provider.dart';
-import '../theme/app_theme.dart';
 import '../utils/feedback_utils.dart';
-import 'package:showcaseview/showcaseview.dart';
+import 'themed_showcase.dart';
 
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
@@ -26,26 +25,12 @@ class AppBottomNav extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final auth = Provider.of<AuthProvider>(context);
     final isGuest = auth.isGuest;
-    final navTheme = Theme.of(context).navigationBarTheme;
-    final navThemeCompact = navTheme.copyWith(
-      height: 56,
-      iconTheme: WidgetStateProperty.resolveWith((states) {
-        return IconThemeData(
-          size: 24,
-          color: states.contains(WidgetState.selected)
-              ? AppTheme.primaryColor
-              : AppTheme.textSecondary,
-        );
-      }),
-    );
 
     return SafeArea(
-      child: Theme(
-        data: Theme.of(context).copyWith(navigationBarTheme: navThemeCompact),
-        child: NavigationBar(
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
-          selectedIndex: currentIndex.clamp(0, 4),
-          onDestinationSelected: (index) {
+      child: NavigationBar(
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+        selectedIndex: currentIndex.clamp(0, 4),
+        onDestinationSelected: (index) {
             AppFeedback.selection();
             if (isGuest && _guestRestrictedIndices.contains(index)) {
               final router = GoRouter.of(context);
@@ -102,10 +87,10 @@ class AppBottomNav extends StatelessWidget {
                 context.go('/trips');
                 break;
             }
-          },
-          destinations: [
-            Showcase(
-              key: exploreKey,
+        },
+        destinations: [
+            ThemedShowcase(
+              showcaseKey: exploreKey,
               title: l10n.navExplore,
               description: l10n.appTutorialNavExploreDesc,
               child: NavigationDestination(
@@ -114,8 +99,8 @@ class AppBottomNav extends StatelessWidget {
                 label: l10n.navExplore,
               ),
             ),
-            Showcase(
-              key: communityKey,
+            ThemedShowcase(
+              showcaseKey: communityKey,
               title: l10n.navCommunity,
               description: l10n.appTutorialNavCommunityDesc,
               child: NavigationDestination(
@@ -124,8 +109,8 @@ class AppBottomNav extends StatelessWidget {
                 label: l10n.navCommunity,
               ),
             ),
-            Showcase(
-              key: mapKey,
+            ThemedShowcase(
+              showcaseKey: mapKey,
               title: l10n.navMap,
               description: l10n.appTutorialNavMapDesc,
               child: NavigationDestination(
@@ -134,8 +119,8 @@ class AppBottomNav extends StatelessWidget {
                 label: l10n.navMap,
               ),
             ),
-            Showcase(
-              key: aiPlannerKey,
+            ThemedShowcase(
+              showcaseKey: aiPlannerKey,
               title: l10n.navAiPlanner,
               description: l10n.appTutorialNavAiDesc,
               child: NavigationDestination(
@@ -144,8 +129,8 @@ class AppBottomNav extends StatelessWidget {
                 label: l10n.navAiPlanner,
               ),
             ),
-            Showcase(
-              key: tripsKey,
+            ThemedShowcase(
+              showcaseKey: tripsKey,
               title: l10n.navTrips,
               description: l10n.appTutorialNavTripsDesc,
               child: NavigationDestination(
@@ -154,8 +139,7 @@ class AppBottomNav extends StatelessWidget {
                 label: l10n.navTrips,
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

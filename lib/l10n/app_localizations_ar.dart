@@ -2527,6 +2527,109 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errorGenericTitle => 'حدث خطأ ما';
 
   @override
+  String get appOnboardingJourneyTitle => 'جولة سريعة';
+
+  @override
+  String get appOnboardingSkip => 'تخطي';
+
+  @override
+  String get appOnboardingNext => 'التالي';
+
+  @override
+  String get appOnboardingBack => 'رجوع';
+
+  @override
+  String get appOnboardingStartSpotlight => 'إبراز العناصر على الشاشة';
+
+  @override
+  String get appOnboardingGotIt => 'فهمت — أنا جاهز';
+
+  @override
+  String get appOnboardingSlideWelcomeTitle => 'مرافقك في طرابلس';
+
+  @override
+  String get appOnboardingSlideWelcomeBody =>
+      'اكتشف الأماكن المختارة، تابع المجتمع، انقل على الخريطة، وخطط للرحلات بالذكاء الاصطناعي—كل ذلك في مكان واحد.';
+
+  @override
+  String get appOnboardingSlideExploreTitle => 'استكشف';
+
+  @override
+  String get appOnboardingSlideExploreBody =>
+      'معالم ومطاعم وجولات وفعاليات مختارة. ابحث، صفِّ حسب الفئة، واحفظ المفضلة.';
+
+  @override
+  String get appOnboardingSlideCommunityTitle => 'المجتمع';
+
+  @override
+  String get appOnboardingSlideCommunityBody =>
+      'خلاصة منشوراتك وريلز الأماكن التي تهمك. اسحب للتحديث.';
+
+  @override
+  String get appOnboardingSlideMapTitle => 'الخريطة';
+
+  @override
+  String get appOnboardingSlideMapBody =>
+      'غيّر نوع الخريطة، ابحث، صفِّ، احصل على الاتجاهات، وتصفّح الأماكن القريبة في بطاقات منزلقة.';
+
+  @override
+  String get appOnboardingSlidePlannerTitle => 'مخطط الذكاء الاصطناعي';
+
+  @override
+  String get appOnboardingSlidePlannerBody =>
+      'صفّ رحلتك واحصل على خطة يومية. سجّل الدخول للمزامنة بين الأجهزة.';
+
+  @override
+  String get appOnboardingSlideTripsTitle => 'الرحلات';
+
+  @override
+  String get appOnboardingSlideTripsBody =>
+      'ابنِ برامجك، أضف محطات وفعاليات، ونظّم كل شيء لزيارتك.';
+
+  @override
+  String get appOnboardingSlideOffersTitle => 'العروض والرسائل';
+
+  @override
+  String get appOnboardingSlideOffersBody =>
+      'اطّلع على العروض المحلية عند توفّرها واستخدم الرسائل للتواصل—كل ذلك في تطبيق واحد يركّز على طرابلس.';
+
+  @override
+  String get appOnboardingSlideHelpTitle => 'المساعدة والإعدادات';
+
+  @override
+  String get appOnboardingSlideHelpBody =>
+      'افتح الإعدادات للغة والحساب. زر المساعدة في أي وقت لإعادة الجولة أو قراءة إجابات سريعة وملاحظات الخصوصية.';
+
+  @override
+  String appOnboardingStepOf(int current, int total) {
+    return 'الخطوة $current من $total';
+  }
+
+  @override
+  String get appOnboardingSwipeHint => 'اسحب الشاشة أو اضغط «التالي» للمتابعة.';
+
+  @override
+  String get appOnboardingFinalHint =>
+      'أعد تشغيل الجولة من المساعدة ← جولة إرشادية.';
+
+  @override
+  String get helpReplayTourTitle => 'إعادة جولة التطبيق';
+
+  @override
+  String get helpReplayTourSubtitle =>
+      'عرض الميزات الرئيسية مجدداً (شرائح + إبراز اختياري على الشاشة).';
+
+  @override
+  String get helpReplaySpotlightTitle => 'إبراز كل التبويبات (سريع)';
+
+  @override
+  String get helpReplaySpotlightSubtitle =>
+      'جولة إبراز لكل التبويبات الرئيسية—استكشاف، مجتمع، خريطة، مخطط الذكاء الاصطناعي، ورحلات.';
+
+  @override
+  String get helpGuidedTourSection => 'جولة إرشادية';
+
+  @override
   String get appTutorialDialogTitle => 'مرحباً بك في Visit Tripoli';
 
   @override
@@ -2554,6 +2657,20 @@ class AppLocalizationsAr extends AppLocalizations {
       'افتح ملفك وتفضيلاتك والإعدادات. سجّل الدخول لمزامنة الرحلات وخطط الذكاء الاصطناعي.';
 
   @override
+  String get appTutorialSearchTitle => 'البحث عن الأماكن';
+
+  @override
+  String get appTutorialSearchDesc =>
+      'اعثر على المعالم والمأكولات والجولات بالاسم أو المنطقة أو الوسوم. تتحدّث النتائج أثناء الكتابة.';
+
+  @override
+  String get appTutorialFilterTitle => 'المرشحات والترتيب';
+
+  @override
+  String get appTutorialFilterDesc =>
+      'صفِّ القائمة حسب الفئة أو الترتيب أو الخيارات المجانية لتناسب خططك.';
+
+  @override
   String get appTutorialNavExploreDesc =>
       'صفحتك الرئيسية لأفضل المعالم والمطاعم والفنادق والتوصيات.';
 
@@ -2572,6 +2689,94 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get appTutorialNavTripsDesc =>
       'خطط لرحلاتك ونظّمها—أضف أماكناً وفعاليات واحتفظ بكل شيء في مسار واحد.';
+
+  @override
+  String get appTutorialCommunityScreenTitle => 'خلاصة المجتمع';
+
+  @override
+  String get appTutorialCommunityScreenBody =>
+      'تصفّح المنشورات والريلز من أماكن طرابلس. اسحب للتحديث.';
+
+  @override
+  String get appTutorialCommunityTabsTitle => 'لك، المحفوظ والريلز';
+
+  @override
+  String get appTutorialCommunityTabsBody =>
+      'بدّل التبويبات لتخصيص الشاشة أو فتح المحفوظ أو الريلز.';
+
+  @override
+  String get appTutorialMapSearchSpotTitle => 'بحث الخريطة';
+
+  @override
+  String get appTutorialMapSearchSpotBody =>
+      'اكتب اسم المكان للعثور عليه وتحريك الخريطة.';
+
+  @override
+  String get appTutorialMapFiltersSpotTitle => 'فئات الأماكن';
+
+  @override
+  String get appTutorialMapFiltersSpotBody =>
+      'اختر أنواع الأماكن التي تظهر على الخريطة قبل تصفح الدبابيس.';
+
+  @override
+  String get appTutorialMapControlsSpotTitle => 'التكبير والنمط وموقعك';
+
+  @override
+  String get appTutorialMapControlsSpotBody =>
+      'كبّر الخريطة، غيّر نوعها، بدّل حركة المرور، وأعد التمركز على موقعك.';
+
+  @override
+  String get appTutorialPlannerHeaderTitle => 'رأس المخطط';
+
+  @override
+  String get appTutorialPlannerHeaderBody =>
+      'الصورة تفتح الملف. القائمة تضبط المدة والكثافة وغيرها.';
+
+  @override
+  String get appTutorialPlannerSetupTitle => 'إعداد الرحلة';
+
+  @override
+  String get appTutorialPlannerSetupBody =>
+      'حدد الأيام والمحطات اليومية والتواريخ قبل الدردشة مع الذكاء الاصطناعي.';
+
+  @override
+  String get appTutorialPlannerWelcomeSpotTitle => 'المحادثة مع المخطط';
+
+  @override
+  String get appTutorialPlannerWelcomeSpotBody =>
+      'صف رحلتك، استخدم الأفكار السريعة، أو ابنِ من اهتماماتك—ثم احفظ كخطة رحلة.';
+
+  @override
+  String get appTutorialTripsHeaderTitle => 'مركز الرحلات';
+
+  @override
+  String get appTutorialTripsHeaderBody =>
+      'شاهد برامجك وافتح ملفك—ثم ابدأ رحلة جديدة بالزر.';
+
+  @override
+  String get appTutorialTripsNewTripTitle => 'بدء رحلة جديدة';
+
+  @override
+  String get appTutorialTripsNewTripBody =>
+      'أنشئ مساراً وأضف الأيام والأماكن والفعاليات أثناء التخطيط.';
+
+  @override
+  String get appTutorialTripsCalendarTitle => 'التقويم';
+
+  @override
+  String get appTutorialTripsCalendarBody =>
+      'وسّع التقويم للانتقال حسب التاريخ وتصفية العرض.';
+
+  @override
+  String get appTutorialCommunityProfileTitle => 'الملف والإعدادات';
+
+  @override
+  String get appTutorialCommunityProfileBody =>
+      'انتقل للملف والتفضيلات والحساب من هنا.';
+
+  @override
+  String get appTutorialCommunityFabBody =>
+      'شارك صوراً وتحديثات مع المجتمع عندما تكون في مكان يعجبك.';
 
   @override
   String get aiPlannerAskAiChangeStop =>

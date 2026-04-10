@@ -16,7 +16,7 @@ import 'trips_ui.dart';
 BoxDecoration _detailSectionDecoration() {
   return BoxDecoration(
     color: AppTheme.surfaceColor,
-    borderRadius: BorderRadius.circular(16),
+    borderRadius: BorderRadius.circular(TripsLayout.sectionRadius),
     border: Border.all(
       color: AppTheme.borderColor.withValues(alpha: 0.55),
     ),
@@ -161,7 +161,9 @@ class TripDetailsModal extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         decoration: const BoxDecoration(
           color: AppTheme.backgroundColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(TripsLayout.sheetTopRadius),
+          ),
         ),
         child: Column(
           children: [
@@ -169,7 +171,12 @@ class TripDetailsModal extends StatelessWidget {
             Expanded(
               child: ListView(
                 controller: scrollController,
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                padding: const EdgeInsets.fromLTRB(
+                  TripsLayout.sheetHorizontalPadding,
+                  0,
+                  TripsLayout.sheetHorizontalPadding,
+                  32,
+                ),
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -492,7 +499,9 @@ class TripDetailsModal extends StatelessWidget {
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(
+                                  TripsLayout.controlRadius,
+                                ),
                               ),
                               elevation: 0,
                             ),

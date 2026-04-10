@@ -25,4 +25,10 @@ class AppTutorialPrefs {
     await prefs.setBool(resolvedKey, true);
     await prefs.remove(legacySeenKey);
   }
+
+  /// Clear so the onboarding prompt can appear again (e.g. from Help → replay).
+  static Future<void> clearResolvedForReplay(SharedPreferences prefs) async {
+    await prefs.remove(resolvedKey);
+    await prefs.remove(legacySeenKey);
+  }
 }

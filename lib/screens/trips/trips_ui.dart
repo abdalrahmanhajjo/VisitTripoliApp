@@ -2,6 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
 
+/// Shared geometry tokens for trip modals/sheets.
+class TripsLayout {
+  static const double sheetTopRadius = 24;
+  static const double sectionRadius = 16;
+  static const double controlRadius = 14;
+  static const double cardRadius = 12;
+  static const double sheetHorizontalPadding = 20;
+  static const double sheetBottomPadding = 16;
+}
+
 /// Drag handle for bottom sheets / draggable modals.
 Widget modalDragHandle() {
   return Padding(
@@ -22,8 +32,8 @@ Widget modalDragHandle() {
 /// Consistent card style for trip detail panels.
 BoxDecoration tripsPanelDecoration() {
   return BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(14),
+    color: AppTheme.surfaceColor,
+    borderRadius: BorderRadius.circular(TripsLayout.controlRadius),
     border: Border.all(color: AppTheme.borderColor),
   );
 }

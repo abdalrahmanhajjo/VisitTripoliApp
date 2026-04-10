@@ -1178,7 +1178,7 @@ class _ProfileHeader extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           Material(
-            color: Colors.white,
+            color: AppTheme.surfaceColor,
             elevation: 0,
             borderRadius: BorderRadius.circular(999),
             child: InkWell(
@@ -2370,7 +2370,7 @@ class _ProfileSettings extends StatelessWidget {
                 ),
                 value: profile.analytics,
                 onChanged: (v) => profile.setAnalytics(v, authToken: token),
-                activeThumbColor: Colors.white,
+                activeThumbColor: AppTheme.surfaceColor,
                 activeTrackColor: AppTheme.primaryColor,
               ),
               SwitchListTile(
@@ -2393,7 +2393,7 @@ class _ProfileSettings extends StatelessWidget {
                 ),
                 value: profile.showTips,
                 onChanged: (v) => profile.setShowTips(v, authToken: token),
-                activeThumbColor: Colors.white,
+                activeThumbColor: AppTheme.surfaceColor,
                 activeTrackColor: AppTheme.primaryColor,
               ),
               const SizedBox(height: 8),

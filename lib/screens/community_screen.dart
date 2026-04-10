@@ -4,10 +4,15 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_share.dart';
 import 'package:go_router/go_router.dart';
 
 import '../cache/app_cache_manager.dart';
+import '../providers/app_state.dart';
+import '../providers/app_tour_segment.dart';
+import '../utils/app_tour_showcase.dart';
+import '../widgets/themed_showcase.dart';
 import '../config/api_config.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
@@ -30,7 +35,6 @@ import '../social/community_tokens.dart';
 import '../social/feed_ranking.dart';
 import '../social/feed_image_utils.dart';
 import '../social/widgets/community_banners.dart';
-import '../social/widgets/community_feed_header.dart';
 import '../social/widgets/community_feed_states.dart';
 import '../social/widgets/feed_post_card.dart';
 import '../social/widgets/comments_sheet.dart';
@@ -42,11 +46,17 @@ import '../social/widgets/feed_moderation_sheet.dart';
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
 
+  static final GlobalKey tutorialTitleKey = GlobalKey();
+  static final GlobalKey tutorialFeedTabsKey = GlobalKey();
+  static final GlobalKey tutorialProfileKey = GlobalKey();
+  static final GlobalKey tutorialFabKey = GlobalKey();
+
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
 
 class _CommunityScreenState extends State<CommunityScreen> {
+  bool _communityTourKickoff = false;
   final _scrollController = ScrollController();
   final _commentController = TextEditingController();
   final _captionController = TextEditingController();
@@ -54,13 +64,49 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Set<String>? _lastVideoPostIdsForAutoplay;
   String? _lastFeedPrecacheSig;
   bool _initialLoadDone = false;
-  // UX: open Community on For You (personalized) feed.
+  // UX: open Community on For You feed (recent + unseen-first web parity).
   CommunityFeedSort _sortMode = CommunityFeedSort.newest;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => unawaited(_maybeRunSpotlightTour()));
+  }
+
+  Future<void> _maybeRunSpotlightTour() async {
+    if (_communityTourKickoff || !mounted) return;
+    final appState = context.read<AppStateProvider>();
+    if (!appState.isFullAppTourActive ||
+        appState.activeTourSegment != AppTourSegment.community) {
+      return;
+    }
+    _communityTourKickoff = true;
+    final auth = context.read<AuthProvider>();
+    final feed = context.read<FeedProvider>();
+    await Future.delayed(const Duration(milliseconds: 520));
+    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    final keys = <GlobalKey>[
+      CommunityScreen.tutorialTitleKey,
+      CommunityScreen.tutorialFeedTabsKey,
+    ];
+    if (auth.isLoggedIn && !auth.isGuest) {
+      keys.add(CommunityScreen.tutorialProfileKey);
+    }
+    if (auth.isLoggedIn &&
+        !auth.isGuest &&
+        (feed.canPost?.canPost ?? false)) {
+      keys.add(CommunityScreen.tutorialFabKey);
+    }
+    startAppTourShowcase(
+      context: context,
+      prefs: prefs,
+      keys: keys,
+      advanceFromSegment: AppTourSegment.community,
+    );
   }
 
   @override
@@ -139,18 +185,24 @@ class _CommunityScreenState extends State<CommunityScreen> {
     return Scaffold(
       backgroundColor: CommunityTokens.pageBackground,
       appBar: AppBar(
-        title: Text(
-          AppLocalizations.of(context)!.navCommunity,
-          style: const TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-            letterSpacing: -0.6,
+        title: ThemedShowcase(
+          showcaseKey: CommunityScreen.tutorialTitleKey,
+          title: AppLocalizations.of(context)!.appTutorialCommunityScreenTitle,
+          description:
+              AppLocalizations.of(context)!.appTutorialCommunityScreenBody,
+          child: Text(
+            AppLocalizations.of(context)!.navCommunity,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+              letterSpacing: -0.6,
+            ),
           ),
         ),
         elevation: 0,
         scrolledUnderElevation: 0.5,
         shadowColor: Colors.black26,
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceColor,
         surfaceTintColor: Colors.transparent,
         actions: [
           if (feed.canPost?.isAdmin == true &&
@@ -182,12 +234,21 @@ class _CommunityScreenState extends State<CommunityScreen> {
               tooltip: 'Messages',
               onPressed: () => context.push('/messages'),
             ),
-          const AppProfileIconButton(),
+          if (auth.isLoggedIn && !auth.isGuest)
+            ThemedShowcase(
+              showcaseKey: CommunityScreen.tutorialProfileKey,
+              title: AppLocalizations.of(context)!.appTutorialCommunityProfileTitle,
+              description:
+                  AppLocalizations.of(context)!.appTutorialCommunityProfileBody,
+              child: const AppProfileIconButton(),
+            )
+          else
+            const AppProfileIconButton(),
         ],
       ),
       body: RefreshIndicator(
         color: AppTheme.primaryColor,
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.surfaceColor,
         displacement: 48,
         strokeWidth: 2.5,
         onRefresh: _refreshFeedForCurrentTab,
@@ -196,32 +257,39 @@ class _CommunityScreenState extends State<CommunityScreen> {
       floatingActionButton: auth.isLoggedIn &&
               !auth.isGuest &&
               (feed.canPost?.canPost ?? false)
-          ? Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.35),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: FloatingActionButton.extended(
-                heroTag: 'community_fab_create_post',
-                onPressed: () => _openCreatePost(context, feed, auth),
-                icon: const Icon(Icons.add_photo_alternate_rounded, size: 22),
-                label: Text(
-                  AppLocalizations.of(context)!.createPost,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    letterSpacing: 0.2,
-                  ),
+          ? ThemedShowcase(
+              showcaseKey: CommunityScreen.tutorialFabKey,
+              title: AppLocalizations.of(context)!.createPost,
+              description:
+                  AppLocalizations.of(context)!.appTutorialCommunityFabBody,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
+                child: FloatingActionButton.extended(
+                  heroTag: 'community_fab_create_post',
+                  onPressed: () => _openCreatePost(context, feed, auth),
+                  icon:
+                      const Icon(Icons.add_photo_alternate_rounded, size: 22),
+                  label: Text(
+                    AppLocalizations.of(context)!.createPost,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                ),
               ),
             )
           : null,
@@ -457,7 +525,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     Container(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                       decoration: const BoxDecoration(
-                        color: Colors.white,
+                        color: AppTheme.surfaceColor,
                         borderRadius:
                             BorderRadius.vertical(top: Radius.circular(24)),
                       ),
@@ -471,7 +539,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                                     ? Icons.favorite_rounded
                                     : Icons.favorite_border_rounded,
                                 iconColor: current.likedByMe
-                                    ? const Color(0xFFE11D48)
+                                    ? AppTheme.errorColor
                                     : AppTheme.textSecondary,
                                 count: (!current.hideLikes || isOwner)
                                     ? current.likeCount
@@ -597,10 +665,31 @@ class _CommunityScreenState extends State<CommunityScreen> {
     if (m == CommunityFeedSort.saved && auth.isLoggedIn && !auth.isGuest) {
       feed.loadSavedFeed(authToken: auth.authToken!, refresh: true);
     } else if (m == CommunityFeedSort.newest) {
-      if (feed.posts.isEmpty) {
-        feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'recent');
-      }
+      // Web parity: switching to Feed reloads first page from recent.
+      feed.loadFeed(authToken: auth.authToken, refresh: true, sort: 'recent');
     }
+  }
+
+  Widget _feedHeaderWidget({
+    required CommunityFeedSort selectedMode,
+    required int matchCount,
+    required bool isSavedAvailable,
+    required ValueChanged<CommunityFeedSort> onSelectedMode,
+    required VoidCallback onReels,
+  }) {
+    final l10n = AppLocalizations.of(context)!;
+    return ThemedShowcase(
+      showcaseKey: CommunityScreen.tutorialFeedTabsKey,
+      title: l10n.appTutorialCommunityTabsTitle,
+      description: l10n.appTutorialCommunityTabsBody,
+      child: _feedHeaderWidget(
+        selectedMode: selectedMode,
+        matchCount: matchCount,
+        isSavedAvailable: isSavedAvailable,
+        onSelectedMode: onSelectedMode,
+        onReels: onReels,
+      ),
+    );
   }
 
   Widget _buildFeedBody(AuthProvider auth, FeedProvider feed) {
@@ -619,7 +708,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
         ? feed.savedPosts
         : rankDiscoverForYou(
             posts: feed.posts,
-            interestKeywords: interestKeywords,
             seenPostIds: feed.seenPostIds,
           );
     final loadingMore = showSaved ? feed.loadingMoreSaved : feed.loadingMore;
@@ -636,7 +724,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         ),
         slivers: [
           SliverToBoxAdapter(
-            child: CommunityFeedHeader(
+            child: _feedHeaderWidget(
               selectedMode: _sortMode,
               matchCount: matchCount,
               isSavedAvailable: auth.isLoggedIn && !auth.isGuest,
@@ -682,7 +770,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
         ),
         slivers: [
           SliverToBoxAdapter(
-            child: CommunityFeedHeader(
+            child: _feedHeaderWidget(
               selectedMode: _sortMode,
               matchCount: matchCount,
               isSavedAvailable: auth.isLoggedIn && !auth.isGuest,
@@ -714,7 +802,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
               onRetry: _retryFeedLoad,
             ),
           SliverToBoxAdapter(
-            child: CommunityFeedHeader(
+            child: _feedHeaderWidget(
               selectedMode: _sortMode,
               matchCount: matchCount,
               isSavedAvailable: auth.isLoggedIn && !auth.isGuest,
@@ -773,7 +861,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
             onRetry: _retryFeedLoad,
           ),
         SliverToBoxAdapter(
-          child: CommunityFeedHeader(
+          child: _feedHeaderWidget(
             selectedMode: _sortMode,
             matchCount: matchCount,
             isSavedAvailable: auth.isLoggedIn && !auth.isGuest,
@@ -860,9 +948,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
             maxHeight: MediaQuery.of(ctx).size.height * 0.45,
           ),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.surfaceColor,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20)],
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.textPrimary.withValues(alpha: 0.1),
+                blurRadius: 20,
+              )
+            ],
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -1059,9 +1152,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
             maxHeight: MediaQuery.of(ctx).size.height * 0.6,
           ),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.surfaceColor,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20)],
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.textPrimary.withValues(alpha: 0.1),
+                blurRadius: 20,
+              )
+            ],
           ),
           clipBehavior: Clip.antiAlias,
           child: SingleChildScrollView(
