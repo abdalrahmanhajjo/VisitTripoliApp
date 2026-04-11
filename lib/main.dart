@@ -24,7 +24,8 @@ import 'routes/app_router.dart';
 import 'services/api_service.dart';
 import 'services/push_notification_service.dart';
 import 'theme/app_theme.dart';
-import 'package:showcaseview/showcaseview.dart';
+import 'package:showcaseview/showcaseview.dart'
+    show ShowcaseView, TooltipActionButton, TooltipDefaultActionType;
 import 'utils/app_text_scale.dart';
 import 'utils/feed_media_precache.dart';
 import 'utils/places_image_precache.dart';
@@ -243,7 +244,7 @@ class _TripoliExplorerAppState extends State<TripoliExplorerApp> {
                     right: 0,
                     child: Material(
                       elevation: 4,
-                      color: const Color(0xFFB45309),
+                      color: AppTheme.warningColor,
                       child: SafeArea(
                         bottom: false,
                         child: Padding(
@@ -314,6 +315,12 @@ class _ShowcaseScopeState extends State<_ShowcaseScope> {
     super.initState();
     _view = ShowcaseView.register(
       enableAutoScroll: true,
+      blurValue: 6,
+      globalTooltipActions: const [
+        TooltipActionButton(type: TooltipDefaultActionType.previous),
+        TooltipActionButton(type: TooltipDefaultActionType.next),
+        TooltipActionButton(type: TooltipDefaultActionType.skip),
+      ],
     );
   }
 

@@ -6,6 +6,9 @@ class Trip {
   final List<TripDay> days;
   final String? description;
   final DateTime createdAt;
+  final String? hostUserId;
+  final String? hostName;
+  final bool isHost;
 
   Trip({
     required this.id,
@@ -15,9 +18,27 @@ class Trip {
     required this.days,
     this.description,
     required this.createdAt,
+    this.hostUserId,
+    this.hostName,
+    this.isHost = true,
   });
 
   factory Trip.fromJson(Map<String, dynamic> json) {
+    bool parseLooseBool(dynamic value, {required bool fallback}) {
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      if (value is String) {
+        final normalized = value.trim().toLowerCase();
+        if (normalized == 'true' || normalized == '1' || normalized == 'yes') {
+          return true;
+        }
+        if (normalized == 'false' || normalized == '0' || normalized == 'no') {
+          return false;
+        }
+      }
+      return fallback;
+    }
+
     return Trip(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -28,6 +49,9 @@ class Trip {
           .toList(),
       description: json['description'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      hostUserId: json['hostUserId'] as String?,
+      hostName: json['hostName'] as String?,
+      isHost: parseLooseBool(json['isHost'], fallback: true),
     );
   }
 
@@ -40,6 +64,9 @@ class Trip {
       'days': days.map((d) => d.toJson()).toList(),
       'description': description,
       'createdAt': createdAt.toIso8601String(),
+      'hostUserId': hostUserId,
+      'hostName': hostName,
+      'isHost': isHost,
     };
   }
 }

@@ -226,8 +226,10 @@ class TripFormModalState extends State<TripFormModal> {
       maxChildSize: 0.95,
       builder: (_, scrollController) => Container(
         decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(TripsLayout.sheetTopRadius),
+          ),
         ),
         child: Column(
           children: [
@@ -238,7 +240,10 @@ class TripFormModalState extends State<TripFormModal> {
               child: ListView(
                 controller: scrollController,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    const EdgeInsets.symmetric(
+                  horizontal: TripsLayout.sheetHorizontalPadding,
+                  vertical: 16,
+                ),
                 children: [
                   _buildSection(AppLocalizations.of(context)!.tripName,
                       AppLocalizations.of(context)!.giveTripMemorableName, [
@@ -343,7 +348,12 @@ class TripFormModalState extends State<TripFormModal> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      padding: const EdgeInsets.fromLTRB(
+        TripsLayout.sheetHorizontalPadding,
+        8,
+        TripsLayout.sheetHorizontalPadding,
+        16,
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -392,7 +402,7 @@ class TripFormModalState extends State<TripFormModal> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(TripsLayout.sectionRadius),
         border: Border.all(color: AppTheme.surfaceVariant),
       ),
       child: Column(
@@ -424,12 +434,12 @@ class TripFormModalState extends State<TripFormModal> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppTheme.borderColor),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03), blurRadius: 4)
+                color: AppTheme.textPrimary.withValues(alpha: 0.05), blurRadius: 4)
           ],
         ),
         child: Text(
@@ -446,12 +456,12 @@ class TripFormModalState extends State<TripFormModal> {
   Widget _dateChip(String label, DateTime date, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(TripsLayout.cardRadius),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(TripsLayout.cardRadius),
           border: Border.all(color: AppTheme.borderColor),
         ),
         child: Column(
@@ -549,8 +559,8 @@ class TripFormModalState extends State<TripFormModal> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(TripsLayout.cardRadius),
           border: Border.all(color: AppTheme.borderColor),
         ),
         child: Row(
@@ -821,15 +831,15 @@ class TripFormModalState extends State<TripFormModal> {
                           }
                         });
                       },
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(TripsLayout.cardRadius),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 150),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isSelected
                               ? AppTheme.primaryColor.withValues(alpha: 0.1)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                              : AppTheme.surfaceColor,
+                          borderRadius: BorderRadius.circular(TripsLayout.cardRadius),
                           border: Border.all(
                             color: isSelected
                                 ? AppTheme.primaryColor
@@ -926,8 +936,8 @@ class TripFormModalState extends State<TripFormModal> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(TripsLayout.cardRadius),
         border: Border.all(color: AppTheme.borderColor),
       ),
       child: Column(
@@ -969,9 +979,12 @@ class TripFormModalState extends State<TripFormModal> {
   Widget _buildFooter() {
     return Container(
       padding: EdgeInsets.fromLTRB(
-          20, 16, 20, MediaQuery.of(context).padding.bottom + 16),
+          TripsLayout.sheetHorizontalPadding,
+          16,
+          TripsLayout.sheetHorizontalPadding,
+          MediaQuery.of(context).padding.bottom + TripsLayout.sheetBottomPadding),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceColor,
         boxShadow: [
           BoxShadow(
               color: AppTheme.textPrimary.withValues(alpha: 0.06),
@@ -988,7 +1001,7 @@ class TripFormModalState extends State<TripFormModal> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(TripsLayout.controlRadius)),
                 side: const BorderSide(color: AppTheme.borderColor),
               ),
               child: Text(AppLocalizations.of(context)!.cancel),
@@ -1002,7 +1015,7 @@ class TripFormModalState extends State<TripFormModal> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(TripsLayout.controlRadius)),
                   elevation: 0,
                 ),
                 child: Text(

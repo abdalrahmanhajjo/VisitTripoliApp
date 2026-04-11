@@ -14,16 +14,12 @@ let _client = null;
 
 function getClient() {
   if (_client) return _client;
-  const publicKey = process.env.IMAGEKIT_PUBLIC_KEY;
   const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
-  const urlEndpoint = process.env.IMAGEKIT_URL_ENDPOINT;
-  if (!publicKey || !privateKey || !urlEndpoint) {
-    throw new Error('IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY and IMAGEKIT_URL_ENDPOINT are required for media uploads');
+  if (!privateKey) {
+    throw new Error('IMAGEKIT_PRIVATE_KEY is required for media uploads');
   }
   _client = new ImageKit({
-    publicKey,
     privateKey,
-    urlEndpoint,
   });
   return _client;
 }
@@ -55,14 +51,28 @@ function getFolder(subFolder) {
 
 async function uploadToImageKit({ buffer, fileName, folder, isPrivateFile = false }) {
   const imagekit = getClient();
-  const result = await imagekit.upload({
-    file: buffer,
+  const uploadFile = await ImageKit.toFile(buffer, fileName);
+  const uploadFn =
+    (imagekit && typeof imagekit.upload === 'function')
+      ? imagekit.upload.bind(imagekit)
+      : (imagekit?.files && typeof imagekit.files.upload === 'function')
+          ? imagekit.files.upload.bind(imagekit.files)
+          : null;
+  if (!uploadFn) {
+    throw new Error('ImageKit upload API is unavailable');
+  }
+  const result = await uploadFn({
+    file: uploadFile,
     fileName,
     folder,
     useUniqueFileName: true,
     isPrivateFile,
   });
-  return result.url;
+  const url = result?.url || result?.data?.url || null;
+  if (!url) {
+    throw new Error('ImageKit upload succeeded but URL is missing');
+  }
+  return url;
 }
 
 async function uploadFeedImage(buffer, file) {
@@ -96,11 +106,7 @@ async function uploadProfileAvatar(buffer, file, userId) {
 }
 
 function isConfigured() {
-  return !!(
-    process.env.IMAGEKIT_PUBLIC_KEY
-    && process.env.IMAGEKIT_PRIVATE_KEY
-    && process.env.IMAGEKIT_URL_ENDPOINT
-  );
+  return !!process.env.IMAGEKIT_PRIVATE_KEY;
 }
 
 module.exports = {

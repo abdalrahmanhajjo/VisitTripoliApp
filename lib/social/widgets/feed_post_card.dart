@@ -116,6 +116,10 @@ class FeedPostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final mediaWidth = MediaQuery.sizeOf(context).width;
     final l10n = AppLocalizations.of(context)!;
+    final hasCreativeMeta = post.customLocation != null ||
+        post.soundName != null ||
+        post.taggedPeople.isNotEmpty ||
+        post.stickerLabel != null;
 
     return Container(
       margin: CommunityTokens.cardMargin,
@@ -185,9 +189,8 @@ class FeedPostCard extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                            if (post.authorRole == 'admin' ||
-                                post.authorRole == 'business' ||
-                                post.authorRole == 'business_owner') ...[
+                            if (post.authorRole == 'business_owner' ||
+                                post.authorRole == 'discoverer') ...[
                               const SizedBox(width: 4),
                               const VerifiedBadge(size: 15),
                             ],
@@ -316,7 +319,7 @@ class FeedPostCard extends StatelessWidget {
                   ],
                 ),
           ),
-          if (post.caption != null && post.caption!.isNotEmpty)
+          if ((post.caption != null && post.caption!.isNotEmpty) || hasCreativeMeta)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
               child: Container(
@@ -351,7 +354,36 @@ class FeedPostCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    _ExpandableCaption(text: post.caption!),
+                    if (hasCreativeMeta)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            if (post.customLocation != null &&
+                                post.customLocation!.isNotEmpty)
+                              _MetaPill(
+                                icon: Icons.location_on_outlined,
+                                label: post.customLocation!,
+                              ),
+                            if (post.soundName != null &&
+                                post.soundName!.isNotEmpty)
+                              _MetaPill(
+                                icon: Icons.music_note_rounded,
+                                label: post.soundName!,
+                              ),
+                            if (post.taggedPeople.isNotEmpty)
+                              _MetaPill(
+                                icon: Icons.alternate_email_rounded,
+                                label:
+                                    post.taggedPeople.take(3).join(', '),
+                              ),
+                          ],
+                        ),
+                      ),
+                    if (post.caption != null && post.caption!.isNotEmpty)
+                      _ExpandableCaption(text: post.caption!),
                   ],
                 ),
               ),
@@ -362,7 +394,7 @@ class FeedPostCard extends StatelessWidget {
   }
 }
 
-class _MediaSection extends StatelessWidget {
+class _MediaSection extends StatefulWidget {
   final FeedPost post;
   final FeedVideoAutoplayController feedVideoAutoplay;
   final double width;
@@ -380,22 +412,43 @@ class _MediaSection extends StatelessWidget {
     this.onVideoTap,
   });
 
+  @override
+  State<_MediaSection> createState() => _MediaSectionState();
+}
+
+class _MediaSectionState extends State<_MediaSection> {
+  int _activeImageIndex = 0;
+
   static const double _aspectRatio = 4 / 3;
 
   @override
+  void didUpdateWidget(covariant _MediaSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post.id != widget.post.id) {
+      _activeImageIndex = 0;
+      return;
+    }
+    final maxIndex = widget.post.displayImageUrls.length - 1;
+    if (maxIndex >= 0 && _activeImageIndex > maxIndex) {
+      _activeImageIndex = maxIndex;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final urls = post.displayImageUrls;
+    final urls = widget.post.displayImageUrls;
     final hasImage = urls.isNotEmpty;
-    final hasVideo = post.videoUrl != null && post.videoUrl!.isNotEmpty;
-    final height = width / _aspectRatio;
+    final hasVideo =
+        widget.post.videoUrl != null && widget.post.videoUrl!.isNotEmpty;
+    final height = widget.width / _aspectRatio;
 
     if (hasImage) {
-      final cacheW = (width * 2).round().clamp(200, 1200);
+      final cacheW = (widget.width * 2).round().clamp(200, 1200);
       final cacheH = (height * 2).round().clamp(150, 900);
       if (urls.length == 1) {
         final image = CachedNetworkImage(
           imageUrl: urls.first,
-          width: width,
+          width: widget.width,
           height: height,
           fit: BoxFit.cover,
           cacheManager: AppImageCacheManager.instance,
@@ -406,35 +459,50 @@ class _MediaSection extends StatelessWidget {
           fadeInDuration: const Duration(milliseconds: 150),
           fadeOutDuration: const Duration(milliseconds: 100),
           placeholder: (_, __) => kIsWeb
-              ? Container(width: width, height: height, color: AppTheme.surfaceVariant)
+              ? Container(
+                  width: widget.width,
+                  height: height,
+                  color: AppTheme.surfaceVariant,
+                )
               : Shimmer.fromColors(
                   baseColor: const Color(0xFFE2E8F0),
                   highlightColor: const Color(0xFFF1F5F9),
                   period: const Duration(milliseconds: 900),
-                  child: Container(width: width, height: height, color: Colors.white),
+                  child: Container(
+                    width: widget.width,
+                    height: height,
+                    color: Colors.white,
+                  ),
                 ),
-          errorWidget: (_, __, ___) => _PlaceholderBox(width: width, height: height, icon: Icons.broken_image_outlined),
+          errorWidget: (_, __, ___) => _PlaceholderBox(
+            width: widget.width,
+            height: height,
+            icon: Icons.broken_image_outlined,
+          ),
         );
         return GestureDetector(
-          onTap: onTap,
-          onDoubleTap: onDoubleTap,
+          onTap: widget.onTap,
+          onDoubleTap: widget.onDoubleTap,
           child: image,
         );
       }
       return GestureDetector(
-        onTap: onTap,
-        onDoubleTap: onDoubleTap,
+        onTap: widget.onTap,
+        onDoubleTap: widget.onDoubleTap,
         child: SizedBox(
-          width: width,
+          width: widget.width,
           height: height,
           child: Stack(
-            alignment: Alignment.bottomCenter,
             children: [
               PageView.builder(
                 itemCount: urls.length,
+                onPageChanged: (i) {
+                  if (!mounted) return;
+                  setState(() => _activeImageIndex = i);
+                },
                 itemBuilder: (_, i) => CachedNetworkImage(
                   imageUrl: urls[i],
-                  width: width,
+                  width: widget.width,
                   height: height,
                   fit: BoxFit.cover,
                   cacheManager: AppImageCacheManager.instance,
@@ -443,23 +511,58 @@ class _MediaSection extends StatelessWidget {
                   maxWidthDiskCache: cacheW,
                   maxHeightDiskCache: cacheH,
                   fadeInDuration: const Duration(milliseconds: 120),
-                  placeholder: (_, __) => Container(width: width, height: height, color: AppTheme.surfaceVariant),
-                  errorWidget: (_, __, ___) => _PlaceholderBox(width: width, height: height, icon: Icons.broken_image_outlined),
+                  placeholder: (_, __) => Container(
+                    width: widget.width,
+                    height: height,
+                    color: AppTheme.surfaceVariant,
+                  ),
+                  errorWidget: (_, __, ___) => _PlaceholderBox(
+                    width: widget.width,
+                    height: height,
+                    icon: Icons.broken_image_outlined,
+                  ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: List.generate(urls.length, (i) => Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.8),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${_activeImageIndex + 1}/${urls.length}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
                     ),
-                  )),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 10,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    urls.length,
+                    (i) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: i == _activeImageIndex ? 14 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(99),
+                        color: i == _activeImageIndex
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -470,22 +573,23 @@ class _MediaSection extends StatelessWidget {
 
     if (hasVideo) {
       return VisibilityDetector(
-        key: Key('feed-video-vis-${post.id}'),
-        onVisibilityChanged: (info) => feedVideoAutoplay.report(post.id, info),
+        key: Key('feed-video-vis-${widget.post.id}'),
+        onVisibilityChanged: (info) =>
+            widget.feedVideoAutoplay.report(widget.post.id, info),
         child: GestureDetector(
-          onTap: onVideoTap ?? onTap,
-          onDoubleTap: onDoubleTap,
+          onTap: widget.onVideoTap ?? widget.onTap,
+          onDoubleTap: widget.onDoubleTap,
           child: SizedBox(
-            width: width,
+            width: widget.width,
             height: height,
             child: ListenableBuilder(
-              listenable: feedVideoAutoplay,
+              listenable: widget.feedVideoAutoplay,
               builder: (context, _) {
                 return _FeedDeferredInlineVideo(
-                  postId: post.id,
-                  videoUrl: post.videoUrl ?? '',
-                  thumbnailUrl: post.imageUrl,
-                  isActive: feedVideoAutoplay.isActive(post.id),
+                  postId: widget.post.id,
+                  videoUrl: widget.post.videoUrl ?? '',
+                  thumbnailUrl: widget.post.imageUrl,
+                  isActive: widget.feedVideoAutoplay.isActive(widget.post.id),
                 );
               },
             ),
@@ -494,7 +598,11 @@ class _MediaSection extends StatelessWidget {
       );
     }
 
-    return _PlaceholderBox(width: width, height: height, icon: Icons.image_not_supported_outlined);
+    return _PlaceholderBox(
+      width: widget.width,
+      height: height,
+      icon: Icons.image_not_supported_outlined,
+    );
   }
 }
 
@@ -633,6 +741,40 @@ class _PlaceholderBox extends StatelessWidget {
       height: h,
       color: const Color(0xFFF1F5F9),
       child: Center(child: Icon(icon, size: 48, color: AppTheme.textTertiary)),
+    );
+  }
+}
+
+class _MetaPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _MetaPill({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.8)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: AppTheme.textSecondary),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

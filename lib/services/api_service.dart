@@ -1105,6 +1105,79 @@ class ApiService {
         : const <String, dynamic>{'incoming': <dynamic>[], 'sent': <dynamic>[]};
   }
 
+  /// GET /api/user/trip-share-users - invite candidates for trip collaboration.
+  Future<List<Map<String, dynamic>>> getTripShareUsers(String authToken) async {
+    final response = await _requestWithRetry(() => _client.get(
+          Uri.parse('$_baseUrl/api/user/trip-share-users'),
+          headers: _headers(authToken: authToken),
+        ));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, _parseError(response.body));
+    }
+    final decoded = json.decode(response.body);
+    final list = (decoded is Map ? decoded['users'] : null);
+    if (list is! List) return const [];
+    return list
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList(growable: false);
+  }
+
+  /// POST /api/user/trip-share-requests - host sends invite request.
+  Future<void> createTripShareRequest(
+    String authToken, {
+    required String tripId,
+    required String toUserId,
+  }) async {
+    final response = await _requestWithRetry(() => _client.post(
+          Uri.parse('$_baseUrl/api/user/trip-share-requests'),
+          headers: _headers(authToken: authToken),
+          body: json.encode({'tripId': tripId, 'toUserId': toUserId}),
+        ));
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, _parseError(response.body));
+    }
+  }
+
+  /// GET /api/user/trip-share-requests/:id/trip - preview invited trip details.
+  Future<Map<String, dynamic>> getTripShareRequestTrip(
+    String authToken,
+    String requestId,
+  ) async {
+    final response = await _requestWithRetry(() => _client.get(
+          Uri.parse('$_baseUrl/api/user/trip-share-requests/$requestId/trip'),
+          headers: _headers(authToken: authToken),
+        ));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, _parseError(response.body));
+    }
+    final decoded = json.decode(response.body);
+    return decoded is Map<String, dynamic>
+        ? decoded
+        : const <String, dynamic>{};
+  }
+
+  /// GET /api/user/trips/:id/members - all users in a shared trip.
+  Future<List<Map<String, dynamic>>> getTripMembers(
+    String authToken,
+    String tripId,
+  ) async {
+    final response = await _requestWithRetry(() => _client.get(
+          Uri.parse('$_baseUrl/api/user/trips/$tripId/members'),
+          headers: _headers(authToken: authToken),
+        ));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, _parseError(response.body));
+    }
+    final decoded = json.decode(response.body);
+    final rows = (decoded is Map ? decoded['members'] : null);
+    if (rows is! List) return const [];
+    return rows
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList(growable: false);
+  }
+
   /// POST /api/user/trip-share-requests/:id/respond - accept/reject.
   Future<void> respondTripShareRequest(
     String authToken,

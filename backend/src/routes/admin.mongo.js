@@ -130,7 +130,14 @@ router.get('/users', async (_req, res) => {
   res.json(rows);
 });
 router.put('/users/:id', async (req, res) => {
-  await collection('users').updateOne({ id: req.params.id }, { $set: { is_admin: req.body?.isAdmin === true, updated_at: new Date() } });
+  const set = {
+    is_admin: req.body?.isAdmin === true,
+    updated_at: new Date(),
+  };
+  if (req.body?.feedUploadBlocked !== undefined) {
+    set.feed_upload_blocked = req.body.feedUploadBlocked === true;
+  }
+  await collection('users').updateOne({ id: req.params.id }, { $set: set });
   res.json({ ok: true });
 });
 router.post('/users', async (req, res) => {
@@ -155,6 +162,7 @@ router.post('/users', async (req, res) => {
     email_verified: true,
     is_business_owner: false,
     is_admin: false,
+    feed_upload_blocked: false,
     created_at: new Date(),
     updated_at: new Date(),
   });
@@ -227,6 +235,34 @@ router.post('/feed/:postId/moderate', async (req, res) => {
   if (!r.matchedCount) return res.status(404).json({ error: 'Pending discoverer post not found' });
   invalidateByPrefix('feed:');
   res.json({ ok: true });
+});
+
+router.get('/feed/place-link-blocks', async (_req, res) => {
+  const rows = await collection('feed_place_link_blocks')
+    .find({}, { projection: { _id: 0 } })
+    .sort({ updated_at: -1 })
+    .toArray();
+  res.json(rows);
+});
+
+router.post('/feed/place-link-blocks', async (req, res) => {
+  const placeId = String(req.body?.placeId || '').trim();
+  if (!placeId) return res.status(400).json({ error: 'placeId is required' });
+  const blocked = req.body?.blocked === true;
+  await collection('feed_place_link_blocks').updateOne(
+    { place_id: placeId },
+    {
+      $set: {
+        place_id: placeId,
+        blocked,
+        reason: req.body?.reason ? String(req.body.reason).trim().slice(0, 200) : null,
+        updated_at: new Date(),
+      },
+      $setOnInsert: { created_at: new Date() },
+    },
+    { upsert: true },
+  );
+  res.json({ ok: true, placeId, blocked });
 });
 
 router.get('/stats', async (_req, res) => {

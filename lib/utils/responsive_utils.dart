@@ -19,12 +19,14 @@ class ResponsiveUtils {
   /// Horizontal padding for detail/content pages. Tighter on small phones.
   static double contentPadding(BuildContext context) {
     final w = width(context);
+    // Web parity with --page-padding tokens (12/16/20/24+).
     if (w < 280) return 10;
-    if (w < 320) return 12;
-    if (w < 340) return 14;
-    if (w < 360) return 16;
-    if (w < 400) return 18;
-    return 20;
+    if (w < 360) return 12;
+    if (w < 480) return 16;
+    if (w < 768) return 20;
+    if (w < 1280) return 24;
+    if (w < 1440) return 28;
+    return 32;
   }
 
   /// Screen horizontal padding for list/content pages. Comfortable on all widths.

@@ -4816,6 +4816,186 @@ abstract class AppLocalizations {
   /// **'Something went wrong'**
   String get errorGenericTitle;
 
+  /// No description provided for @appOnboardingJourneyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick tour'**
+  String get appOnboardingJourneyTitle;
+
+  /// No description provided for @appOnboardingSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get appOnboardingSkip;
+
+  /// No description provided for @appOnboardingNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get appOnboardingNext;
+
+  /// No description provided for @appOnboardingBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get appOnboardingBack;
+
+  /// No description provided for @appOnboardingStartSpotlight.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight controls on screen'**
+  String get appOnboardingStartSpotlight;
+
+  /// No description provided for @appOnboardingGotIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it — I’m ready'**
+  String get appOnboardingGotIt;
+
+  /// No description provided for @appOnboardingSlideWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Tripoli companion'**
+  String get appOnboardingSlideWelcomeTitle;
+
+  /// No description provided for @appOnboardingSlideWelcomeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover curated places, follow the community, navigate on the map, and plan trips with AI. The guided tour walks through every main tab so nothing feels hidden.'**
+  String get appOnboardingSlideWelcomeBody;
+
+  /// No description provided for @appOnboardingSlideExploreTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore'**
+  String get appOnboardingSlideExploreTitle;
+
+  /// No description provided for @appOnboardingSlideExploreBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Hand-picked attractions, food, tours, and events. Search, filter by category, and save favorites for later.'**
+  String get appOnboardingSlideExploreBody;
+
+  /// No description provided for @appOnboardingSlideCommunityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Community feed'**
+  String get appOnboardingSlideCommunityTitle;
+
+  /// No description provided for @appOnboardingSlideCommunityBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your feed of posts and reels from places you care about. Pull down to refresh for the latest updates.'**
+  String get appOnboardingSlideCommunityBody;
+
+  /// No description provided for @appOnboardingSlideMapTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Map'**
+  String get appOnboardingSlideMapTitle;
+
+  /// No description provided for @appOnboardingSlideMapBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch map styles, search, filter by type, get directions, and browse nearby stops in a swipeable deck.'**
+  String get appOnboardingSlideMapBody;
+
+  /// No description provided for @appOnboardingSlidePlannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Planner'**
+  String get appOnboardingSlidePlannerTitle;
+
+  /// No description provided for @appOnboardingSlidePlannerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe your trip and get a tailored day-by-day plan. Sign in to sync plans across your devices.'**
+  String get appOnboardingSlidePlannerBody;
+
+  /// No description provided for @appOnboardingSlideTripsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trips'**
+  String get appOnboardingSlideTripsTitle;
+
+  /// No description provided for @appOnboardingSlideTripsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Build itineraries, add stops and events, and keep everything organized for your visit.'**
+  String get appOnboardingSlideTripsBody;
+
+  /// No description provided for @appOnboardingSlideOffersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Deals & messages'**
+  String get appOnboardingSlideOffersTitle;
+
+  /// No description provided for @appOnboardingSlideOffersBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Check local offers when available and use Messages to stay in touch—everything stays in one Tripoli-focused app.'**
+  String get appOnboardingSlideOffersBody;
+
+  /// No description provided for @appOnboardingSlideHelpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Help & settings'**
+  String get appOnboardingSlideHelpTitle;
+
+  /// No description provided for @appOnboardingSlideHelpBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings for language and account. Visit Help anytime to replay this tour or see quick answers and privacy notes.'**
+  String get appOnboardingSlideHelpBody;
+
+  /// No description provided for @appOnboardingStepOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String appOnboardingStepOf(int current, int total);
+
+  /// No description provided for @appOnboardingSwipeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe the screen or tap Next to continue.'**
+  String get appOnboardingSwipeHint;
+
+  /// No description provided for @appOnboardingFinalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay this tour anytime from Help → Guided tour.'**
+  String get appOnboardingFinalHint;
+
+  /// No description provided for @helpReplayTourTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay app tour'**
+  String get helpReplayTourTitle;
+
+  /// No description provided for @helpReplayTourSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Walk through all main features again (slides + optional on-screen highlights).'**
+  String get helpReplayTourSubtitle;
+
+  /// No description provided for @helpReplaySpotlightTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Full tab highlights (quick)'**
+  String get helpReplaySpotlightTitle;
+
+  /// No description provided for @helpReplaySpotlightSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Walk every main tab with on-screen highlights—Explore, Community, Map, AI Planner, and Trips.'**
+  String get helpReplaySpotlightSubtitle;
+
+  /// No description provided for @helpGuidedTourSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Guided tour'**
+  String get helpGuidedTourSection;
+
   /// No description provided for @appTutorialDialogTitle.
   ///
   /// In en, this message translates to:
@@ -4864,6 +5044,30 @@ abstract class AppLocalizations {
   /// **'Open your profile, preferences, and settings. Sign in to sync trips and AI plans across devices.'**
   String get appTutorialProfileDesc;
 
+  /// No description provided for @appTutorialSearchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Search places'**
+  String get appTutorialSearchTitle;
+
+  /// No description provided for @appTutorialSearchDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Find attractions, food, and tours by name, area, or tags. Results update as you type.'**
+  String get appTutorialSearchDesc;
+
+  /// No description provided for @appTutorialFilterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters & sorting'**
+  String get appTutorialFilterTitle;
+
+  /// No description provided for @appTutorialFilterDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Narrow the list by category, sort order, or free-only options to match your plans.'**
+  String get appTutorialFilterDesc;
+
   /// No description provided for @appTutorialNavExploreDesc.
   ///
   /// In en, this message translates to:
@@ -4893,6 +5097,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Plan and organize your trips—add places and events, and keep everything in one itinerary.'**
   String get appTutorialNavTripsDesc;
+
+  /// No description provided for @appTutorialCommunityScreenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Community feed'**
+  String get appTutorialCommunityScreenTitle;
+
+  /// No description provided for @appTutorialCommunityScreenBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse posts and reels from Tripoli places. Pull down to refresh anytime.'**
+  String get appTutorialCommunityScreenBody;
+
+  /// No description provided for @appTutorialCommunityTabsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'For you, saved & reels'**
+  String get appTutorialCommunityTabsTitle;
+
+  /// No description provided for @appTutorialCommunityTabsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch tabs to personalize the stream, revisit saved posts, or jump into reels.'**
+  String get appTutorialCommunityTabsBody;
+
+  /// No description provided for @appTutorialMapSearchSpotTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Search the map'**
+  String get appTutorialMapSearchSpotTitle;
+
+  /// No description provided for @appTutorialMapSearchSpotBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a place name to find it and move the map there.'**
+  String get appTutorialMapSearchSpotBody;
+
+  /// No description provided for @appTutorialMapFiltersSpotTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Place categories'**
+  String get appTutorialMapFiltersSpotTitle;
+
+  /// No description provided for @appTutorialMapFiltersSpotBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which types of places appear on the map before you explore pins.'**
+  String get appTutorialMapFiltersSpotBody;
+
+  /// No description provided for @appTutorialMapControlsSpotTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom, style & GPS'**
+  String get appTutorialMapControlsSpotTitle;
+
+  /// No description provided for @appTutorialMapControlsSpotBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom the map, switch map type, toggle traffic, and recenter on your location.'**
+  String get appTutorialMapControlsSpotBody;
+
+  /// No description provided for @appTutorialPlannerHeaderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Planner header'**
+  String get appTutorialPlannerHeaderTitle;
+
+  /// No description provided for @appTutorialPlannerHeaderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your avatar opens profile. The menu adjusts trip length, density, and more.'**
+  String get appTutorialPlannerHeaderBody;
+
+  /// No description provided for @appTutorialPlannerSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip setup'**
+  String get appTutorialPlannerSetupTitle;
+
+  /// No description provided for @appTutorialPlannerSetupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Set how many days, stops per day, and dates before you chat with the AI.'**
+  String get appTutorialPlannerSetupBody;
+
+  /// No description provided for @appTutorialPlannerWelcomeSpotTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat with the planner'**
+  String get appTutorialPlannerWelcomeSpotTitle;
+
+  /// No description provided for @appTutorialPlannerWelcomeSpotBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe your trip, tap quick ideas, or build from your interests—then save the plan as a trip.'**
+  String get appTutorialPlannerWelcomeSpotBody;
+
+  /// No description provided for @appTutorialTripsHeaderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trips hub'**
+  String get appTutorialTripsHeaderTitle;
+
+  /// No description provided for @appTutorialTripsHeaderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'See your itineraries and open your profile—then use the button to start something new.'**
+  String get appTutorialTripsHeaderBody;
+
+  /// No description provided for @appTutorialTripsNewTripTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a new trip'**
+  String get appTutorialTripsNewTripTitle;
+
+  /// No description provided for @appTutorialTripsNewTripBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Create an itinerary and add days, places, and events as you plan.'**
+  String get appTutorialTripsNewTripBody;
+
+  /// No description provided for @appTutorialTripsCalendarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get appTutorialTripsCalendarTitle;
+
+  /// No description provided for @appTutorialTripsCalendarBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand the calendar to jump trips by date and filter what you are viewing.'**
+  String get appTutorialTripsCalendarBody;
+
+  /// No description provided for @appTutorialCommunityProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile & settings'**
+  String get appTutorialCommunityProfileTitle;
+
+  /// No description provided for @appTutorialCommunityProfileBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to your profile, preferences, and account options from here.'**
+  String get appTutorialCommunityProfileBody;
+
+  /// No description provided for @appTutorialCommunityFabBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Share photos and updates with the community when you are at a place you love.'**
+  String get appTutorialCommunityFabBody;
 
   /// No description provided for @aiPlannerAskAiChangeStop.
   ///

@@ -97,7 +97,6 @@ class _TikTokFeedTab extends StatelessWidget {
     const inactiveColor = AppTheme.textTertiary;
     const activeColor = AppTheme.textPrimary;
     final disabledColor = inactiveColor.withValues(alpha: 0.55);
-
     final textColor = isDisabled
         ? disabledColor
         : (isSelected ? activeColor : inactiveColor);

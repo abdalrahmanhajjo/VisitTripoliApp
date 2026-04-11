@@ -11,8 +11,14 @@ import '../community_tokens.dart';
 class EditPostSheet extends StatefulWidget {
   final FeedPost post;
   final String authToken;
+  final List<OwnedPlace> placeOptions;
 
-  const EditPostSheet({super.key, required this.post, required this.authToken});
+  const EditPostSheet({
+    super.key,
+    required this.post,
+    required this.authToken,
+    required this.placeOptions,
+  });
 
   @override
   State<EditPostSheet> createState() => EditPostSheetState();
@@ -22,11 +28,17 @@ class EditPostSheetState extends State<EditPostSheet> {
   late TextEditingController _captionController;
   bool _removeImage = false;
   bool _saving = false;
+  String? _selectedPlaceId;
 
   @override
   void initState() {
     super.initState();
     _captionController = TextEditingController(text: widget.post.caption ?? '');
+    _selectedPlaceId = widget.post.authorPlaceId;
+    if ((_selectedPlaceId == null || _selectedPlaceId!.isEmpty) &&
+        widget.placeOptions.isNotEmpty) {
+      _selectedPlaceId = widget.placeOptions.first.id;
+    }
   }
 
   @override
@@ -36,11 +48,16 @@ class EditPostSheetState extends State<EditPostSheet> {
   }
 
   Future<void> _save() async {
+    if (_selectedPlaceId == null || _selectedPlaceId!.isEmpty) {
+      AppSnackBars.showError(context, 'Please link this post to a place');
+      return;
+    }
     setState(() => _saving = true);
     try {
       final updated = await FeedService.instance.updatePost(
         authToken: widget.authToken,
         postId: widget.post.id,
+        placeId: _selectedPlaceId!,
         caption: _captionController.text.trim(),
         removeImage: _removeImage,
       );
@@ -95,6 +112,44 @@ class EditPostSheetState extends State<EditPostSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              'Linked place',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textSecondary,
+                  ),
+            ),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              initialValue: _selectedPlaceId,
+              isExpanded: true,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppTheme.borderColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide:
+                      BorderSide(color: AppTheme.borderColor.withValues(alpha: 0.9)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide:
+                      const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+                ),
+              ),
+              items: widget.placeOptions
+                  .map((p) => DropdownMenuItem<String>(
+                        value: p.id,
+                        child: Text(p.name),
+                      ))
+                  .toList(growable: false),
+              onChanged: (v) => setState(() => _selectedPlaceId = v),
+            ),
+            const SizedBox(height: 22),
             Text(
               l10n.whatsOnYourMind,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(

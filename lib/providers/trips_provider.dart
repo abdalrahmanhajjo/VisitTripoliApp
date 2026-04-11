@@ -126,7 +126,7 @@ class TripsProvider extends ChangeNotifier {
     }
   }
 
-  static Trip _tripFromApiJson(Map<String, dynamic> json) {
+  Trip _tripFromApiJson(Map<String, dynamic> json) {
     final id = json['id']?.toString();
     final name = json['name']?.toString();
     if (id == null || id.isEmpty || name == null || name.isEmpty) {
@@ -145,6 +145,21 @@ class TripsProvider extends ChangeNotifier {
       if (d is Map) return TripDay.fromJson(Map<String, dynamic>.from(d));
       throw const FormatException('Invalid day');
     }).toList();
+    final hostUserId = json['hostUserId']?.toString();
+    final currentUserId = (_auth.userId ?? '').trim();
+    final normalizedHostUserId = (hostUserId ?? '').trim();
+    final parsedIsHost = _parseLooseBool(
+      json['isHost'],
+      fallback: normalizedHostUserId.isEmpty
+          ? true
+          : (currentUserId.isNotEmpty &&
+              normalizedHostUserId == currentUserId),
+    );
+    final resolvedIsHost = (currentUserId.isNotEmpty &&
+            normalizedHostUserId.isNotEmpty)
+        ? (normalizedHostUserId == currentUserId)
+        : parsedIsHost;
+
     return Trip(
       id: id,
       name: name,
@@ -153,7 +168,25 @@ class TripsProvider extends ChangeNotifier {
       days: days,
       description: json['description']?.toString(),
       createdAt: createdAt,
+      hostUserId: hostUserId,
+      hostName: json['hostName']?.toString(),
+      isHost: resolvedIsHost,
     );
+  }
+
+  static bool _parseLooseBool(dynamic value, {required bool fallback}) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == 'true' || normalized == '1' || normalized == 'yes') {
+        return true;
+      }
+      if (normalized == 'false' || normalized == '0' || normalized == 'no') {
+        return false;
+      }
+    }
+    return fallback;
   }
 
   static DateTime? _parseDateTime(dynamic value) {
@@ -206,6 +239,11 @@ class TripsProvider extends ChangeNotifier {
     final index = _trips.indexWhere((t) => t.id == trip.id);
     if (index == -1) return;
     final token = _auth.authToken;
+    if (token != null && token.isNotEmpty && !_auth.isGuest && !trip.isHost) {
+      _lastError = 'Only trip host can edit this trip.';
+      notifyListeners();
+      return;
+    }
     if (token != null && token.isNotEmpty && !_auth.isGuest) {
       try {
         final body = {
@@ -233,6 +271,17 @@ class TripsProvider extends ChangeNotifier {
 
   Future<void> deleteTrip(String tripId) async {
     final token = _auth.authToken;
+    final existingIndex = _trips.indexWhere((t) => t.id == tripId);
+    final existing = existingIndex >= 0 ? _trips[existingIndex] : null;
+    if (token != null &&
+        token.isNotEmpty &&
+        !_auth.isGuest &&
+        existing != null &&
+        !existing.isHost) {
+      _lastError = 'Only trip host can delete this trip.';
+      notifyListeners();
+      return;
+    }
     if (token != null && token.isNotEmpty && !_auth.isGuest) {
       try {
         final ok = await ApiService.instance.deleteTrip(token, tripId);
@@ -302,6 +351,12 @@ class TripsProvider extends ChangeNotifier {
     final index = _trips.indexWhere((t) => t.id == tripId);
     if (index == -1) return 'date_out';
     final trip = _trips[index];
+    final token = _auth.authToken;
+    if (token != null && token.isNotEmpty && !_auth.isGuest && !trip.isHost) {
+      _lastError = 'Only trip host can edit this trip.';
+      notifyListeners();
+      return 'forbidden';
+    }
     if (!tripCoversCalendarDate(trip, date)) {
       return 'date_out';
     }
@@ -334,6 +389,9 @@ class TripsProvider extends ChangeNotifier {
       days: newDays,
       description: trip.description,
       createdAt: trip.createdAt,
+      hostUserId: trip.hostUserId,
+      hostName: trip.hostName,
+      isHost: trip.isHost,
     );
     _trips[index] = updatedTrip;
     await updateTrip(updatedTrip);

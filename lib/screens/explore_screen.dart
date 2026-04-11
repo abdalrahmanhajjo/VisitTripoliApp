@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:showcaseview/showcaseview.dart';
 import '../constants/app_images.dart';
 import '../widgets/app_image.dart';
 import '../providers/places_provider.dart';
@@ -20,7 +19,6 @@ import '../providers/activity_log_provider.dart';
 import '../providers/trips_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
-import '../widgets/app_profile_icon_button.dart';
 import '../models/category.dart' as models;
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -34,7 +32,10 @@ import '../utils/responsive_utils.dart';
 import '../utils/snackbar_utils.dart';
 import '../utils/places_image_precache.dart';
 import '../utils/app_tutorial_prefs.dart';
-import '../widgets/app_tutorial_prompt_dialog.dart';
+import '../utils/app_tour_showcase.dart';
+import '../widgets/themed_showcase.dart';
+import '../providers/app_state.dart';
+import '../providers/app_tour_segment.dart';
 
 /// Places whose names, tags, or text match [query] (for search suggestions).
 List<Place> _placesMatchingSearchQuery(
@@ -154,65 +155,11 @@ int? _findNextFreeMinute(List<TripSlot> slots, int durationMinutes) {
   return null;
 }
 
-/// Subtle dot-pattern background for Explore (fallback when image fails).
-class _ExploreBackgroundPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    const spacing = 28.0;
-    const dotRadius = 1.0;
-    final paint = Paint()
-      ..color = AppTheme.textTertiary.withValues(alpha: 0.12)
-      ..style = PaintingStyle.fill;
-    for (var x = 0.0; x < size.width + spacing; x += spacing) {
-      for (var y = 0.0; y < size.height + spacing; y += spacing) {
-        canvas.drawCircle(Offset(x, y), dotRadius, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Explore page background: clock tower sketch image with gradient overlay for readability.
+/// Explore page background: solid white as requested.
 class _ExploreBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        Image.asset(
-          AppImages.exploreBackground,
-          fit: BoxFit.cover,
-          gaplessPlayback: true,
-          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-            if (frame == null) {
-              return const ColoredBox(color: AppTheme.backgroundColor);
-            }
-            return child;
-          },
-          errorBuilder: (_, __, ___) => CustomPaint(
-            painter: _ExploreBackgroundPainter(),
-          ),
-        ),
-        // Gradient overlay so content remains readable
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppTheme.backgroundColor.withValues(alpha: 0.75),
-                  AppTheme.backgroundColor.withValues(alpha: 0.88),
-                  AppTheme.backgroundColor.withValues(alpha: 0.94),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
+    return const ColoredBox(color: AppTheme.surfaceColor);
   }
 }
 
@@ -238,6 +185,13 @@ class _Responsive {
 
 /// Consistent spacing and layout for the Explore page. Scales down on small phones.
 class _ExploreLayout {
+  static const double panelRadius = 24;
+  static const double mediaCardRadius = 20;
+  static const double controlRadius = 14;
+  static const double sheetRadius = 28;
+  static const double sheetHorizontalPadding = 20;
+  static const double sheetBottomPadding = 24;
+
   static double sectionTitleSize(BuildContext context) {
     if (_Responsive.isSmallPhone(context)) return 16;
     if (_Responsive.isCompact(context)) return 17;
@@ -324,7 +278,7 @@ class _ExploreStyles {
   static BoxDecoration panelDecoration() {
     return BoxDecoration(
       color: AppTheme.backgroundColor,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(_ExploreLayout.panelRadius),
       border: Border.all(
         color: AppTheme.textPrimary.withValues(alpha: 0.06),
         width: 1,
@@ -368,7 +322,7 @@ class _ExploreSkeletonCard extends StatelessWidget {
         height: height,
         decoration: BoxDecoration(
           color: AppTheme.backgroundColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(_ExploreLayout.mediaCardRadius),
           boxShadow: [
             BoxShadow(
               color: AppTheme.textPrimary.withValues(alpha: 0.05),
@@ -378,7 +332,7 @@ class _ExploreSkeletonCard extends StatelessWidget {
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(_ExploreLayout.mediaCardRadius),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -733,11 +687,12 @@ class _SectionHeader extends StatelessWidget {
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontSize: _ExploreLayout.sectionTitleSize(context) + 1,
-                    fontWeight: FontWeight.w600,
+                    fontFamily: AppTheme.displayFontFamily,
+                    fontSize: _ExploreLayout.sectionTitleSize(context) + 3,
+                    fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
-                    letterSpacing: 0.2,
-                    height: 1.25,
+                    letterSpacing: -0.15,
+                    height: 1.18,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -755,10 +710,11 @@ class _SectionHeader extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               subtitle!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 color: AppTheme.textSecondary,
                 height: 1.4,
+                fontFamily: AppTheme.uiFontFamily,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -783,6 +739,8 @@ class ExploreScreen extends StatefulWidget {
   /// Keys for the first-launch app tour ([Showcase]).
   static final GlobalKey tutorialDiscoverKey = GlobalKey();
   static final GlobalKey tutorialProfileKey = GlobalKey();
+  static final GlobalKey tutorialSearchKey = GlobalKey();
+  static final GlobalKey tutorialFilterKey = GlobalKey();
 
   @override
   State<ExploreScreen> createState() => _ExploreScreenState();
@@ -801,7 +759,6 @@ class _ExploreScreenState extends State<ExploreScreen>
   bool _categoryFilterExpanded = false; // tap icon to show filter pills
   bool _profileSyncScheduled = false;
   String? _lastProfileSyncAccountKey;
-  bool _searchBarVisible = false;
   Timer? _searchLogTimer;
   bool _showGoToTop = false;
   String _lastPlacesPrecacheKey = '';
@@ -842,11 +799,7 @@ class _ExploreScreenState extends State<ExploreScreen>
     _scrollController.addListener(_onScroll);
     _searchFocusNode.addListener(() {
       if (!mounted) return;
-      if (!_searchFocusNode.hasFocus && _searchBarVisible) {
-        setState(() => _searchBarVisible = false);
-      } else {
-        setState(() {});
-      }
+      setState(() {});
     });
     // Defer non-critical work so first paint happens in ms (minimal TBT per frame).
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -892,58 +845,45 @@ class _ExploreScreenState extends State<ExploreScreen>
 
   Future<void> _checkTutorial() async {
     final prefs = await SharedPreferences.getInstance();
-    if (!await AppTutorialPrefs.shouldOfferTutorial(prefs)) return;
     if (!mounted) return;
-    final choice = await showAppTutorialPromptDialog(context);
-    if (!mounted) return;
-    if (choice != true) {
-      await AppTutorialPrefs.markResolved(prefs);
+    final appState = context.read<AppStateProvider>();
+    if (appState.consumeTutorialSpotlightIfPending()) {
+      _runAppTutorial(prefs);
       return;
     }
-    _runAppTutorial(prefs);
+    if (appState.isFullAppTourActive &&
+        appState.activeTourSegment == AppTourSegment.explore) {
+      Future.delayed(const Duration(milliseconds: 450), () {
+        if (mounted) _runAppTutorial(prefs);
+      });
+      return;
+    }
+    // Quick tour modal removed: resolve tutorial state immediately so it
+    // never auto-opens on Explore.
+    if (await AppTutorialPrefs.shouldOfferTutorial(prefs)) {
+      await AppTutorialPrefs.markResolved(prefs);
+    }
   }
 
   void _runAppTutorial(SharedPreferences prefs) {
     if (!mounted) return;
-    final ShowcaseView view;
-    try {
-      view = ShowcaseView.get();
-    } catch (_) {
-      return;
-    }
-    var finished = false;
-    late void Function() onFinish;
-    late void Function(GlobalKey?) onDismiss;
-
-    onFinish = () {
-      if (finished) return;
-      finished = true;
-      view.removeOnFinishCallback(onFinish);
-      view.removeOnDismissCallback(onDismiss);
-      AppTutorialPrefs.markResolved(prefs);
-    };
-
-    onDismiss = (GlobalKey? _) {
-      if (finished) return;
-      finished = true;
-      view.removeOnFinishCallback(onFinish);
-      view.removeOnDismissCallback(onDismiss);
-      AppTutorialPrefs.markResolved(prefs);
-    };
-
-    view.addOnFinishCallback(onFinish);
-    view.addOnDismissCallback(onDismiss);
-    view.startShowCase(
-      [
+    final appState = context.read<AppStateProvider>();
+    startAppTourShowcase(
+      context: context,
+      prefs: prefs,
+      keys: [
         ExploreScreen.tutorialProfileKey,
         ExploreScreen.tutorialDiscoverKey,
+        ExploreScreen.tutorialSearchKey,
+        ExploreScreen.tutorialFilterKey,
         AppBottomNav.exploreKey,
         AppBottomNav.communityKey,
         AppBottomNav.mapKey,
         AppBottomNav.aiPlannerKey,
         AppBottomNav.tripsKey,
       ],
-      delay: const Duration(milliseconds: 400),
+      advanceFromSegment:
+          appState.isFullAppTourActive ? AppTourSegment.explore : null,
     );
   }
 
@@ -1368,7 +1308,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                         filteredPlaces,
                         placesProvider,
                         sectionFade: _sectionFade,
-                        omitEmptyCategoryPanels: hasSearch,
+                        omitEmptyCategoryPanels: true,
                       ),
                   ],
                   SliverToBoxAdapter(
@@ -1409,13 +1349,13 @@ class _ExploreScreenState extends State<ExploreScreen>
                         onTap: _scrollToTop,
                         borderRadius: BorderRadius.circular(28),
                         child: Container(
-                          width: 56,
-                          height: 56,
+                          width: 48,
+                          height: 48,
                           alignment: Alignment.center,
                           child: const Icon(
                             Icons.keyboard_arrow_up_rounded,
                             color: Colors.white,
-                            size: 32,
+                            size: 28,
                           ),
                         ),
                       ),
@@ -1478,7 +1418,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     const BorderRadius.vertical(top: Radius.circular(28)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
+                    color: AppTheme.textPrimary.withValues(alpha: 0.08),
                     blurRadius: 24,
                     offset: const Offset(0, -4),
                   ),
@@ -1960,264 +1900,275 @@ class _ExploreScreenState extends State<ExploreScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header: Profile (left) | Page name (center) | Search + Filter icons (right)
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Showcase(
-                    key: ExploreScreen.tutorialProfileKey,
-                    title: l10n.appTutorialProfileTitle,
-                    description: l10n.appTutorialProfileDesc,
-                    child: const AppProfileIconButton(
-                      iconColor: AppTheme.textPrimary,
-                      iconSize: 26,
+              Container(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.textPrimary.withValues(alpha: 0.04),
+                      blurRadius: 18,
+                      spreadRadius: -6,
+                      offset: const Offset(0, 10),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Showcase(
-                      key: ExploreScreen.tutorialDiscoverKey,
-                      title: l10n.appTutorialDiscoverTitle,
-                      description: l10n.appTutorialDiscoverDesc,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            l10n.tripoli,
-                            style: TextStyle(
-                              fontSize: isCompact ? 26 : 30,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.textPrimary,
-                              letterSpacing: -0.6,
-                              height: 1.1,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            l10n.lebanon,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Search icon
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        setState(() => _searchBarVisible = true);
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted) _searchFocusNode.requestFocus();
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Icon(
-                          Icons.search_rounded,
-                          size: 24,
-                          color: AppTheme.textPrimary.withValues(alpha: 0.85),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  // Filter icon (opens filter sheet)
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => _openFiltersSheet(context),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Icon(
-                              Icons.tune_rounded,
-                              size: 24,
-                              color: _getActiveFilterCount() > 0
-                                  ? AppTheme.primaryColor
-                                  : AppTheme.textPrimary.withValues(alpha: 0.7),
-                            ),
-                          ),
-                          if (_getActiveFilterCount() > 0)
-                            Positioned(
-                              top: 6,
-                              right: 6,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: AppTheme.surfaceColor, width: 1.2),
-                                ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ThemedShowcase(
+                            showcaseKey: ExploreScreen.tutorialDiscoverKey,
+                            title: l10n.appTutorialDiscoverTitle,
+                            description: l10n.appTutorialDiscoverDesc,
+                            child: Text(
+                              'Visit Tripoli',
+                              style: TextStyle(
+                                fontFamily: AppTheme.displayFontFamily,
+                                fontSize: isCompact ? 34 : 38,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
+                                letterSpacing: -0.7,
+                                height: 1.0,
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              // Search bar: only visible when search icon was tapped, no borders
-              AnimatedCrossFade(
-                firstChild: const SizedBox.shrink(),
-                secondChild: Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _searchController,
-                              focusNode: _searchFocusNode,
-                              decoration: InputDecoration(
-                                hintText: l10n.discoverPlacesHint,
-                                hintStyle: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w400,
-                                  color: AppTheme.textTertiary,
-                                ),
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 14, horizontal: 4),
-                                isDense: true,
-                                filled: true,
-                                fillColor: AppTheme.surfaceVariant
-                                    .withValues(alpha: 0.6),
-                              ),
-                              onChanged: (_) {
-                                setState(() {});
-                                _searchLogTimer?.cancel();
-                                _searchLogTimer = Timer(
-                                    const Duration(milliseconds: 1500), () {
-                                  if (mounted) {
-                                    final q = _searchController.text.trim();
-                                    if (q.isNotEmpty) {
-                                      Provider.of<ActivityLogProvider>(context,
-                                              listen: false)
-                                          .search(q);
-                                    }
-                                    _searchLogTimer = null;
-                                  }
-                                });
-                              },
                               maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Material(
+                        ),
+                        const SizedBox(width: 8),
+                        ThemedShowcase(
+                          showcaseKey: ExploreScreen.tutorialProfileKey,
+                          title: l10n.appTutorialProfileTitle,
+                          description: l10n.appTutorialProfileDesc,
+                          child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: () {
-                                setState(() {
-                                  _searchBarVisible = false;
-                                  _searchController.clear();
-                                });
-                                _searchFocusNode.unfocus();
-                              },
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(18),
+                              onTap: () => context.push('/profile'),
                               child: Container(
-                                padding: const EdgeInsets.all(10),
+                                width: 38,
+                                height: 38,
                                 decoration: BoxDecoration(
-                                  color: AppTheme.surfaceVariant
-                                      .withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: AppTheme.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppTheme.borderColor
+                                        .withValues(alpha: 0.9),
+                                  ),
                                 ),
                                 child: const Icon(
-                                  Icons.close_rounded,
-                                  size: 20,
-                                  color: AppTheme.textSecondary,
+                                  Icons.person_outline_rounded,
+                                  size: 22,
+                                  color: AppTheme.textPrimary,
                                 ),
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                      if (suggestionPlaces.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Material(
-                          elevation: 3,
-                          borderRadius: BorderRadius.circular(12),
-                          color: AppTheme.surfaceColor,
-                          shadowColor:
-                              Colors.black.withValues(alpha: 0.12),
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxHeight: 220),
-                            child: ListView.separated(
-                              shrinkWrap: true,
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              itemCount: suggestionPlaces.length,
-                              separatorBuilder: (_, __) => Divider(
-                                height: 1,
-                                color: AppTheme.borderColor
-                                    .withValues(alpha: 0.5),
-                              ),
-                              itemBuilder: (context, i) {
-                                final p = suggestionPlaces[i];
-                                return ListTile(
-                                  dense: true,
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 0,
-                                  ),
-                                  leading: Icon(
-                                    Icons.place_rounded,
-                                    size: 22,
-                                    color: AppTheme.primaryColor
+                        ),
+                        const SizedBox(width: 8),
+                        ThemedShowcase(
+                          showcaseKey: ExploreScreen.tutorialFilterKey,
+                          title: l10n.appTutorialFilterTitle,
+                          description: l10n.appTutorialFilterDesc,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => _openFiltersSheet(context),
+                              borderRadius: BorderRadius.circular(18),
+                              child: Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppTheme.borderColor
                                         .withValues(alpha: 0.9),
                                   ),
-                                  title: Text(
-                                    p.name,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
+                                ),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Center(
+                                      child: Icon(
+                                        Icons.menu_rounded,
+                                        size: 23,
+                                        color: AppTheme.textPrimary
+                                            .withValues(alpha: 0.92),
+                                      ),
                                     ),
-                                  ),
-                                  subtitle: p.location.isNotEmpty
-                                      ? Text(
-                                          p.location,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 12),
-                                        )
-                                      : null,
-                                  onTap: () {
-                                    HapticFeedback.lightImpact();
-                                    context.push('/place/${p.id}');
-                                  },
-                                );
-                              },
+                                    if (_getActiveFilterCount() > 0)
+                                      Positioned(
+                                        top: 7,
+                                        right: 7,
+                                        child: Container(
+                                          width: 7,
+                                          height: 7,
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.primaryColor,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: AppTheme.surfaceColor,
+                                              width: 1,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
                         ),
                       ],
-                    ],
+                    ),
+                    const SizedBox(height: 12),
+                    ThemedShowcase(
+                      showcaseKey: ExploreScreen.tutorialSearchKey,
+                      title: l10n.appTutorialSearchTitle,
+                      description: l10n.appTutorialSearchDesc,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F7F8),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFFE2EAEA),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  AppTheme.textPrimary.withValues(alpha: 0.05),
+                              blurRadius: 14,
+                              spreadRadius: -6,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          focusNode: _searchFocusNode,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.textPrimary,
+                            fontFamily: AppTheme.uiFontFamily,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: l10n.discoverPlacesHint,
+                            hintStyle: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w400,
+                              color: AppTheme.textTertiary,
+                              fontFamily: AppTheme.uiFontFamily,
+                            ),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 16,
+                            ),
+                            isDense: true,
+                            suffixIcon: Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Icon(
+                                Icons.search_rounded,
+                                color: AppTheme.textSecondary
+                                    .withValues(alpha: 0.7),
+                                size: 24,
+                              ),
+                            ),
+                            suffixIconConstraints: const BoxConstraints(
+                              minWidth: 42,
+                              minHeight: 42,
+                            ),
+                          ),
+                          onChanged: (_) {
+                            setState(() {});
+                            _searchLogTimer?.cancel();
+                            _searchLogTimer =
+                                Timer(const Duration(milliseconds: 1500), () {
+                              if (mounted) {
+                                final q = _searchController.text.trim();
+                                if (q.isNotEmpty) {
+                                  Provider.of<ActivityLogProvider>(context,
+                                          listen: false)
+                                      .search(q);
+                                }
+                                _searchLogTimer = null;
+                              }
+                            });
+                          },
+                          maxLines: 1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (suggestionPlaces.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Material(
+                  elevation: 3,
+                  borderRadius: BorderRadius.circular(12),
+                  color: AppTheme.surfaceColor,
+                  shadowColor: Colors.black.withValues(alpha: 0.12),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 220),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      itemCount: suggestionPlaces.length,
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1,
+                        color: AppTheme.borderColor.withValues(alpha: 0.5),
+                      ),
+                      itemBuilder: (context, i) {
+                        final p = suggestionPlaces[i];
+                        return ListTile(
+                          dense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 0,
+                          ),
+                          leading: Icon(
+                            Icons.place_rounded,
+                            size: 22,
+                            color: AppTheme.primaryColor.withValues(alpha: 0.9),
+                          ),
+                          title: Text(
+                            p.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          subtitle: p.location.isNotEmpty
+                              ? Text(
+                                  p.location,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12),
+                                )
+                              : null,
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            context.push('/place/${p.id}');
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
-                crossFadeState: _searchBarVisible
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 220),
-              ),
-              if (_searchBarVisible) const SizedBox(height: 16),
+              ],
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -2255,6 +2206,16 @@ class _ExploreScreenState extends State<ExploreScreen>
     );
     final selectedEvents = byDay[selected] ?? const <Event>[];
     final locale = Localizations.localeOf(context).languageCode;
+    final today = _startOfDay(now);
+    final totalWeekEvents =
+        byDay.values.fold<int>(0, (sum, items) => sum + items.length);
+    final selectedPreviewEvent =
+        selectedEvents.isNotEmpty ? selectedEvents.first : null;
+    final selectedPreviewSubtitle = selectedPreviewEvent == null
+        ? 'No events selected'
+        : DateFormat('MMM d • h:mm a', locale).format(
+            selectedPreviewEvent.startDate,
+          );
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPad),
@@ -2262,182 +2223,310 @@ class _ExploreScreenState extends State<ExploreScreen>
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _showEventsCalendarSheet(context),
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: AppTheme.primaryColor.withValues(alpha: 0.2),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.calendar_month_rounded,
-                        size: 22,
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            l10n.whatsHappening,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.textPrimary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'This week by day',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textSecondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 14,
-                      color: AppTheme.primaryColor,
+          borderRadius: BorderRadius.circular(24),
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: const Color(0xFFDADADA),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.textPrimary.withValues(alpha: 0.035),
+                      blurRadius: 16,
+                      spreadRadius: -8,
+                      offset: const Offset(0, 8),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 34,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: weekDays.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (context, i) {
-                      final day = weekDays[i];
-                      final active = _isSameDay(day, selected);
-                      final count = (byDay[day] ?? const <Event>[]).length;
-                      final dayLabel = DateFormat('EEE', locale).format(day);
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedEventsDay = day),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 160),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 54,
+                          height: 54,
                           decoration: BoxDecoration(
-                            color: active
-                                ? AppTheme.primaryColor.withValues(alpha: 0.18)
-                                : Colors.white.withValues(alpha: 0.75),
-                            borderRadius: BorderRadius.circular(999),
+                            shape: BoxShape.circle,
+                            color: const Color(0xFFD6E6E4),
                             border: Border.all(
-                              color: active
-                                  ? AppTheme.primaryColor.withValues(alpha: 0.5)
-                                  : AppTheme.primaryColor.withValues(alpha: 0.2),
+                              color: const Color(0xFF9FC9C4),
                             ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                          child: const Icon(
+                            Icons.place_rounded,
+                            color: AppTheme.primaryDark,
+                            size: 26,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                dayLabel,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight:
-                                      active ? FontWeight.w700 : FontWeight.w600,
+                                selectedPreviewEvent?.name ??
+                                    l10n.whatsHappening,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
                                   color: AppTheme.textPrimary,
+                                  letterSpacing: -0.2,
                                 ),
                               ),
-                              if (count > 0) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primaryColor,
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    '$count',
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
+                              const SizedBox(height: 2),
+                              Text(
+                                selectedPreviewSubtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.textSecondary,
                                 ),
-                              ],
+                              ),
                             ],
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 10),
-                if (eventsProvider.isLoading)
-                  const Text(
-                    'Loading weekly events...',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                    ),
-                  )
-                else if (selectedEvents.isEmpty)
-                  Text(
-                    'No events on ${DateFormat('EEEE', locale).format(selected)}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                    ),
-                  )
-                else
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: selectedEvents.take(2).map((e) {
-                      final time = DateFormat('h:mm a', locale).format(e.startDate);
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Text(
-                          '$time  •  ${e.name}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.textPrimary,
-                            fontWeight: FontWeight.w600,
+                        if (selectedEvents.isNotEmpty)
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () {
+                                final firstEvent = selectedEvents.first;
+                                context.push('/event/${firstEvent.id}');
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryDark,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppTheme.primaryDark
+                                          .withValues(alpha: 0.28),
+                                      blurRadius: 10,
+                                      spreadRadius: -4,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.confirmation_number_rounded,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      '${selectedEvents.length}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppTheme.successColor,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.successColor
+                                      .withValues(alpha: 0.35),
+                                  blurRadius: 10,
+                                  spreadRadius: -4,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.check_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 9,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEDEDED),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: List.generate(weekDays.length, (i) {
+                          final day = weekDays[i];
+                          final active = _isSameDay(day, selected);
+                          final dayLabel = DateFormat('EEE', locale)
+                              .format(day)
+                              .substring(0, 2);
+                          final dayNum = DateFormat('d', locale).format(day);
+                          final count = (byDay[day] ?? const <Event>[]).length;
+                          final hasEvents = count > 0;
+                          final isToday = _isSameDay(day, today);
+                          return Expanded(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 2),
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  setState(() => _selectedEventsDay = day);
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 170),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: active
+                                        ? const Color(0xFF0D6A61)
+                                        : hasEvents
+                                            ? const Color(0xFFDDF1EE)
+                                            : null,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: hasEvents && !active
+                                        ? Border.all(
+                                            color: const Color(0xFF7AB7B0),
+                                            width: 1,
+                                          )
+                                        : null,
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        dayLabel,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: active
+                                              ? Colors.white
+                                              : hasEvents
+                                                  ? const Color(0xFF0D6A61)
+                                                  : AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        dayNum,
+                                        style: TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w700,
+                                          height: 1,
+                                          color: active
+                                              ? Colors.white
+                                              : hasEvents
+                                                  ? const Color(0xFF0D6A61)
+                                                  : AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      SizedBox(
+                                        height: 6,
+                                        child: count > 0 || isToday
+                                            ? Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  if (count > 0)
+                                                    Text(
+                                                      '$count',
+                                                      style: TextStyle(
+                                                        fontSize: 9,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color: active
+                                                            ? Colors.white
+                                                            : AppTheme
+                                                                .primaryDark,
+                                                      ),
+                                                    ),
+                                                  if (count > 0 && isToday)
+                                                    const SizedBox(width: 4),
+                                                  if (isToday)
+                                                    Container(
+                                                      width: 5,
+                                                      height: 5,
+                                                      decoration: BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color: active
+                                                            ? Colors.white
+                                                            : AppTheme
+                                                                .successColor,
+                                                      ),
+                                                    ),
+                                                ],
+                                              )
+                                            : null,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        eventsProvider.isLoading
+                            ? 'Loading weekly events...'
+                            : selectedEvents.isEmpty
+                                ? 'No events on ${DateFormat('EEEE', locale).format(selected)}'
+                                : '${selectedEvents.length} event${selectedEvents.length == 1 ? '' : 's'} on ${DateFormat('EEEE', locale).format(selected)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.textSecondary,
+                          fontWeight: FontWeight.w500,
                         ),
-                      );
-                    }).toList(),
-                  ),
-              ],
-            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'This week by day • $totalWeekEvents total',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textTertiary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -2476,7 +2565,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     const BorderRadius.vertical(top: Radius.circular(24)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: AppTheme.textPrimary.withValues(alpha: 0.1),
                     blurRadius: 20,
                     offset: const Offset(0, -4),
                   ),
@@ -2658,7 +2747,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                     const BorderRadius.vertical(top: Radius.circular(24)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: AppTheme.textPrimary.withValues(alpha: 0.1),
                     blurRadius: 20,
                     offset: const Offset(0, -4),
                   ),
@@ -2828,9 +2917,12 @@ class _ExploreScreenState extends State<ExploreScreen>
     }).toList();
 
     if (recommended.isNotEmpty) {
-      display = recommended.length > 6
-          ? (recommended..shuffle()).take(6).toList()
-          : recommended;
+      display = [...recommended]..sort((a, b) {
+          final byRating = (b.rating ?? 0).compareTo(a.rating ?? 0);
+          if (byRating != 0) return byRating;
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        });
+      display = display.take(6).toList();
       title = AppLocalizations.of(context)!.recommendedForYou;
       subtitle = AppLocalizations.of(context)!
           .basedOnInterests(userInterests.take(3).join(', '));
@@ -3252,29 +3344,29 @@ class _ExploreScreenState extends State<ExploreScreen>
             }
             return [
               Padding(
-              padding:
-                  EdgeInsets.only(bottom: _ExploreLayout.sectionGap(context)),
-              child: _panel(
-                context,
-                child: _CategorySection(
-                  category: category,
-                  places: categoryPlaces,
-                  getIcon: _categoryIcon,
-                  placesProvider: placesProvider,
-                  onPlaceTap: (p) => context.push('/place/${p.id}'),
-                  onViewAll: () {
-                    AppFeedback.tap();
-                    context.push('/map?category=${category.id}');
-                  },
-                  onPlaceMapTap: (p) {
-                    AppFeedback.tap();
-                    context.push('/map?placeId=${p.id}&placeIds=${p.id}');
-                  },
-                  onPlaceAddToTrip: (p) =>
-                      _showAddPlaceToTripDialog(context, p),
+                padding:
+                    EdgeInsets.only(bottom: _ExploreLayout.sectionGap(context)),
+                child: _panel(
+                  context,
+                  child: _CategorySection(
+                    category: category,
+                    places: categoryPlaces,
+                    getIcon: _categoryIcon,
+                    placesProvider: placesProvider,
+                    onPlaceTap: (p) => context.push('/place/${p.id}'),
+                    onViewAll: () {
+                      AppFeedback.tap();
+                      context.push('/map?category=${category.id}');
+                    },
+                    onPlaceMapTap: (p) {
+                      AppFeedback.tap();
+                      context.push('/map?placeId=${p.id}&placeIds=${p.id}');
+                    },
+                    onPlaceAddToTrip: (p) =>
+                        _showAddPlaceToTripDialog(context, p),
+                  ),
                 ),
               ),
-            ),
             ];
           }),
           const SizedBox(height: 4),
@@ -3799,9 +3891,10 @@ class _EventCard extends StatelessWidget {
     final isFree = event.price == null || event.price == 0;
     final priceText =
         event.priceDisplay ?? (isFree ? l10n.free : '\$${event.price}');
-    final tight = height < 132;
+    final tight = height < 138;
     final titleSize = tight ? 13.5 : 15.0;
     final metaSize = tight ? 11.5 : 12.5;
+    final imagePaneWidth = (width * 0.35).clamp(112.0, 146.0);
 
     return Material(
       color: AppTheme.surfaceColor,
@@ -3820,11 +3913,11 @@ class _EventCard extends StatelessWidget {
         child: SizedBox(
           width: width,
           height: height,
-          child: Column(
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                flex: 11,
+              SizedBox(
+                width: imagePaneWidth,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -3833,8 +3926,8 @@ class _EventCard extends StatelessWidget {
                           ? AppImage(
                               src: imageUrl,
                               fit: BoxFit.cover,
-                              cacheWidth: 220,
-                              cacheHeight: 280,
+                              cacheWidth: 240,
+                              cacheHeight: 320,
                             )
                           : Container(
                               decoration: BoxDecoration(
@@ -3850,18 +3943,20 @@ class _EventCard extends StatelessWidget {
                               child: Center(
                                 child: Icon(
                                   Icons.event_rounded,
-                                  size: tight ? 36 : 42,
-                                  color: Colors.white.withValues(alpha: 0.9),
+                                  size: tight ? 32 : 38,
+                                  color: Colors.white.withValues(alpha: 0.92),
                                 ),
                               ),
                             ),
                     ),
                     Positioned(
-                      left: 10,
-                      top: 10,
+                      left: 8,
+                      top: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                          horizontal: 9,
+                          vertical: 5,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.45),
                           borderRadius: BorderRadius.circular(10),
@@ -3871,7 +3966,7 @@ class _EventCard extends StatelessWidget {
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
                       ),
@@ -3879,8 +3974,12 @@ class _EventCard extends StatelessWidget {
                   ],
                 ),
               ),
+              Container(
+                width: 1,
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                color: AppTheme.borderColor.withValues(alpha: 0.65),
+              ),
               Expanded(
-                flex: 13,
                 child: Padding(
                   padding: EdgeInsets.fromLTRB(
                     tight ? 10 : 12,
@@ -3901,13 +4000,14 @@ class _EventCard extends StatelessWidget {
                                 fontSize: titleSize,
                                 fontWeight: FontWeight.w700,
                                 color: AppTheme.textPrimary,
-                                letterSpacing: -0.25,
-                                height: 1.25,
+                                letterSpacing: -0.2,
+                                height: 1.2,
                               ),
-                              maxLines: 4,
+                              maxLines: tight ? 2 : 3,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          const SizedBox(width: 6),
                           Material(
                             color: Colors.transparent,
                             child: InkWell(
@@ -3919,7 +4019,7 @@ class _EventCard extends StatelessWidget {
                                   isSaved
                                       ? Icons.bookmark_rounded
                                       : Icons.bookmark_border_rounded,
-                                  size: tight ? 19 : 21,
+                                  size: tight ? 18 : 20,
                                   color: isSaved
                                       ? AppTheme.primaryColor
                                       : AppTheme.textSecondary,
@@ -3929,7 +4029,7 @@ class _EventCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      SizedBox(height: tight ? 4 : 6),
+                      SizedBox(height: tight ? 5 : 6),
                       Row(
                         children: [
                           Icon(
@@ -3937,7 +4037,7 @@ class _EventCard extends StatelessWidget {
                             size: tight ? 13 : 14,
                             color: AppTheme.primaryColor,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 5),
                           Expanded(
                             child: Text(
                               '${_formatDateLine(event.startDate, locale)} · ${_formatTime(event.startDate, locale)}',
@@ -3946,34 +4046,30 @@ class _EventCard extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                                 color: AppTheme.textPrimary,
                               ),
-                              maxLines: 2,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: tight ? 4 : 5),
+                      SizedBox(height: tight ? 3 : 4),
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Icon(
-                              Icons.place_outlined,
-                              size: tight ? 13 : 14,
-                              color: AppTheme.textTertiary,
-                            ),
+                          Icon(
+                            Icons.place_outlined,
+                            size: tight ? 13 : 14,
+                            color: AppTheme.textTertiary,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 5),
                           Expanded(
                             child: Text(
                               event.location,
                               style: TextStyle(
                                 fontSize: tight ? 10.5 : 11.5,
                                 color: AppTheme.textSecondary,
-                                height: 1.25,
+                                height: 1.2,
                               ),
-                              maxLines: 2,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -3985,7 +4081,7 @@ class _EventCard extends StatelessWidget {
                           Expanded(
                             child: Container(
                               padding: EdgeInsets.symmetric(
-                                horizontal: tight ? 8 : 10,
+                                horizontal: tight ? 7 : 9,
                                 vertical: tight ? 4 : 5,
                               ),
                               decoration: BoxDecoration(
@@ -4000,36 +4096,39 @@ class _EventCard extends StatelessWidget {
                               child: Text(
                                 event.category,
                                 style: TextStyle(
-                                  fontSize: tight ? 10.5 : 11.5,
+                                  fontSize: tight ? 10 : 11,
                                   fontWeight: FontWeight.w700,
                                   color: AppTheme.textSecondary,
                                 ),
-                                maxLines: 2,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 7),
                           Container(
+                            constraints: const BoxConstraints(maxWidth: 92),
                             padding: EdgeInsets.symmetric(
-                              horizontal: tight ? 8 : 10,
+                              horizontal: tight ? 7 : 9,
                               vertical: tight ? 4 : 5,
                             ),
                             decoration: BoxDecoration(
                               color: isFree
-                                  ? AppTheme.successColor.withValues(alpha: 0.14)
+                                  ? AppTheme.successColor
+                                      .withValues(alpha: 0.14)
                                   : categoryColor.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: isFree
-                                    ? AppTheme.successColor.withValues(alpha: 0.4)
+                                    ? AppTheme.successColor
+                                        .withValues(alpha: 0.4)
                                     : categoryColor.withValues(alpha: 0.32),
                               ),
                             ),
                             child: Text(
                               priceText,
                               style: TextStyle(
-                                fontSize: tight ? 11.5 : 12.5,
+                                fontSize: tight ? 10.5 : 11.5,
                                 fontWeight: FontWeight.w800,
                                 color: isFree
                                     ? AppTheme.successColor
@@ -4188,7 +4287,8 @@ class _FeaturedSpotlightCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              place.reviewCount != null && place.reviewCount! > 0
+                              place.reviewCount != null &&
+                                      place.reviewCount! > 0
                                   ? '${place.rating!.toStringAsFixed(1)} (${place.reviewCount})'
                                   : place.rating!.toStringAsFixed(1),
                               style: const TextStyle(
@@ -4371,7 +4471,8 @@ class _RecommendedCard extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              place.reviewCount != null && place.reviewCount! > 0
+                              place.reviewCount != null &&
+                                      place.reviewCount! > 0
                                   ? '${place.rating!.toStringAsFixed(1)} (${place.reviewCount})'
                                   : place.rating!.toStringAsFixed(1),
                               style: const TextStyle(
@@ -4705,12 +4806,10 @@ class _TourCard extends StatelessWidget {
   });
 
   static const _radius = 20.0;
-  static const _imageRatio = 0.58;
 
   @override
   Widget build(BuildContext context) {
     final cardHeight = _ExploreLayout.tourCardHeight(context);
-    final imageHeight = (cardHeight * _imageRatio).clamp(120.0, 188.0);
     final w = MediaQuery.sizeOf(context).width;
     final widthFactor =
         _Responsive.isVerySmallPhone(context) ? 0.76 : (w < 380 ? 0.82 : 0.88);
@@ -4725,210 +4824,155 @@ class _TourCard extends StatelessWidget {
         margin:
             EdgeInsetsDirectional.only(end: _ExploreLayout.cardGap(context)),
         decoration: BoxDecoration(
-          color: AppTheme.backgroundColor,
           borderRadius: BorderRadius.circular(_radius),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.textPrimary.withValues(alpha: 0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            ),
-            BoxShadow(
-              color: AppTheme.textPrimary.withValues(alpha: 0.03),
-              blurRadius: 40,
+              color: AppTheme.textPrimary.withValues(alpha: 0.08),
+              blurRadius: 24,
+              spreadRadius: -8,
               offset: const Offset(0, 12),
             ),
           ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(_radius),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Stack(
+            fit: StackFit.expand,
             children: [
-              // Hero image
-              SizedBox(
-                height: imageHeight,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    _CyclingImageStack(
-                      imageUrls: imageUrls,
-                      height: imageHeight,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(_radius),
-                      ),
-                    ),
-                    // Gradient overlay
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.2),
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.75),
-                          ],
-                          stops: const [0.0, 0.4, 0.92],
-                        ),
-                      ),
-                    ),
-                    // Badge pill
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color:
-                                  AppTheme.primaryColor.withValues(alpha: 0.4),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          tour.badge ?? AppLocalizations.of(context)!.tour,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Glass save button
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(24),
-                          onTap: onSave,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.22),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.45),
-                                width: 1,
-                              ),
-                            ),
-                            child: Icon(
-                              isSaved
-                                  ? Icons.bookmark_rounded
-                                  : Icons.bookmark_border_rounded,
-                              size: 20,
-                              color:
-                                  isSaved ? AppTheme.accentColor : Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Stats overlay
-                    Positioned(
-                      left: 12,
-                      right: 12,
-                      bottom: 12,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _glassStatChip(
-                            icon: FontAwesomeIcons.clock,
-                            label: tour.duration.isNotEmpty
-                                ? tour.duration
-                                : '${tour.durationHours}h',
-                          ),
-                          _glassStatChip(
-                            icon: FontAwesomeIcons.mapLocationDot,
-                            label: AppLocalizations.of(context)!
-                                .stops(tour.locations),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+              _CyclingImageStack(
+                imageUrls: imageUrls,
+                height: cardHeight,
+                borderRadius: BorderRadius.circular(_radius),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.18),
+                      Colors.black.withValues(alpha: 0.05),
+                      Colors.black.withValues(alpha: 0.72),
+                    ],
+                    stops: const [0.0, 0.45, 1.0],
+                  ),
                 ),
               ),
-              // Content
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        tour.name,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textPrimary,
-                          letterSpacing: -0.2,
-                          height: 1.3,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      // Price row (tour ratings are not shown)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              tour.priceDisplay,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: tour.price == 0
-                                    ? AppTheme.successColor
-                                    : AppTheme.primaryColor,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.end,
-                            ),
-                          ),
-                        ],
-                      ),
-                      // Action row
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _outlineActionButton(
-                              icon: Icons.route_rounded,
-                              label: AppLocalizations.of(context)!.map,
-                              onTap: onDirections,
-                            ),
-                          ),
-                          if (onAddToTrip != null) ...[
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 2,
-                              child: _filledActionButton(
-                                icon: Icons.add_rounded,
-                                label:
-                                    AppLocalizations.of(context)!.addToTrip,
-                                onTap: onAddToTrip!,
-                              ),
-                            ),
-                          ],
-                        ],
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
+                  child: Text(
+                    tour.badge ?? AppLocalizations.of(context)!.tour,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(24),
+                    onTap: onSave,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.22),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(
+                        isSaved
+                            ? Icons.bookmark_rounded
+                            : Icons.bookmark_border_rounded,
+                        size: 20,
+                        color: isSaved ? AppTheme.accentColor : Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 12,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            tour.name,
+                            style: TextStyle(
+                              fontFamily: AppTheme.displayFontFamily,
+                              fontSize: 31,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              letterSpacing: -0.4,
+                              height: 1.08,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _glassStatChip(
+                          icon: FontAwesomeIcons.clock,
+                          label: tour.duration.isNotEmpty
+                              ? tour.duration
+                              : '${tour.durationHours}h',
+                        ),
+                        const SizedBox(width: 8),
+                        _glassStatChip(
+                          icon: FontAwesomeIcons.mapLocationDot,
+                          label: AppLocalizations.of(context)!
+                              .stops(tour.locations),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.center,
+                      child: SizedBox(
+                        width: 168,
+                        child: _outlineActionButton(
+                          icon: Icons.route_rounded,
+                          label: AppLocalizations.of(context)!.map,
+                          onTap: onDirections,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -4989,53 +5033,8 @@ class _TourCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.primaryColor.withValues(alpha: 0.5),
-              width: 1.5,
-            ),
+            color: AppTheme.primaryDark.withValues(alpha: 0.96),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: AppTheme.primaryColor,
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primaryColor,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _filledActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: AppTheme.primaryColor,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
@@ -5272,9 +5271,10 @@ class _ExplorePlaceCard extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final cardW = _Responsive.cardWidth(context, base: 268);
-        final cardH = constraints.maxHeight.isFinite && constraints.maxHeight > 0
-            ? constraints.maxHeight
-            : _ExploreLayout.horizontalListHeight(context);
+        final cardH =
+            constraints.maxHeight.isFinite && constraints.maxHeight > 0
+                ? constraints.maxHeight
+                : _ExploreLayout.horizontalListHeight(context);
         final dpr = MediaQuery.devicePixelRatioOf(context).clamp(1.0, 3.0);
         final cacheW = (cardW * dpr).round().clamp(120, 2400);
         final cacheH = (cardH * dpr).round().clamp(120, 2400);
@@ -5341,249 +5341,255 @@ class _ExplorePlaceCard extends StatelessWidget {
                         ),
                       ),
                     ),
-              // Top overlays
-              Positioned(
-                top: 10,
-                left: 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.4),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    place.category,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 10,
-                right: 10,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(24),
-                    onTap: () async {
-                      try {
-                        await placesProvider.toggleSavePlace(place, auth: auth);
-                        if (context.mounted) {
-                          AppSnackBars.showSuccess(
-                              context,
-                              placesProvider.isPlaceSaved(place.id)
-                                  ? 'Saved to favourites'
-                                  : 'Removed from saved');
-                        }
-                      } catch (_) {
-                        if (context.mounted) {
-                          AppSnackBars.showError(
-                              context, 'Couldn\'t save place');
-                        }
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.22),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.45),
-                          width: 1,
+                    // Top overlays
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  AppTheme.primaryColor.withValues(alpha: 0.4),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          place.category,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: 0.2,
+                          ),
                         ),
                       ),
-                      child: Icon(
-                        isSaved
-                            ? Icons.favorite_rounded
-                            : Icons.favorite_border_rounded,
-                        size: 18,
-                        color: isSaved ? Colors.red.shade400 : Colors.white,
+                    ),
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(24),
+                          onTap: () async {
+                            try {
+                              await placesProvider.toggleSavePlace(place,
+                                  auth: auth);
+                              if (context.mounted) {
+                                AppSnackBars.showSuccess(
+                                    context,
+                                    placesProvider.isPlaceSaved(place.id)
+                                        ? 'Saved to favourites'
+                                        : 'Removed from saved');
+                              }
+                            } catch (_) {
+                              if (context.mounted) {
+                                AppSnackBars.showError(
+                                    context, 'Couldn\'t save place');
+                              }
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.22),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.45),
+                                width: 1,
+                              ),
+                            ),
+                            child: Icon(
+                              isSaved
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              size: 18,
+                              color:
+                                  isSaved ? Colors.red.shade400 : Colors.white,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ),
-              // Bottom content overlay
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          if (place.rating != null)
-                            _glassStat(
-                              icon: Icons.star_rounded,
-                              label: place.reviewCount != null &&
-                                      place.reviewCount! > 0
-                                  ? '${place.rating!.toStringAsFixed(1)} (${place.reviewCount})'
-                                  : place.rating!.toStringAsFixed(1),
-                              iconColor: AppTheme.accentColor,
-                            )
-                          else
-                            const SizedBox.shrink(),
-                          _glassStat(
-                            icon: Icons.schedule_rounded,
-                            label: duration,
-                            iconColor: Colors.white,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        place.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          letterSpacing: -0.2,
-                          height: 1.25,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on_outlined,
-                            size: 12,
-                            color: Colors.white.withValues(alpha: 0.9),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              place.location,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white.withValues(alpha: 0.9),
+                    // Bottom content overlay
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                if (place.rating != null)
+                                  _glassStat(
+                                    icon: Icons.star_rounded,
+                                    label: place.reviewCount != null &&
+                                            place.reviewCount! > 0
+                                        ? '${place.rating!.toStringAsFixed(1)} (${place.reviewCount})'
+                                        : place.rating!.toStringAsFixed(1),
+                                    iconColor: AppTheme.accentColor,
+                                  )
+                                else
+                                  const SizedBox.shrink(),
+                                _glassStat(
+                                  icon: Icons.schedule_rounded,
+                                  label: duration,
+                                  iconColor: Colors.white,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              place.name,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                letterSpacing: -0.2,
+                                height: 1.25,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(10),
-                              onTap: onMapTap ??
-                                  () {
-                                    AppFeedback.tap();
-                                    context.push(
-                                        '/map?placeId=${place.id}&placeIds=${place.id}');
-                                  },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.location_on_outlined,
+                                  size: 12,
+                                  color: Colors.white.withValues(alpha: 0.9),
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.directions_rounded,
-                                      size: 14,
-                                      color: Colors.white,
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    place.location,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color:
+                                          Colors.white.withValues(alpha: 0.9),
                                     ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      AppLocalizations.of(context)!.map,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          Material(
-                            color: AppTheme.primaryColor,
-                            borderRadius: BorderRadius.circular(10),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(10),
-                              onTap: onAddToTrip ??
-                                  () {
-                                    AppFeedback.tap();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          AppLocalizations.of(context)!
-                                              .addedToTrip(place.name),
-                                        ),
-                                        behavior: SnackBarBehavior.floating,
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(10),
+                                    onTap: onMapTap ??
+                                        () {
+                                          AppFeedback.tap();
+                                          context.push(
+                                              '/map?placeId=${place.id}&placeIds=${place.id}');
+                                        },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
                                       ),
-                                    );
-                                  },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 8,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.add_rounded,
-                                      size: 14,
-                                      color: Colors.white,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      AppLocalizations.of(context)!.add,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.directions_rounded,
+                                            size: 14,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            AppLocalizations.of(context)!.map,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(width: 6),
+                                Material(
+                                  color: AppTheme.primaryColor,
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(10),
+                                    onTap: onAddToTrip ??
+                                        () {
+                                          AppFeedback.tap();
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                AppLocalizations.of(context)!
+                                                    .addedToTrip(place.name),
+                                              ),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 8,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.add_rounded,
+                                            size: 14,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            AppLocalizations.of(context)!.add,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      ),
-    ),
-    );
+        );
       },
     );
   }
@@ -5748,10 +5754,12 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
       ),
       decoration: BoxDecoration(
         color: AppTheme.backgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(_ExploreLayout.sheetRadius),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: AppTheme.textPrimary.withValues(alpha: 0.08),
             blurRadius: 24,
             offset: const Offset(0, -4),
           ),
@@ -5763,7 +5771,12 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              padding: const EdgeInsets.fromLTRB(
+                _ExploreLayout.sheetHorizontalPadding,
+                8,
+                _ExploreLayout.sheetHorizontalPadding,
+                16,
+              ),
               child: Text(
                 l10n.addToTrip,
                 style: const TextStyle(
@@ -5774,7 +5787,9 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(
+                horizontal: _ExploreLayout.sheetHorizontalPadding,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -5788,7 +5803,8 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
                       filled: true,
                       fillColor: AppTheme.surfaceVariant,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius:
+                            BorderRadius.circular(_ExploreLayout.controlRadius),
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(
@@ -5833,7 +5849,12 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
                   ? (hasResults
                       ? ListView.builder(
                           shrinkWrap: true,
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                          padding: const EdgeInsets.fromLTRB(
+                            _ExploreLayout.sheetHorizontalPadding,
+                            0,
+                            _ExploreLayout.sheetHorizontalPadding,
+                            16,
+                          ),
                           itemCount: filtered.length,
                           itemBuilder: (context, i) {
                             final trip = filtered[i];
@@ -5843,7 +5864,8 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
                               color: Colors.transparent,
                               child: InkWell(
                                 onTap: () => widget.onTripSelected(trip),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(
+                                    _ExploreLayout.controlRadius),
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 12, horizontal: 4),
@@ -5959,7 +5981,12 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
                     ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              padding: const EdgeInsets.fromLTRB(
+                _ExploreLayout.sheetHorizontalPadding,
+                8,
+                _ExploreLayout.sheetHorizontalPadding,
+                _ExploreLayout.sheetBottomPadding,
+              ),
               child: SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -5969,7 +5996,8 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                        borderRadius: BorderRadius.circular(
+                            _ExploreLayout.controlRadius)),
                   ),
                 ),
               ),
@@ -6118,10 +6146,12 @@ class _AddPlaceTimeSheetState extends State<_AddPlaceTimeSheet> {
           BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
       decoration: BoxDecoration(
         color: AppTheme.backgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(_ExploreLayout.sheetRadius),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: AppTheme.textPrimary.withValues(alpha: 0.08),
             blurRadius: 24,
             offset: const Offset(0, -4),
           ),
@@ -6130,7 +6160,12 @@ class _AddPlaceTimeSheetState extends State<_AddPlaceTimeSheet> {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          padding: const EdgeInsets.fromLTRB(
+            _ExploreLayout.sheetHorizontalPadding,
+            8,
+            _ExploreLayout.sheetHorizontalPadding,
+            _ExploreLayout.sheetBottomPadding,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -6152,7 +6187,8 @@ class _AddPlaceTimeSheetState extends State<_AddPlaceTimeSheet> {
                     filled: true,
                     fillColor: AppTheme.surfaceVariant,
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                        borderRadius: BorderRadius.circular(
+                            _ExploreLayout.controlRadius)),
                   ),
                   items: widget.dates
                       .map((d) => DropdownMenuItem(
@@ -6227,12 +6263,12 @@ class _TimeChip extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(_ExploreLayout.controlRadius),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
           decoration: BoxDecoration(
             color: AppTheme.surfaceVariant,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(_ExploreLayout.controlRadius),
             border: Border.all(color: AppTheme.borderColor),
           ),
           child: Column(

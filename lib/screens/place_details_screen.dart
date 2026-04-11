@@ -162,13 +162,19 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
           SliverAppBar(
             pinned: true,
             expandedHeight: ResponsiveUtils.detailSliverHeroHeight(context),
+            backgroundColor: Colors.black.withValues(alpha: 0.28),
+            foregroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, size: 20),
               onPressed: () => context.pop(),
             ),
             title: Text(
               'Place Details',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
             centerTitle: true,
             actions: [
@@ -450,7 +456,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen>
       builder: (ctx) => Container(
         padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.surfaceColor,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SafeArea(
@@ -1280,7 +1286,7 @@ class _KeyInfoSection extends StatelessWidget {
             offset: const Offset(0, 3),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: AppTheme.textPrimary.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

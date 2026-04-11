@@ -2583,6 +2583,112 @@ class AppLocalizationsFr extends AppLocalizations {
   String get errorGenericTitle => 'Une erreur s\'est produite';
 
   @override
+  String get appOnboardingJourneyTitle => 'Visite rapide';
+
+  @override
+  String get appOnboardingSkip => 'Passer';
+
+  @override
+  String get appOnboardingNext => 'Suivant';
+
+  @override
+  String get appOnboardingBack => 'Retour';
+
+  @override
+  String get appOnboardingStartSpotlight =>
+      'Mettre en surbrillance les contrôles';
+
+  @override
+  String get appOnboardingGotIt => 'Compris — j’explore';
+
+  @override
+  String get appOnboardingSlideWelcomeTitle => 'Votre compagnon à Tripoli';
+
+  @override
+  String get appOnboardingSlideWelcomeBody =>
+      'Lieux choisis, fil communautaire, carte interactive et voyages avec l’IA—tout au même endroit.';
+
+  @override
+  String get appOnboardingSlideExploreTitle => 'Explorer';
+
+  @override
+  String get appOnboardingSlideExploreBody =>
+      'Attractions, restaurants, circuits et événements. Recherchez, filtrez et enregistrez vos favoris.';
+
+  @override
+  String get appOnboardingSlideCommunityTitle => 'Fil communautaire';
+
+  @override
+  String get appOnboardingSlideCommunityBody =>
+      'Fil d’actus et reels des lieux qui vous intéressent. Tirez pour actualiser.';
+
+  @override
+  String get appOnboardingSlideMapTitle => 'Carte';
+
+  @override
+  String get appOnboardingSlideMapBody =>
+      'Styles de carte, recherche, filtres, itinéraires et fiches des lieux à proximité.';
+
+  @override
+  String get appOnboardingSlidePlannerTitle => 'Planificateur IA';
+
+  @override
+  String get appOnboardingSlidePlannerBody =>
+      'Décrivez votre séjour pour un planning jour par jour. Connectez-vous pour synchroniser.';
+
+  @override
+  String get appOnboardingSlideTripsTitle => 'Voyages';
+
+  @override
+  String get appOnboardingSlideTripsBody =>
+      'Construisez des itinéraires, ajoutez étapes et événements, tout reste organisé.';
+
+  @override
+  String get appOnboardingSlideOffersTitle => 'Offres et messages';
+
+  @override
+  String get appOnboardingSlideOffersBody =>
+      'Consultez les offres locales quand elles sont disponibles et utilisez Messages pour échanger—dans une même appli centrée sur Tripoli.';
+
+  @override
+  String get appOnboardingSlideHelpTitle => 'Aide et réglages';
+
+  @override
+  String get appOnboardingSlideHelpBody =>
+      'Ouvrez Réglages pour la langue et le compte. L’Aide permet de relancer cette visite ou de lire l’essentiel et la confidentialité.';
+
+  @override
+  String appOnboardingStepOf(int current, int total) {
+    return 'Étape $current sur $total';
+  }
+
+  @override
+  String get appOnboardingSwipeHint =>
+      'Faites glisser l’écran ou appuyez sur Suivant.';
+
+  @override
+  String get appOnboardingFinalHint =>
+      'Relancez la visite depuis Aide → Visite guidée.';
+
+  @override
+  String get helpReplayTourTitle => 'Revoir la visite guidée';
+
+  @override
+  String get helpReplayTourSubtitle =>
+      'Parcourir à nouveau les fonctions principales (diapos + surbrillance facultative).';
+
+  @override
+  String get helpReplaySpotlightTitle =>
+      'Surbrillance de tous les onglets (rapide)';
+
+  @override
+  String get helpReplaySpotlightSubtitle =>
+      'Chaque onglet principal mis en surbrillance—Explorer, Communauté, Carte, IA et Voyages.';
+
+  @override
+  String get helpGuidedTourSection => 'Visite guidée';
+
+  @override
   String get appTutorialDialogTitle => 'Bienvenue sur Visit Tripoli';
 
   @override
@@ -2610,6 +2716,20 @@ class AppLocalizationsFr extends AppLocalizations {
       'Accédez à votre profil, préférences et réglages. Connectez-vous pour synchroniser voyages et plans IA.';
 
   @override
+  String get appTutorialSearchTitle => 'Rechercher des lieux';
+
+  @override
+  String get appTutorialSearchDesc =>
+      'Trouvez attractions, restaurants et circuits par nom, quartier ou tags. Les résultats se mettent à jour au fil de la saisie.';
+
+  @override
+  String get appTutorialFilterTitle => 'Filtres et tri';
+
+  @override
+  String get appTutorialFilterDesc =>
+      'Affinez la liste par catégorie, ordre de tri ou options gratuites selon vos envies.';
+
+  @override
   String get appTutorialNavExploreDesc =>
       'Votre accueil pour attractions, restaurants, hôtels et recommandations triées sur le volet.';
 
@@ -2628,6 +2748,95 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get appTutorialNavTripsDesc =>
       'Planifiez et organisez vos voyages—ajoutez lieux et événements, tout dans un seul itinéraire.';
+
+  @override
+  String get appTutorialCommunityScreenTitle => 'Fil communautaire';
+
+  @override
+  String get appTutorialCommunityScreenBody =>
+      'Parcourez publications et reels des lieux. Tirez pour actualiser.';
+
+  @override
+  String get appTutorialCommunityTabsTitle => 'Pour vous, enregistrés et reels';
+
+  @override
+  String get appTutorialCommunityTabsBody =>
+      'Changez d’onglet pour personnaliser, retrouver vos sauvegardes ou ouvrir les reels.';
+
+  @override
+  String get appTutorialMapSearchSpotTitle => 'Rechercher sur la carte';
+
+  @override
+  String get appTutorialMapSearchSpotBody =>
+      'Saisissez un nom de lieu pour le trouver et centrer la carte.';
+
+  @override
+  String get appTutorialMapFiltersSpotTitle => 'Catégories de lieux';
+
+  @override
+  String get appTutorialMapFiltersSpotBody =>
+      'Choisissez les types de lieux affichés sur la carte avant de parcourir les repères.';
+
+  @override
+  String get appTutorialMapControlsSpotTitle => 'Zoom, style et GPS';
+
+  @override
+  String get appTutorialMapControlsSpotBody =>
+      'Zoomez, changez le type de carte, le trafic et recentrez sur votre position.';
+
+  @override
+  String get appTutorialPlannerHeaderTitle => 'En-tête du planificateur';
+
+  @override
+  String get appTutorialPlannerHeaderBody =>
+      'L’avatar ouvre le profil. Le menu règle durée, densité, etc.';
+
+  @override
+  String get appTutorialPlannerSetupTitle => 'Paramètres du voyage';
+
+  @override
+  String get appTutorialPlannerSetupBody =>
+      'Choisissez jours, étapes par jour et dates avant de discuter avec l’IA.';
+
+  @override
+  String get appTutorialPlannerWelcomeSpotTitle =>
+      'Discuter avec le planificateur';
+
+  @override
+  String get appTutorialPlannerWelcomeSpotBody =>
+      'Décrivez votre séjour, utilisez les idées rapides ou vos centres d’intérêt—puis enregistrez le plan.';
+
+  @override
+  String get appTutorialTripsHeaderTitle => 'Espace voyages';
+
+  @override
+  String get appTutorialTripsHeaderBody =>
+      'Voyez vos itinéraires et ouvrez le profil—puis créez un nouveau voyage.';
+
+  @override
+  String get appTutorialTripsNewTripTitle => 'Nouveau voyage';
+
+  @override
+  String get appTutorialTripsNewTripBody =>
+      'Créez un itinéraire et ajoutez jours, lieux et événements.';
+
+  @override
+  String get appTutorialTripsCalendarTitle => 'Calendrier';
+
+  @override
+  String get appTutorialTripsCalendarBody =>
+      'Déployez le calendrier pour filtrer par date et affiner la liste.';
+
+  @override
+  String get appTutorialCommunityProfileTitle => 'Profil et réglages';
+
+  @override
+  String get appTutorialCommunityProfileBody =>
+      'Accédez au profil, préférences et compte depuis ici.';
+
+  @override
+  String get appTutorialCommunityFabBody =>
+      'Partagez photos et nouvelles avec la communauté depuis vos lieux préférés.';
 
   @override
   String get aiPlannerAskAiChangeStop =>

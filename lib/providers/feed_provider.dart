@@ -39,6 +39,7 @@ class FeedProvider extends ChangeNotifier {
   String? _reelsNextCursor;
   bool _loadingReels = false;
   bool _loadingMoreReels = false;
+  final Set<String> _likeInFlight = <String>{};
 
   /// Admin queue: discoverer posts with moderation_status pending.
   List<FeedPost> _pendingModerationPosts = [];
@@ -499,6 +500,10 @@ class FeedProvider extends ChangeNotifier {
   }
 
   Future<bool> toggleLike(String authToken, String postId) async {
+    if (_likeInFlight.contains(postId)) {
+      final existing = postById(postId);
+      return existing?.likedByMe ?? false;
+    }
     final idx = _posts.indexWhere((p) => p.id == postId);
     final savedIdx = _savedPosts.indexWhere((p) => p.id == postId);
     final likedIdx = _likedPosts.indexWhere((p) => p.id == postId);
@@ -529,9 +534,14 @@ class FeedProvider extends ChangeNotifier {
     }
     applyLikePost(optimistic);
     notifyListeners();
+    _likeInFlight.add(postId);
 
     try {
-      final res = await _service.toggleLike(authToken: authToken, postId: postId);
+      final res = await _service.toggleLike(
+        authToken: authToken,
+        postId: postId,
+        liked: optimistic.likedByMe,
+      );
       final confirmed = old.copyWith(likedByMe: res.liked, likeCount: res.likeCount);
       var needsNotify = false;
       if (confirmed.likedByMe != optimistic.likedByMe ||
@@ -550,6 +560,8 @@ class FeedProvider extends ChangeNotifier {
       applyLikePost(old);
       notifyListeners();
       return old.likedByMe;
+    } finally {
+      _likeInFlight.remove(postId);
     }
   }
 

@@ -67,11 +67,11 @@ class _RouteOriginPickerState extends State<RouteOriginPicker> {
         maxHeight: MediaQuery.of(context).size.height * 0.75,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.surfaceColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: AppTheme.textPrimary.withValues(alpha: 0.08),
             blurRadius: 24,
             offset: const Offset(0, -8),
           ),
@@ -89,7 +89,7 @@ class _RouteOriginPickerState extends State<RouteOriginPicker> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: AppTheme.borderColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -136,7 +136,7 @@ class _RouteOriginPickerState extends State<RouteOriginPicker> {
                   icon: const Icon(Icons.close_rounded),
                   onPressed: widget.onClose,
                   style: IconButton.styleFrom(
-                    backgroundColor: Colors.grey.shade100,
+                    backgroundColor: AppTheme.surfaceVariant,
                   ),
                 ),
               ],
@@ -262,8 +262,8 @@ class _RouteOriginPickerState extends State<RouteOriginPicker> {
             const SizedBox(height: 8),
             _OriginTile(
               icon: Icons.touch_app_rounded,
-              iconBg: Colors.orange.shade50,
-              iconColor: Colors.deepOrange,
+              iconBg: AppTheme.warningColor.withValues(alpha: 0.12),
+              iconColor: AppTheme.warningColor,
               title: 'Choose point on map',
               subtitle: 'Tap anywhere on the map to set your start',
               onTap: () => _pop(
@@ -325,7 +325,7 @@ class _TravelModeChip extends StatelessWidget {
     return Material(
       color: selected
           ? AppTheme.primaryColor.withValues(alpha: 0.12)
-          : Colors.grey.shade100,
+          : AppTheme.surfaceVariant,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
@@ -379,7 +379,7 @@ class _OriginTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.grey.shade50,
+      color: AppTheme.surfaceVariant,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,

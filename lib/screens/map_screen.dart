@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:geolocator/geolocator.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -11,13 +13,17 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import '../providers/app_state.dart';
+import '../providers/app_tour_segment.dart';
 import '../providers/map_provider.dart';
 import '../providers/places_provider.dart';
 import '../theme/app_theme.dart';
 import '../models/place.dart';
 import '../services/route_service.dart';
 import '../utils/map_launcher.dart';
+import '../utils/app_tour_showcase.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/themed_showcase.dart';
 import '../widgets/app_profile_icon_button.dart';
 import '../widgets/app_image.dart';
 import '../map/map_camera_utils.dart';
@@ -144,11 +150,16 @@ class MapScreen extends StatefulWidget {
 
   final Map<String, String>? queryParams;
 
+  static final GlobalKey tutorialMapSearchKey = GlobalKey();
+  static final GlobalKey tutorialMapFilterKey = GlobalKey();
+  static final GlobalKey tutorialMapControlsKey = GlobalKey();
+
   @override
   State<MapScreen> createState() => _MapScreenState();
 }
 
 class _MapScreenState extends State<MapScreen> {
+  bool _mapTourKickoff = false;
   final Completer<GoogleMapController> _mapController =
       Completer<GoogleMapController>();
   final _searchController = TextEditingController();
@@ -158,7 +169,11 @@ class _MapScreenState extends State<MapScreen> {
   String? _categoryFilter;
   bool _trafficEnabled = true;
   bool _arrangeNearby = true;
-  String _nearbyMode = 'me'; // off | me
+  String _nearbyMode = 'off'; // off | me | place
+  String? _nearbyAnchorPlaceId;
+  Map<String, double> _nearMeRoadMetersByPlaceId = const {};
+  String? _nearMeRoadDistancesResolvedKey;
+  String? _nearMeRoadDistancesInFlightKey;
 
   RouteResult? _activeRoute;
   ll.LatLng? _routeOrigin;
@@ -194,6 +209,42 @@ class _MapScreenState extends State<MapScreen> {
     return (lat: pos.latitude, lng: pos.longitude);
   }
 
+  Future<void> _onNearbyModeChanged(
+    String mode,
+    MapProvider mapProvider,
+    AppLocalizations l10n, {
+    required bool canUsePlaceMode,
+  }) async {
+    if (mode == 'place' && !canUsePlaceMode) return;
+
+    if (mode == 'me') {
+      if (mapProvider.currentPosition == null) {
+        await mapProvider.getCurrentLocation();
+      }
+      if (!mounted) return;
+      if (mapProvider.currentPosition == null) {
+        setState(() {
+          _nearbyMode = 'off';
+          _arrangeNearby = false;
+        });
+        final msg = mapProvider.lastLocationError ?? 'Location is not available.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _nearbyMode = mode;
+      _arrangeNearby = mode != 'off';
+    });
+  }
+
   List<(String id, String label, IconData? icon)> _categoryFilterEntries(
       AppLocalizations l10n) {
     return [
@@ -215,45 +266,165 @@ class _MapScreenState extends State<MapScreen> {
     return l10n.mapFilterAll;
   }
 
+  Place? _placeById(List<Place> places, String? id) {
+    if (id == null || id.isEmpty) return null;
+    for (final p in places) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
   List<Place> _arrangePlacesByProximity(
     List<Place> input, {
     LatLng? anchor,
   }) {
     if (input.length < 2) return input;
-    final remaining = List<Place>.from(input);
-    final ordered = <Place>[];
+    // Keep invalid coordinates unchanged; route optimization requires valid points.
+    if (input.any((p) => p.latitude == null || p.longitude == null)) {
+      return input;
+    }
 
-    var startIndex = 0;
-    if (anchor != null) {
-      var best = double.infinity;
-      for (var i = 0; i < remaining.length; i++) {
-        final p = remaining[i];
-        if (p.latitude == null || p.longitude == null) continue;
+    int nearestToAnchorIndex(List<Place> places) {
+      if (anchor == null) return 0;
+      var bestIdx = 0;
+      var bestMeters = double.infinity;
+      for (var i = 0; i < places.length; i++) {
+        final p = places[i];
         final d = _haversineMeters(anchor, LatLng(p.latitude!, p.longitude!));
-        if (d < best) {
-          best = d;
-          startIndex = i;
+        if (d < bestMeters) {
+          bestMeters = d;
+          bestIdx = i;
         }
+      }
+      return bestIdx;
+    }
+
+    List<Place> buildGreedyRoute(List<Place> source, int startIndex) {
+      final remaining = List<Place>.from(source);
+      final ordered = <Place>[];
+      ordered.add(remaining.removeAt(startIndex));
+      while (remaining.isNotEmpty) {
+        final last = ordered.last;
+        final from = LatLng(last.latitude!, last.longitude!);
+        var nearestIdx = 0;
+        var nearestM = double.infinity;
+        for (var i = 0; i < remaining.length; i++) {
+          final p = remaining[i];
+          final d = _haversineMeters(from, LatLng(p.latitude!, p.longitude!));
+          if (d < nearestM) {
+            nearestM = d;
+            nearestIdx = i;
+          }
+        }
+        ordered.add(remaining.removeAt(nearestIdx));
+      }
+      return ordered;
+    }
+
+    // Multi-start nearest-neighbor: reduces local minima vs single-start approach.
+    final startCandidates = <int>{};
+    if (anchor != null) {
+      startCandidates.add(nearestToAnchorIndex(input));
+    } else {
+      startCandidates.add(0);
+      startCandidates.add(input.length - 1);
+      for (var i = 1; i < input.length - 1; i += (input.length / 5).ceil()) {
+        startCandidates.add(i);
       }
     }
 
-    ordered.add(remaining.removeAt(startIndex));
-    while (remaining.isNotEmpty) {
-      final last = ordered.last;
-      final from = LatLng(last.latitude!, last.longitude!);
-      var nearestIdx = 0;
-      var nearestM = double.infinity;
-      for (var i = 0; i < remaining.length; i++) {
-        final p = remaining[i];
-        final d = _haversineMeters(from, LatLng(p.latitude!, p.longitude!));
-        if (d < nearestM) {
-          nearestM = d;
-          nearestIdx = i;
-        }
+    List<Place>? bestRoute;
+    var bestMeters = double.infinity;
+    for (final start in startCandidates) {
+      final greedy = buildGreedyRoute(input, start);
+      final improved = _improveOrderWithTwoOpt(greedy);
+      final meters = _routeLengthMeters(improved);
+      if (meters < bestMeters) {
+        bestMeters = meters;
+        bestRoute = improved;
       }
-      ordered.add(remaining.removeAt(nearestIdx));
     }
-    return _improveOrderWithTwoOpt(ordered);
+    return bestRoute ?? input;
+  }
+
+  List<Place> _sortPlacesByDistanceFromAnchor(
+    List<Place> input,
+    LatLng anchor,
+  ) {
+    if (input.length < 2) return input;
+    final sorted = List<Place>.from(input);
+    sorted.sort((a, b) {
+      if (a.latitude == null ||
+          a.longitude == null ||
+          b.latitude == null ||
+          b.longitude == null) {
+        return 0;
+      }
+      final da = _haversineMeters(anchor, LatLng(a.latitude!, a.longitude!));
+      final db = _haversineMeters(anchor, LatLng(b.latitude!, b.longitude!));
+      return da.compareTo(db);
+    });
+    return sorted;
+  }
+
+  String _nearMeCacheKey(LatLng anchor, List<Place> places) {
+    final sortedIds = places.map((p) => p.id).toList()..sort();
+    return '${anchor.latitude.toStringAsFixed(4)},${anchor.longitude.toStringAsFixed(4)}'
+        '|${sortedIds.join(",")}';
+  }
+
+  double _nearMeDistanceMetersForPlace(Place place, LatLng anchor) {
+    final roadMeters = _nearMeRoadMetersByPlaceId[place.id];
+    if (roadMeters != null && roadMeters > 0) return roadMeters;
+    if (place.latitude == null || place.longitude == null) {
+      return double.infinity;
+    }
+    return _haversineMeters(anchor, LatLng(place.latitude!, place.longitude!));
+  }
+
+  Future<void> _ensureNearMeRoadDistances({
+    required LatLng anchor,
+    required List<Place> places,
+  }) async {
+    if (places.isEmpty) return;
+    final key = _nearMeCacheKey(anchor, places);
+    if (_nearMeRoadDistancesResolvedKey == key ||
+        _nearMeRoadDistancesInFlightKey == key) {
+      return;
+    }
+    _nearMeRoadDistancesInFlightKey = key;
+
+    final candidates = places
+        .where((p) => p.latitude != null && p.longitude != null)
+        .toList()
+      ..sort((a, b) {
+        final da = _haversineMeters(anchor, LatLng(a.latitude!, a.longitude!));
+        final db = _haversineMeters(anchor, LatLng(b.latitude!, b.longitude!));
+        return da.compareTo(db);
+      });
+
+    final next = <String, double>{};
+    for (final p in candidates) {
+      // If user moved significantly or filters changed, cancel this stale run.
+      if (_nearMeRoadDistancesInFlightKey != key) return;
+      final route = await RouteService.getRoute(
+        originLat: anchor.latitude,
+        originLng: anchor.longitude,
+        destLat: p.latitude!,
+        destLng: p.longitude!,
+        travelMode: MapLauncher.driving,
+      );
+      if (route != null && route.totalDistanceMeters > 0) {
+        next[p.id] = route.totalDistanceMeters;
+      }
+    }
+
+    if (!mounted || _nearMeRoadDistancesInFlightKey != key) return;
+    setState(() {
+      _nearMeRoadMetersByPlaceId = next;
+      _nearMeRoadDistancesResolvedKey = key;
+      _nearMeRoadDistancesInFlightKey = null;
+    });
   }
 
   List<Place> _improveOrderWithTwoOpt(List<Place> route) {
@@ -381,6 +552,33 @@ class _MapScreenState extends State<MapScreen> {
     _searchController.addListener(() {
       if (mounted) setState(() {});
     });
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => unawaited(_maybeRunSpotlightTour()));
+  }
+
+  Future<void> _maybeRunSpotlightTour() async {
+    if (_mapTourKickoff || !mounted) return;
+    final appState = context.read<AppStateProvider>();
+    if (!appState.isFullAppTourActive ||
+        appState.activeTourSegment != AppTourSegment.map) {
+      return;
+    }
+    _mapTourKickoff = true;
+    await Future.delayed(const Duration(milliseconds: 560));
+    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    startAppTourShowcase(
+      context: context,
+      prefs: prefs,
+      keys: [
+        AppBottomNav.mapKey,
+        MapScreen.tutorialMapSearchKey,
+        MapScreen.tutorialMapFilterKey,
+        MapScreen.tutorialMapControlsKey,
+      ],
+      advanceFromSegment: AppTourSegment.map,
+    );
   }
 
   @override
@@ -639,14 +837,15 @@ class _MapScreenState extends State<MapScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(24)),
           boxShadow: [
             BoxShadow(
-              color: Color(0x1A000000),
+              color: AppTheme.textPrimary.withValues(alpha: 0.1),
               blurRadius: 20,
-              offset: Offset(0, -4),
+              offset: const Offset(0, -4),
             ),
           ],
         ),
@@ -664,7 +863,7 @@ class _MapScreenState extends State<MapScreen> {
                     height: 4,
                     margin: const EdgeInsets.only(bottom: 20),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: AppTheme.borderColor,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -712,8 +911,8 @@ class _MapScreenState extends State<MapScreen> {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Material(
                       color: isSelected
-                          ? const Color(0xFF4285F4).withValues(alpha: 0.08)
-                          : Colors.grey.shade50,
+                          ? AppTheme.primaryColor.withValues(alpha: 0.08)
+                          : AppTheme.surfaceVariant,
                       borderRadius: BorderRadius.circular(12),
                       child: InkWell(
                         onTap: () {
@@ -730,8 +929,8 @@ class _MapScreenState extends State<MapScreen> {
                                 height: 44,
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? const Color(0xFF4285F4)
-                                      : Colors.grey.shade200,
+                                      ? AppTheme.primaryColor
+                                      : AppTheme.borderColor,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Icon(
@@ -770,7 +969,7 @@ class _MapScreenState extends State<MapScreen> {
                               ),
                               if (isSelected)
                                 const Icon(Icons.check_circle_rounded,
-                                    color: Color(0xFF4285F4), size: 24),
+                                    color: AppTheme.primaryColor, size: 24),
                             ],
                           ),
                         ),
@@ -898,24 +1097,56 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
 
-    final nearbyAnchor = mapProvider.currentPosition != null
+    final meAnchor = mapProvider.currentPosition != null
         ? LatLng(
             mapProvider.currentPosition!.latitude,
             mapProvider.currentPosition!.longitude,
           )
         : null;
+    final placeAnchorPlace = _placeById(places, _nearbyAnchorPlaceId);
+    final placeAnchor = (placeAnchorPlace?.latitude != null &&
+            placeAnchorPlace?.longitude != null)
+        ? LatLng(placeAnchorPlace!.latitude!, placeAnchorPlace.longitude!)
+        : null;
+    final nearbyAnchor = _nearbyMode == 'me'
+        ? meAnchor
+        : (_nearbyMode == 'place' ? placeAnchor : null);
+    final shouldSortNearMe = !tourOnly &&
+        !tripOnly &&
+        _nearbyMode == 'me' &&
+        meAnchor != null &&
+        places.length > 1;
     final shouldArrangeNearby = !tourOnly &&
         !tripOnly &&
         _arrangeNearby &&
-        _nearbyMode == 'me' &&
-        nearbyAnchor != null &&
+        _nearbyMode == 'place' &&
+        placeAnchor != null &&
         places.length > 1;
-    final placesForMap = shouldArrangeNearby
-        ? _arrangePlacesByProximity(
-            places,
-            anchor: nearbyAnchor,
-          )
-        : places;
+    if (shouldSortNearMe) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _ensureNearMeRoadDistances(anchor: meAnchor, places: places);
+      });
+    }
+    final placesForMap = () {
+      if (shouldSortNearMe) {
+        final anchor = meAnchor;
+        final sorted = _sortPlacesByDistanceFromAnchor(places, anchor);
+        sorted.sort((a, b) {
+          final da = _nearMeDistanceMetersForPlace(a, anchor);
+          final db = _nearMeDistanceMetersForPlace(b, anchor);
+          return da.compareTo(db);
+        });
+        return sorted;
+      }
+      if (shouldArrangeNearby) {
+        return _arrangePlacesByProximity(
+          places,
+          anchor: nearbyAnchor,
+        );
+      }
+      return places;
+    }();
 
     LatLng defaultCenter = kTripoliCenter;
     double zoom = kExploreMapDefaultZoom;
@@ -934,17 +1165,25 @@ class _MapScreenState extends State<MapScreen> {
     final coordinates =
         placesForMap.map((p) => LatLng(p.latitude!, p.longitude!)).toList();
     final nearbyLegMeters = _routeLegDistancesMeters(placesForMap);
-    final nearbyTotalMeters = _routeLengthMeters(placesForMap);
-    final nearbyFromAnchorMeters = shouldArrangeNearby
-        ? placesForMap
+    final nearbyFromAnchorMeters = () {
+      if (shouldSortNearMe) {
+        final anchor = meAnchor;
+        return placesForMap
+            .map((p) => _nearMeDistanceMetersForPlace(p, anchor))
+            .toList();
+      }
+      if (shouldArrangeNearby) {
+        return placesForMap
             .map(
               (p) => _haversineMeters(
-                nearbyAnchor,
+                nearbyAnchor!,
                 LatLng(p.latitude!, p.longitude!),
               ),
             )
-            .toList()
-        : const <double>[];
+            .toList();
+      }
+      return const <double>[];
+    }();
 
     final initialPosition = CameraPosition(
       target: defaultCenter,
@@ -958,7 +1197,7 @@ class _MapScreenState extends State<MapScreen> {
       if (tourOnly || tripOnly) return 8.0;
       if (_activeRoute != null && !_isNavigating) return 196.0;
       if (_activeRoute != null && _isNavigating) return 52.0;
-      if (showSearchAndFilters) return 148.0;
+      if (showSearchAndFilters) return 124.0;
       return 56.0;
     }();
     final mapBottomPadding = () {
@@ -969,6 +1208,7 @@ class _MapScreenState extends State<MapScreen> {
       if (!tourOnly &&
           !tripOnly &&
           placesForMap.length > 1 &&
+          _nearbyMode != 'off' &&
           _activeRoute == null) {
         return 268.0;
       }
@@ -977,10 +1217,10 @@ class _MapScreenState extends State<MapScreen> {
     final mapControlsTop = () {
       if (_activeRoute != null && !_isNavigating) return 112.0;
       if (tourOnly || tripOnly) return 108.0;
-      if (showSearchAndFilters) return 212.0;
+      if (showSearchAndFilters) return 188.0;
       return 100.0;
     }();
-    final locationBannerTop = showSearchAndFilters ? 182.0 : 88.0;
+    final locationBannerTop = showSearchAndFilters ? 160.0 : 88.0;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -993,7 +1233,7 @@ class _MapScreenState extends State<MapScreen> {
                         : l10n.mapTripRouteTitle)
                     : l10n.mapTourRouteTitle,
               ),
-              backgroundColor: Colors.white,
+              backgroundColor: AppTheme.surfaceColor,
               elevation: 0,
               scrolledUnderElevation: 2,
               foregroundColor: AppTheme.textPrimary,
@@ -1074,7 +1314,7 @@ class _MapScreenState extends State<MapScreen> {
                 child: Material(
                   elevation: 6,
                   borderRadius: BorderRadius.circular(14),
-                  color: Colors.white,
+                  color: AppTheme.surfaceColor,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     child: Row(
@@ -1118,62 +1358,74 @@ class _MapScreenState extends State<MapScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: Material(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(28),
-                              elevation: 3,
-                              shadowColor: Colors.black.withValues(alpha: 0.2),
-                              child: InkWell(
-                                onTap: () => _searchFocusNode.requestFocus(),
+                            child: ThemedShowcase(
+                              showcaseKey: MapScreen.tutorialMapSearchKey,
+                              title: l10n.appTutorialMapSearchSpotTitle,
+                              description: l10n.appTutorialMapSearchSpotBody,
+                              child: Material(
+                                color: Colors.white,
                                 borderRadius: BorderRadius.circular(28),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 14,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.search_rounded,
-                                        size: 22,
-                                        color: AppTheme.textSecondary,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: TextField(
-                                          controller: _searchController,
-                                          focusNode: _searchFocusNode,
-                                          decoration: InputDecoration(
-                                            hintText: l10n.discoverPlacesHint,
-                                            border: InputBorder.none,
-                                            contentPadding: EdgeInsets.zero,
-                                            isDense: true,
-                                          ),
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          maxLines: 1,
-                                          textInputAction: TextInputAction.search,
-                                          onTapOutside: (_) =>
-                                              _searchFocusNode.unfocus(),
+                                elevation: 3,
+                                shadowColor:
+                                    Colors.black.withValues(alpha: 0.2),
+                                child: InkWell(
+                                  onTap: () =>
+                                      _searchFocusNode.requestFocus(),
+                                  borderRadius: BorderRadius.circular(28),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                      vertical: 14,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.search_rounded,
+                                          size: 22,
+                                          color: AppTheme.textSecondary,
                                         ),
-                                      ),
-                                      if (_searchController.text.isNotEmpty)
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.clear_rounded,
-                                            size: 22,
-                                            color: AppTheme.textSecondary,
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: TextField(
+                                            controller: _searchController,
+                                            focusNode: _searchFocusNode,
+                                            decoration: InputDecoration(
+                                              hintText:
+                                                  l10n.discoverPlacesHint,
+                                              border: InputBorder.none,
+                                              contentPadding: EdgeInsets.zero,
+                                              isDense: true,
+                                            ),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 1,
+                                            textInputAction:
+                                                TextInputAction.search,
+                                            onTapOutside: (_) =>
+                                                _searchFocusNode.unfocus(),
                                           ),
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            setState(() {});
-                                          },
-                                          tooltip: MaterialLocalizations.of(context)
-                                              .deleteButtonTooltip,
                                         ),
-                                    ],
+                                        if (_searchController.text
+                                            .isNotEmpty)
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.clear_rounded,
+                                              size: 22,
+                                              color: AppTheme.textSecondary,
+                                            ),
+                                            onPressed: () {
+                                              _searchController.clear();
+                                              setState(() {});
+                                            },
+                                            tooltip:
+                                                MaterialLocalizations.of(
+                                                        context)
+                                                    .deleteButtonTooltip,
+                                          ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1248,6 +1500,7 @@ class _MapScreenState extends State<MapScreen> {
                                       : null,
                                   onTap: () async {
                                     _searchController.text = p.name;
+                                  _nearbyAnchorPlaceId = p.id;
                                     _searchFocusNode.unfocus();
                                     setState(() {});
                                     final c = await _mapController.future;
@@ -1275,7 +1528,7 @@ class _MapScreenState extends State<MapScreen> {
                         Material(
                           elevation: 2,
                           borderRadius: BorderRadius.circular(12),
-                          color: const Color(0xFFFFF8E1),
+                          color: AppTheme.warningColor.withValues(alpha: 0.12),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 12),
@@ -1307,59 +1560,52 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                       ],
                       const SizedBox(height: 8),
-                      Material(
-                        color: Colors.white,
-                        elevation: 2,
-                        borderRadius: BorderRadius.circular(12),
-                        shadowColor: Colors.black.withValues(alpha: 0.1),
-                        child: InkWell(
-                          onTap: () =>
-                              _openMapCategoryFilterSheet(context, l10n),
-                          borderRadius: BorderRadius.circular(12),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 11),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.tune_rounded,
-                                  size: 20,
-                                  color: AppTheme.primaryColor,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        l10n.mapFilterSectionTitle,
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppTheme.textTertiary,
-                                        ),
+                      ThemedShowcase(
+                        showcaseKey: MapScreen.tutorialMapFilterKey,
+                        title: l10n.appTutorialMapFiltersSpotTitle,
+                        description: l10n.appTutorialMapFiltersSpotBody,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Material(
+                            color: Colors.white.withValues(alpha: 0.96),
+                            elevation: 2,
+                            borderRadius: BorderRadius.circular(999),
+                            shadowColor: Colors.black.withValues(alpha: 0.08),
+                            child: InkWell(
+                              onTap: () =>
+                                  _openMapCategoryFilterSheet(context, l10n),
+                              borderRadius: BorderRadius.circular(999),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 9),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.tune_rounded,
+                                      size: 18,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _mapActiveCategoryLabel(l10n),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.textPrimary,
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _mapActiveCategoryLabel(l10n),
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: AppTheme.textPrimary,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      size: 18,
+                                      color: AppTheme.textTertiary,
+                                    ),
+                                  ],
                                 ),
-                                const Icon(
-                                  Icons.keyboard_arrow_down_rounded,
-                                  color: AppTheme.textTertiary,
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
@@ -1411,10 +1657,10 @@ class _MapScreenState extends State<MapScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.location_off_rounded,
                         size: 64,
-                        color: Colors.grey.shade400,
+                        color: AppTheme.textTertiary,
                       ),
                       const SizedBox(height: 16),
                       Text(
@@ -1469,16 +1715,30 @@ class _MapScreenState extends State<MapScreen> {
               l10n: l10n,
               places: placesForMap,
               legMeters: nearbyLegMeters,
-              totalMeters: nearbyTotalMeters,
               mode: _nearbyMode,
               distancesFromAnchor: nearbyFromAnchorMeters,
               onModeChanged: (mode) {
+                _onNearbyModeChanged(
+                  mode,
+                  mapProvider,
+                  l10n,
+                  canUsePlaceMode: placeAnchor != null,
+                );
+              },
+              onCloseSection: () {
                 setState(() {
-                  _nearbyMode = mode;
-                  _arrangeNearby = mode != 'off';
+                  _nearbyMode = 'off';
+                  _arrangeNearby = false;
                 });
               },
+              canUsePlaceMode: placeAnchor != null,
+              onActivePlaceChanged: (p) {
+                setState(() => _nearbyAnchorPlaceId = p.id);
+              },
               onPlaceTap: (p) async {
+                setState(() {
+                  _nearbyAnchorPlaceId = p.id;
+                });
                 final ctrl = await _mapController.future;
                 if (!mounted) return;
                 await ctrl.animateCamera(
@@ -1655,7 +1915,7 @@ class _MapScreenState extends State<MapScreen> {
               right: 16,
               top: locationBannerTop,
               child: Material(
-                color: const Color(0xFFFFF8E1),
+                color: AppTheme.warningColor.withValues(alpha: 0.12),
                 elevation: 3,
                 borderRadius: BorderRadius.circular(12),
                 child: Padding(
@@ -1701,7 +1961,11 @@ class _MapScreenState extends State<MapScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                _GoogleStyleMapControls(
+                ThemedShowcase(
+                  showcaseKey: MapScreen.tutorialMapControlsKey,
+                  title: l10n.appTutorialMapControlsSpotTitle,
+                  description: l10n.appTutorialMapControlsSpotBody,
+                  child: _GoogleStyleMapControls(
                   onZoomIn: () async {
                     final ctrl = await _mapController.future;
                     await ctrl.animateCamera(CameraUpdate.zoomIn());
@@ -1743,6 +2007,7 @@ class _MapScreenState extends State<MapScreen> {
                   onTrafficToggle: () =>
                       setState(() => _trafficEnabled = !_trafficEnabled),
                 ),
+                ),
               ],
             ),
           ),
@@ -1761,6 +2026,13 @@ class _MapScreenState extends State<MapScreen> {
     PlacesProvider placesProvider,
   ) {
     final markers = <Marker>{};
+    final singleNearbyPinId = (!tourOnly &&
+            !tripOnly &&
+            _activeRoute == null &&
+            (_nearbyMode == 'place' || _nearbyMode == 'me') &&
+            _nearbyAnchorPlaceId != null)
+        ? _nearbyAnchorPlaceId
+        : null;
     if (_routeOrigin != null) {
       markers.add(
         Marker(
@@ -1776,6 +2048,9 @@ class _MapScreenState extends State<MapScreen> {
     }
     for (var i = 0; i < places.length; i++) {
       final place = places[i];
+      if (singleNearbyPinId != null && place.id != singleNearbyPinId) {
+        continue;
+      }
 
       if (_isNavigating && !tourOnly && !tripOnly) {
         if (_routeDestination != null && _routeDestination!.id != place.id && _routeDestination!.id != 'tour_route') {
@@ -1797,8 +2072,12 @@ class _MapScreenState extends State<MapScreen> {
                 )
               : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
           infoWindow: InfoWindow(title: place.name),
-          onTap: () =>
-              _showPlaceSheet(context, place, mapProvider, placesProvider),
+          onTap: () {
+            setState(() {
+              _nearbyAnchorPlaceId = place.id;
+            });
+            _showPlaceSheet(context, place, mapProvider, placesProvider);
+          },
         ),
       );
     }
@@ -1851,7 +2130,7 @@ class _MapScreenState extends State<MapScreen> {
             Polyline(
               polylineId: PolylineId('directions_route_$i'),
               points: segment,
-              color: const Color(0xFF4285F4),
+              color: AppTheme.primaryColor,
               width: 5,
               zIndex: 2,
               geodesic: false,
@@ -1865,7 +2144,7 @@ class _MapScreenState extends State<MapScreen> {
             Polyline(
               polylineId: PolylineId('directions_route_outline_$i'),
               points: segment,
-              color: const Color(0xFF1B6DFB),
+              color: AppTheme.primaryDark,
               width: 8,
               zIndex: 1,
               geodesic: false,
@@ -1878,7 +2157,7 @@ class _MapScreenState extends State<MapScreen> {
             Polyline(
               polylineId: PolylineId('directions_route_inner_$i'),
               points: segment,
-              color: const Color(0xFF4285F4),
+              color: AppTheme.primaryColor,
               width: 5,
               zIndex: 2,
               geodesic: false,
@@ -1971,9 +2250,13 @@ class _MapScreenState extends State<MapScreen> {
         mapProvider: mapProvider,
         placesProvider: placesProvider,
         parentContext: context,
-        onViewOnMap: () {
+        onNearPlaces: () {
           Navigator.pop(ctx);
-          context.push('/map?placeId=${place.id}');
+          setState(() {
+            _nearbyAnchorPlaceId = place.id;
+            _nearbyMode = 'place';
+            _arrangeNearby = true;
+          });
         },
         onDetails: () {
           Navigator.pop(ctx);
@@ -2047,7 +2330,7 @@ class _ActiveNavigationPanel extends StatelessWidget {
                         RouteService.formatDuration(route.totalDurationSeconds),
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF137333),
+                              color: AppTheme.successColor,
                               letterSpacing: -0.5,
                             ),
                       ),
@@ -2090,21 +2373,25 @@ class _NearbyPlacesBar extends StatefulWidget {
   final AppLocalizations l10n;
   final List<Place> places;
   final List<double> legMeters;
-  final double totalMeters;
   final String mode;
+  final bool canUsePlaceMode;
   final List<double> distancesFromAnchor;
   final ValueChanged<String> onModeChanged;
   final ValueChanged<Place> onPlaceTap;
+  final ValueChanged<Place> onActivePlaceChanged;
+  final VoidCallback onCloseSection;
 
   const _NearbyPlacesBar({
     required this.l10n,
     required this.places,
     required this.legMeters,
-    required this.totalMeters,
     required this.mode,
+    required this.canUsePlaceMode,
     required this.distancesFromAnchor,
     required this.onModeChanged,
     required this.onPlaceTap,
+    required this.onActivePlaceChanged,
+    required this.onCloseSection,
   });
 
   @override
@@ -2119,6 +2406,10 @@ class _NearbyPlacesBarState extends State<_NearbyPlacesBar> {
   void initState() {
     super.initState();
     _controller = PageController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.places.isEmpty) return;
+      widget.onActivePlaceChanged(widget.places[_index]);
+    });
   }
 
   @override
@@ -2133,6 +2424,7 @@ class _NearbyPlacesBarState extends State<_NearbyPlacesBar> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_controller.hasClients) return;
         _controller.jumpToPage(_index);
+        widget.onActivePlaceChanged(widget.places[_index]);
       });
     }
   }
@@ -2151,6 +2443,10 @@ class _NearbyPlacesBarState extends State<_NearbyPlacesBar> {
   @override
   Widget build(BuildContext context) {
     if (widget.places.isEmpty) return const SizedBox.shrink();
+    final showNearbySection = widget.mode != 'off';
+    final activeDistance = (_index >= 0 && _index < widget.distancesFromAnchor.length)
+        ? _fmtDistance(widget.distancesFromAnchor[_index])
+        : null;
     return Positioned(
       left: 8,
       right: 8,
@@ -2174,166 +2470,251 @@ class _NearbyPlacesBarState extends State<_NearbyPlacesBar> {
                   ),
                 ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _NearbyModeChip(
-                    icon: Icons.list_rounded,
-                    label: widget.l10n.mapFilterAll,
-                    active: widget.mode == 'off',
-                    onTap: () => widget.onModeChanged('off'),
-                  ),
-                  const SizedBox(width: 6),
-                  _NearbyModeChip(
-                    icon: Icons.my_location_rounded,
-                    label: widget.l10n.nearMe,
-                    active: widget.mode == 'me',
-                    onTap: () => widget.onModeChanged('me'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Material(
-              elevation: 10,
-              borderRadius: BorderRadius.circular(16),
-              color: Colors.white,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.8)),
-                ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _DeckArrow(
-                      icon: Icons.chevron_left_rounded,
-                      tooltip: widget.l10n.mapDeckPreviousPlace,
-                      enabled: _index > 0,
-                      onTap: () async {
-                        final next = _index - 1;
-                        if (next < 0) return;
-                        setState(() => _index = next);
-                        await _controller.animateToPage(
-                          next,
-                          duration: const Duration(milliseconds: 240),
-                          curve: Curves.easeOutCubic,
-                        );
-                      },
+                    _NearbyModeChip(
+                      icon: Icons.list_rounded,
+                      label: widget.l10n.mapFilterAll,
+                      active: widget.mode == 'off',
+                      onTap: () => widget.onModeChanged('off'),
                     ),
-                    Expanded(
-                      child: SizedBox(
-                        height: 120,
-                        child: PageView.builder(
-                          controller: _controller,
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: widget.places.length,
-                          onPageChanged: (i) => setState(() => _index = i),
-                          itemBuilder: (context, i) {
-                            final p = widget.places[i];
-                            final fromYou = i < widget.distancesFromAnchor.length
-                                ? _fmtDistance(widget.distancesFromAnchor[i])
-                                : null;
-                            final fromPrev = (i > 0 && i - 1 < widget.legMeters.length)
-                                ? _fmtDistance(widget.legMeters[i - 1])
-                                : null;
-                            return Semantics(
-                              button: true,
-                              label: p.name,
-                              hint: widget.l10n.mapSemanticsPlaceCardHint,
-                              child: InkWell(
-                              onTap: () {
-                                HapticFeedback.lightImpact();
-                                widget.onPlaceTap(p);
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Row(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: SizedBox(
-                                      width: 112,
-                                      height: 104,
-                                      child: p.images.isNotEmpty
-                                          ? AppImage(src: p.images.first, fit: BoxFit.cover)
-                                          : Container(
-                                              color: AppTheme.surfaceVariant,
-                                              alignment: Alignment.center,
-                                              child: const Icon(Icons.place_rounded, color: AppTheme.textTertiary),
-                                            ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          p.name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        if (widget.mode == 'me' && fromYou != null)
-                                          Text(
-                                            widget.l10n.mapDeckDistanceFromYou(fromYou),
-                                            style: const TextStyle(
-                                                fontSize: 12,
-                                                color: AppTheme.textSecondary),
-                                          ),
-                                        if (widget.mode == 'off' && fromPrev != null)
-                                          Text(
-                                            widget.l10n.mapDeckFromPrevious(fromPrev),
-                                            style: const TextStyle(
-                                                fontSize: 12,
-                                                color: AppTheme.textSecondary),
-                                          ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          widget.l10n.mapOpenPlaceDetails,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppTheme.primaryColor.withValues(alpha: 0.95),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            );
-                          },
-                        ),
-                      ),
+                    const SizedBox(width: 6),
+                    _NearbyModeChip(
+                      icon: Icons.my_location_rounded,
+                      label: widget.l10n.nearMe,
+                      active: widget.mode == 'me',
+                      onTap: () => widget.onModeChanged('me'),
                     ),
-                    _DeckArrow(
-                      icon: Icons.chevron_right_rounded,
-                      tooltip: widget.l10n.mapDeckNextPlace,
-                      enabled: _index < widget.places.length - 1,
-                      onTap: () async {
-                        final next = _index + 1;
-                        if (next >= widget.places.length) return;
-                        setState(() => _index = next);
-                        await _controller.animateToPage(
-                          next,
-                          duration: const Duration(milliseconds: 240),
-                          curve: Curves.easeOutCubic,
-                        );
-                      },
+                    const SizedBox(width: 6),
+                    _NearbyModeChip(
+                      icon: Icons.place_rounded,
+                      label: 'From place',
+                      active: widget.mode == 'place',
+                      enabled: widget.canUsePlaceMode,
+                      onTap: () => widget.onModeChanged('place'),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              '${_index + 1} / ${widget.places.length} · ${widget.mode == 'me' ? widget.l10n.mapDeckRouteApprox(_fmtDistance(widget.totalMeters)) : widget.l10n.mapDeckNearbyPlaces}',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
-            ),
+            if (showNearbySection) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.38),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      widget.mode == 'me'
+                          ? (activeDistance != null
+                              ? widget.l10n.mapDeckDistanceFromYou(activeDistance)
+                              : widget.l10n.mapDeckNearbyPlaces)
+                          : widget.l10n.mapDeckNearbyPlaces,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Material(
+                    color: Colors.black.withValues(alpha: 0.38),
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        widget.onCloseSection();
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Material(
+                elevation: 10,
+                borderRadius: BorderRadius.circular(16),
+                color: AppTheme.surfaceColor,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.8)),
+                  ),
+                  child: Row(
+                    children: [
+                      _DeckArrow(
+                        icon: Icons.chevron_left_rounded,
+                        tooltip: widget.l10n.mapDeckPreviousPlace,
+                        enabled: _index > 0,
+                        onTap: () async {
+                          final next = _index - 1;
+                          if (next < 0) return;
+                          setState(() => _index = next);
+                          await _controller.animateToPage(
+                            next,
+                            duration: const Duration(milliseconds: 240),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
+                      ),
+                      Expanded(
+                        child: SizedBox(
+                          height: 126,
+                          child: PageView.builder(
+                            controller: _controller,
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: widget.places.length,
+                            onPageChanged: (i) {
+                              setState(() => _index = i);
+                              widget.onActivePlaceChanged(widget.places[i]);
+                            },
+                            itemBuilder: (context, i) {
+                              final p = widget.places[i];
+                              final fromYou = i < widget.distancesFromAnchor.length
+                                  ? _fmtDistance(widget.distancesFromAnchor[i])
+                                  : null;
+                              final fromPrev = (i > 0 && i - 1 < widget.legMeters.length)
+                                  ? _fmtDistance(widget.legMeters[i - 1])
+                                  : null;
+                              return Semantics(
+                                button: true,
+                                label: p.name,
+                                hint: widget.l10n.mapSemanticsPlaceCardHint,
+                                child: InkWell(
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  widget.onPlaceTap(p);
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: SizedBox(
+                                        width: 112,
+                                        height: 104,
+                                        child: p.images.isNotEmpty
+                                            ? AppImage(src: p.images.first, fit: BoxFit.cover)
+                                            : Container(
+                                                color: AppTheme.surfaceVariant,
+                                                alignment: Alignment.center,
+                                                child: const Icon(Icons.place_rounded, color: AppTheme.textTertiary),
+                                              ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            p.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            p.category,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppTheme.textTertiary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          if ((widget.mode == 'me' ||
+                                                  widget.mode == 'place') &&
+                                              fromYou != null)
+                                            Text(
+                                              widget.l10n.mapDeckDistanceFromYou(fromYou),
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppTheme.textSecondary),
+                                            ),
+                                          if (widget.mode == 'off' && fromPrev != null)
+                                            Text(
+                                              widget.l10n.mapDeckFromPrevious(fromPrev),
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppTheme.textSecondary),
+                                            ),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                widget.l10n.mapOpenPlaceDetails,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppTheme.primaryColor.withValues(alpha: 0.95),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Icon(
+                                                Icons.arrow_forward_rounded,
+                                                size: 14,
+                                                color: AppTheme.primaryColor.withValues(alpha: 0.95),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      _DeckArrow(
+                        icon: Icons.chevron_right_rounded,
+                        tooltip: widget.l10n.mapDeckNextPlace,
+                        enabled: _index < widget.places.length - 1,
+                        onTap: () async {
+                          final next = _index + 1;
+                          if (next >= widget.places.length) return;
+                          setState(() => _index = next);
+                          await _controller.animateToPage(
+                            next,
+                            duration: const Duration(milliseconds: 240),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${_index + 1} / ${widget.places.length}',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+              ),
+            ],
           ],
         ),
       ),
@@ -2345,54 +2726,61 @@ class _NearbyModeChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool active;
+  final bool enabled;
   final VoidCallback onTap;
 
   const _NearbyModeChip({
     required this.icon,
     required this.label,
     required this.active,
+    this.enabled = true,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: active
-              ? AppTheme.primaryColor.withValues(alpha: 0.14)
-              : AppTheme.surfaceVariant,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
+    return Opacity(
+      opacity: enabled ? 1 : 0.55,
+      child: InkWell(
+        onTap: enabled
+            ? () {
+                HapticFeedback.selectionClick();
+                onTap();
+              }
+            : null,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          decoration: BoxDecoration(
             color: active
-                ? AppTheme.primaryColor.withValues(alpha: 0.35)
-                : AppTheme.borderColor,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: active ? AppTheme.primaryColor : AppTheme.textSecondary,
+                ? AppTheme.primaryColor.withValues(alpha: 0.18)
+                : AppTheme.surfaceVariant.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: active
+                  ? AppTheme.primaryColor.withValues(alpha: 0.45)
+                  : AppTheme.borderColor.withValues(alpha: 0.85),
             ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
                 color: active ? AppTheme.primaryColor : AppTheme.textSecondary,
               ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: active ? AppTheme.primaryColor : AppTheme.textSecondary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2536,7 +2924,7 @@ class _TourMapBar extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: isCurrent
                                       ? AppTheme.primaryColor
-                                      : Colors.grey.shade300,
+                                      : AppTheme.borderColor,
                                   shape: BoxShape.circle,
                                 ),
                                 child: Center(
@@ -2547,7 +2935,7 @@ class _TourMapBar extends StatelessWidget {
                                       fontWeight: FontWeight.w700,
                                       color: isCurrent
                                           ? Colors.white
-                                          : Colors.grey.shade700,
+                                          : AppTheme.textSecondary,
                                     ),
                                   ),
                                 ),
@@ -2679,8 +3067,8 @@ class _DirectionsHeader extends StatelessWidget {
                       children: [
                         const SizedBox(height: 24),
                         IconButton(
-                          icon: Icon(Icons.swap_vert,
-                              color: Colors.grey.shade400, size: 28),
+                          icon: const Icon(Icons.swap_vert,
+                              color: AppTheme.textTertiary, size: 28),
                           tooltip: l10n.mapSwapStartDestination,
                           onPressed: onSwap,
                         ),
@@ -2729,7 +3117,7 @@ class _ModeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isSelected ? const Color(0xFF1A73E8) : Colors.grey.shade600;
+    final color = isSelected ? AppTheme.primaryColor : AppTheme.textSecondary;
     return InkWell(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -2780,14 +3168,14 @@ class _LocationField extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Material(
-      color: Colors.grey.shade100,
+      color: AppTheme.surfaceVariant,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
+            border: Border.all(color: AppTheme.borderColor),
             borderRadius: BorderRadius.circular(8),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -2800,7 +3188,9 @@ class _LocationField extends StatelessWidget {
                   label.isEmpty ? l10n.mapChooseLocation : label,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
-                        color: label.isEmpty ? Colors.grey.shade500 : AppTheme.textPrimary,
+                        color: label.isEmpty
+                            ? AppTheme.textTertiary
+                            : AppTheme.textPrimary,
                       ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -2854,7 +3244,7 @@ class _DirectionsBottomPanelState extends State<_DirectionsBottomPanel> {
                   width: 40,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: AppTheme.borderColor,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -2873,7 +3263,7 @@ class _DirectionsBottomPanelState extends State<_DirectionsBottomPanel> {
                                 widget.route.totalDurationSeconds),
                             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                                   fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF1A73E8), // Google blue
+                                  color: AppTheme.primaryColor,
                                   letterSpacing: -0.5,
                                 ),
                           ),
@@ -2892,7 +3282,7 @@ class _DirectionsBottomPanelState extends State<_DirectionsBottomPanel> {
                     FilledButton(
                       onPressed: widget.onStart,
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF1A73E8),
+                        backgroundColor: AppTheme.primaryColor,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(24),
                         ),
@@ -2924,21 +3314,21 @@ class _DirectionsBottomPanelState extends State<_DirectionsBottomPanel> {
                     label: Text(l10n.mapStepsAndMore),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.textSecondary,
-                      side: BorderSide(color: Colors.grey.shade300),
+                      side: const BorderSide(color: AppTheme.borderColor),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                     ),
                   ),
                 ),
               if (_showSteps) ...[
-                Divider(height: 1, color: Colors.grey.shade200),
+                const Divider(height: 1, color: AppTheme.borderColor),
                 Container(
                   constraints: BoxConstraints(
                       maxHeight: MediaQuery.of(context).size.height * 0.45),
                   child: ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 0),
                     itemCount: widget.route.steps.length,
-                    separatorBuilder: (_, __) => Divider(height: 1, indent: 64, color: Colors.grey.shade200),
+                    separatorBuilder: (_, __) => const Divider(height: 1, indent: 64, color: AppTheme.borderColor),
                     itemBuilder: (_, i) {
                       final step = widget.route.steps[i];
                       return Padding(
@@ -2957,7 +3347,7 @@ class _DirectionsBottomPanelState extends State<_DirectionsBottomPanel> {
                                     ? AppTheme.secondaryColor.withValues(alpha: 0.1)
                                     : i == widget.route.steps.length - 1
                                         ? AppTheme.errorColor.withValues(alpha: 0.1)
-                                        : const Color(0xFF1A73E8).withValues(alpha: 0.1),
+                                        : AppTheme.primaryColor.withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
                               child: Center(
@@ -2972,7 +3362,7 @@ class _DirectionsBottomPanelState extends State<_DirectionsBottomPanel> {
                                       ? AppTheme.secondaryColor
                                       : i == widget.route.steps.length - 1
                                           ? AppTheme.errorColor
-                                          : const Color(0xFF1A73E8),
+                                          : AppTheme.primaryColor,
                                 ),
                               ),
                             ),
@@ -3050,9 +3440,9 @@ class _GoogleStyleMapControls extends StatelessWidget {
   }) {
     return Material(
       elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.2),
+      shadowColor: AppTheme.textPrimary.withValues(alpha: 0.2),
       borderRadius: borderRadius ?? BorderRadius.circular(8),
-      color: Colors.white,
+      color: AppTheme.surfaceColor,
       child: child,
     );
   }
@@ -3074,7 +3464,7 @@ class _GoogleStyleMapControls extends StatelessWidget {
                 onTap: onZoomIn,
                 tooltip: l10n.mapTooltipZoomIn,
               ),
-              Divider(height: 1, color: Colors.grey.shade200),
+              const Divider(height: 1, color: AppTheme.borderColor),
               _ControlButton(
                 icon: Icons.remove,
                 onTap: onZoomOut,
@@ -3128,7 +3518,7 @@ class _GoogleStyleMapControls extends StatelessWidget {
                   height: 48,
                   child: Icon(
                     Icons.my_location_rounded,
-                    color: Color(0xFF4285F4),
+                    color: AppTheme.primaryColor,
                     size: 24,
                   ),
                 ),
@@ -3162,7 +3552,7 @@ class _ControlButton extends StatelessWidget {
       child: Icon(
         icon,
         size: 22,
-        color: isActive ? const Color(0xFF4285F4) : AppTheme.textPrimary,
+        color: isActive ? AppTheme.primaryColor : AppTheme.textPrimary,
       ),
     );
     if (tooltip != null && tooltip!.isNotEmpty) {
@@ -3221,7 +3611,7 @@ class _PlaceInfoSheet extends StatelessWidget {
   final MapProvider mapProvider;
   final PlacesProvider placesProvider;
   final BuildContext parentContext;
-  final VoidCallback onViewOnMap;
+  final VoidCallback onNearPlaces;
   final VoidCallback onDetails;
   final VoidCallback onClose;
   final void Function(
@@ -3237,7 +3627,7 @@ class _PlaceInfoSheet extends StatelessWidget {
     required this.mapProvider,
     required this.placesProvider,
     required this.parentContext,
-    required this.onViewOnMap,
+    required this.onNearPlaces,
     required this.onDetails,
     required this.onClose,
     required this.onDirectionsRequested,
@@ -3484,7 +3874,7 @@ class _PlaceInfoSheet extends StatelessWidget {
                           icon: const Icon(Icons.directions_rounded, size: 20),
                           label: Text(l10n.getDirections),
                           style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF4285F4),
+                            backgroundColor: AppTheme.primaryColor,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
@@ -3497,12 +3887,12 @@ class _PlaceInfoSheet extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: onViewOnMap,
+                          onPressed: onNearPlaces,
                           icon: const Icon(Icons.near_me_rounded, size: 20),
-                          label: Text(l10n.mapViewOnMapLowercase),
+                          label: const Text('Near places to this place'),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF5F6368),
-                            side: BorderSide(color: Colors.grey.shade300),
+                            foregroundColor: AppTheme.textSecondary,
+                            side: const BorderSide(color: AppTheme.borderColor),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),

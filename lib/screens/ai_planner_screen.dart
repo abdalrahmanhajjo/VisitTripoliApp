@@ -18,15 +18,33 @@ import '../models/interest.dart';
 import '../models/place.dart';
 import '../models/trip.dart';
 import '../services/ai_planner_service.dart';
+import '../providers/app_state.dart';
+import '../providers/app_tour_segment.dart';
 import '../providers/auth_provider.dart';
 import '../providers/language_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/responsive_utils.dart';
+import '../utils/app_tour_showcase.dart';
 import '../widgets/app_bottom_nav.dart';
+import '../widgets/themed_showcase.dart';
 
 const _keyPlannerDays = 'planner_days';
 const _keyPlannerPlacesPerDay = 'planner_places_per_day';
 const _keyPlannerPrefsSet = 'planner_prefs_set';
+
+class _PlannerLayout {
+  static const double pageHorizontalPadding = 24;
+  static const double sheetHorizontalPadding = 20;
+  static const double sheetBottomPadding = 24;
+  static const double sheetTopRadius = 24;
+  static const double compactSheetTopRadius = 20;
+  static const double cardRadius = 20;
+  static const double panelRadius = 16;
+  static const double controlRadius = 14;
+  static const double inputRadius = 12;
+  static const double sendButtonRadius = 22;
+  static const double dragHandleRadius = 2;
+}
 
 /// After AI returns a plan, keep every stop the same except [flatIndex] (client-side guarantee).
 (List<AIPlannerSlot>, List<Place>)? _mergeSingleStopReplace({
@@ -98,11 +116,16 @@ class _ChatMessage {
 class AIPlannerScreen extends StatefulWidget {
   const AIPlannerScreen({super.key});
 
+  static final GlobalKey tutorialHeaderKey = GlobalKey();
+  static final GlobalKey tutorialSetupKey = GlobalKey();
+  static final GlobalKey tutorialWelcomeKey = GlobalKey();
+
   @override
   State<AIPlannerScreen> createState() => _AIPlannerScreenState();
 }
 
 class _AIPlannerScreenState extends State<AIPlannerScreen> {
+  bool _plannerTourKickoff = false;
   final _inputController = TextEditingController();
   final _scrollController = ScrollController();
   bool _isGenerating = false;
@@ -370,6 +393,36 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
       placesProvider.loadPlaces(locale: langCode);
     }
     _loadPlannerPrefs();
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => unawaited(_maybeRunSpotlightTour()));
+  }
+
+  Future<void> _maybeRunSpotlightTour() async {
+    if (_plannerTourKickoff || !mounted) return;
+    final appState = context.read<AppStateProvider>();
+    if (!appState.isFullAppTourActive ||
+        appState.activeTourSegment != AppTourSegment.aiPlanner) {
+      return;
+    }
+    _plannerTourKickoff = true;
+    await Future.delayed(const Duration(milliseconds: 560));
+    if (!mounted) return;
+    final keys = <GlobalKey>[
+      AppBottomNav.aiPlannerKey,
+      AIPlannerScreen.tutorialHeaderKey,
+    ];
+    if (_chatMessages.isEmpty) {
+      keys.add(AIPlannerScreen.tutorialSetupKey);
+      keys.add(AIPlannerScreen.tutorialWelcomeKey);
+    }
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    startAppTourShowcase(
+      context: context,
+      prefs: prefs,
+      keys: keys,
+      advanceFromSegment: AppTourSegment.aiPlanner,
+    );
   }
 
   Future<void> _loadPlannerPrefs() async {
@@ -410,6 +463,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
     required int durationDays,
   }) {
     final placesPerDay = expectedCount ~/ durationDays;
+    final placeById = {for (final p in places) p.id: p};
 
     if (slotList.length >= expectedCount) {
       // Truncate: group by day, take exactly placesPerDay per day to keep balance
@@ -418,14 +472,16 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
         final d = s.dayIndex ?? 0;
         byDay.putIfAbsent(d, () => []).add(s);
       }
-      for (final daySlots in byDay.values) {
-        daySlots.sort((a, b) => a.suggestedTime.compareTo(b.suggestedTime));
-      }
       final result = <AIPlannerSlot>[];
       for (var d = 0; d < durationDays; d++) {
-        final daySlots = byDay[d] ?? [];
+        final daySlots = _optimizeSlotsOrder(byDay[d] ?? [], placeById);
         for (var i = 0; i < placesPerDay && i < daySlots.length; i++) {
-          result.add(daySlots[i]);
+          result.add(AIPlannerSlot(
+            placeId: daySlots[i].placeId,
+            suggestedTime: '${9 + i}:00',
+            reason: daySlots[i].reason,
+            dayIndex: d,
+          ));
         }
       }
       return result;
@@ -433,7 +489,8 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
 
     // Pad: add more places from pool (excluding already used)
     final usedIds = slotList.map((s) => s.placeId).toSet();
-    final available = places.where((p) => !usedIds.contains(p.id)).toList();
+    final available = places.where((p) => !usedIds.contains(p.id)).toList()
+      ..sort(_comparePlacesForItinerary);
     if (available.isEmpty) return slotList;
 
     final result = List<AIPlannerSlot>.from(slotList);
@@ -455,7 +512,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
       final d0 = a.dayIndex ?? 0;
       final d1 = b.dayIndex ?? 0;
       if (d0 != d1) return d0.compareTo(d1);
-      return a.suggestedTime.compareTo(b.suggestedTime);
+      return _tripSlotTimeMinutes(a).compareTo(_tripSlotTimeMinutes(b));
     });
     return result;
   }
@@ -499,11 +556,18 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
         return Padding(
           padding: EdgeInsets.only(bottom: bottom),
           child: Material(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(_PlannerLayout.compactSheetTopRadius),
+            ),
             color: AppTheme.surfaceColor,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+                padding: const EdgeInsets.fromLTRB(
+                  _PlannerLayout.sheetHorizontalPadding,
+                  12,
+                  _PlannerLayout.sheetHorizontalPadding,
+                  20,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -514,7 +578,8 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
                         height: 4,
                         decoration: BoxDecoration(
                           color: AppTheme.borderColor,
-                          borderRadius: BorderRadius.circular(2),
+                          borderRadius:
+                              BorderRadius.circular(_PlannerLayout.dragHandleRadius),
                         ),
                       ),
                     ),
@@ -702,6 +767,14 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
             durationDays: _duration,
           );
         }
+        if (singleReplaceFlatIndex == null) {
+          slotList = _applyWebParitySlotOrdering(
+            slots: slotList,
+            durationDays: _duration,
+            placesPerDay: _placesPerDay,
+            placeById: idToPlace,
+          );
+        }
         // Only keep slots whose placeId exists in our list so places and slots stay in sync
         final validSlots = <AIPlannerSlot>[];
         final validPlaces = <Place>[];
@@ -826,11 +899,91 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
     return 0;
   }
 
+  int _bestTimeRank(String? bestTime) {
+    switch ((bestTime ?? '').trim().toLowerCase()) {
+      case 'morning':
+        return 0;
+      case 'afternoon':
+        return 1;
+      case 'evening':
+        return 2;
+      default:
+        return 99;
+    }
+  }
+
+  int _parseDurationLikeWeb(String? duration) {
+    if (duration == null || duration.trim().isEmpty) return 999;
+    final match = RegExp(r'(\d+)\s*(h|hr|hour|min|m)', caseSensitive: false)
+        .firstMatch(duration);
+    if (match == null) return 999;
+    final n = int.tryParse(match.group(1) ?? '') ?? 999;
+    final unit = (match.group(2) ?? '').toLowerCase();
+    if (unit.startsWith('h')) return n * 60;
+    return n;
+  }
+
+  int _comparePlacesForItinerary(Place a, Place b) {
+    final byBestTime = _bestTimeRank(a.bestTime).compareTo(_bestTimeRank(b.bestTime));
+    if (byBestTime != 0) return byBestTime;
+    final byDuration =
+        _parseDurationLikeWeb(a.duration).compareTo(_parseDurationLikeWeb(b.duration));
+    if (byDuration != 0) return byDuration;
+    final byRating = (b.rating ?? 0).compareTo(a.rating ?? 0);
+    if (byRating != 0) return byRating;
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  }
+
+  List<AIPlannerSlot> _optimizeSlotsOrder(
+      List<AIPlannerSlot> slots, Map<String, Place> placeById) {
+    final sorted = List<AIPlannerSlot>.from(slots);
+    sorted.sort((a, b) {
+      final pa = placeById[a.placeId];
+      final pb = placeById[b.placeId];
+      if (pa == null && pb == null) return 0;
+      if (pa == null) return 1;
+      if (pb == null) return -1;
+      return _comparePlacesForItinerary(pa, pb);
+    });
+    return sorted;
+  }
+
+  List<AIPlannerSlot> _applyWebParitySlotOrdering({
+    required List<AIPlannerSlot> slots,
+    required int durationDays,
+    required int placesPerDay,
+    required Map<String, Place> placeById,
+  }) {
+    if (slots.isEmpty || durationDays < 1 || placesPerDay < 1) return slots;
+    final byDay = <int, List<AIPlannerSlot>>{};
+    for (final s in slots) {
+      final d = (s.dayIndex ?? 0).clamp(0, durationDays - 1);
+      byDay.putIfAbsent(d, () => []).add(s);
+    }
+    final ordered = <AIPlannerSlot>[];
+    for (var d = 0; d < durationDays; d++) {
+      final daySlots = _optimizeSlotsOrder(byDay[d] ?? const [], placeById);
+      for (var i = 0; i < daySlots.length && i < placesPerDay; i++) {
+        ordered.add(
+          AIPlannerSlot(
+            placeId: daySlots[i].placeId,
+            suggestedTime: '${9 + i}:00',
+            reason: daySlots[i].reason,
+            dayIndex: d,
+          ),
+        );
+      }
+    }
+    return ordered;
+  }
+
   /// Reassigns slots to exactly [dayCount] days (0-based indices), in stable day/time order, with fresh times per day.
   List<AIPlannerSlot> _normalizeSlotsForTripLength(
     List<AIPlannerSlot> slots,
     int dayCount,
-  ) {
+    Map<String, Place> placeById, {
+    int? placesPerDay,
+  }) {
     if (slots.isEmpty || dayCount < 1) return [];
     final sorted = List<AIPlannerSlot>.from(slots)
       ..sort((a, b) {
@@ -841,7 +994,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
       });
 
     if (dayCount == 1) {
-      return List.generate(
+      final normalized = List.generate(
         sorted.length,
         (i) => AIPlannerSlot(
           placeId: sorted[i].placeId,
@@ -849,6 +1002,12 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
           reason: sorted[i].reason,
           dayIndex: 0,
         ),
+      );
+      return _applyWebParitySlotOrdering(
+        slots: normalized,
+        durationDays: dayCount,
+        placesPerDay: placesPerDay ?? normalized.length,
+        placeById: placeById,
       );
     }
 
@@ -875,7 +1034,12 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
       }
       idx = safeEnd;
     }
-    return result;
+    return _applyWebParitySlotOrdering(
+      slots: result,
+      durationDays: dayCount,
+      placesPerDay: placesPerDay ?? (result.length ~/ dayCount).clamp(1, result.length),
+      placeById: placeById,
+    );
   }
 
   Future<void> _pickDate() async {
@@ -907,8 +1071,13 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
 
     // Match the trip length chosen in the planner (days × places per day), not ad-hoc max(dayIndex).
     final dayCount = _duration;
-    final normalized = _normalizeSlotsForTripLength(slots, dayCount);
     final idToPlace = {for (final p in places) p.id: p};
+    final normalized = _normalizeSlotsForTripLength(
+      slots,
+      dayCount,
+      idToPlace,
+      placesPerDay: _placesPerDay,
+    );
     for (final s in normalized) {
       if (idToPlace[s.placeId] == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -971,6 +1140,7 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
@@ -979,60 +1149,76 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
         elevation: 0,
         scrolledUnderElevation: 0.5,
         titleSpacing: 0,
-        title: _PlannerHeader(
-          greeting: _greetingL10n(context),
-          userName: Provider.of<AuthProvider>(context).userName,
-          onProfileTap: () {
-            final auth = Provider.of<AuthProvider>(context, listen: false);
-            if (auth.isGuest) {
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text(AppLocalizations.of(context)!.loginRequired),
-                  content: Text(AppLocalizations.of(context)!.signInToAccessProfile),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppLocalizations.of(context)!.cancel)),
-                    FilledButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        context.go('/login');
-                      },
-                      child: Text(AppLocalizations.of(context)!.signIn),
-                    ),
-                  ],
-                ),
-              );
-            } else {
-              context.push('/profile');
-            }
-          },
-          onMenuTap: () => _showInputsMenu(context),
+        title: ThemedShowcase(
+          showcaseKey: AIPlannerScreen.tutorialHeaderKey,
+          title: l10n.appTutorialPlannerHeaderTitle,
+          description: l10n.appTutorialPlannerHeaderBody,
+          child: _PlannerHeader(
+            greeting: _greetingL10n(context),
+            userName: Provider.of<AuthProvider>(context).userName,
+            onProfileTap: () {
+              final auth = Provider.of<AuthProvider>(context, listen: false);
+              if (auth.isGuest) {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text(AppLocalizations.of(context)!.loginRequired),
+                    content: Text(AppLocalizations.of(context)!.signInToAccessProfile),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: Text(AppLocalizations.of(context)!.cancel)),
+                      FilledButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          context.go('/login');
+                        },
+                        child: Text(AppLocalizations.of(context)!.signIn),
+                      ),
+                    ],
+                  ),
+                );
+              } else {
+                context.push('/profile');
+              }
+            },
+            onMenuTap: () => _showInputsMenu(context),
+          ),
         ),
       ),
       body: Column(
         children: [
           if (_chatMessages.isEmpty)
-            _PlannerTripSetupCard(
-              duration: _duration,
-              placesPerDay: _placesPerDay,
-              selectedDate: _selectedDate,
-              onDurationTap: () => _showDurationPicker(context),
-              onPlacesTap: () => _showPlacesPerDayPicker(context),
-              onDateTap: _pickDate,
+            ThemedShowcase(
+              showcaseKey: AIPlannerScreen.tutorialSetupKey,
+              title: l10n.appTutorialPlannerSetupTitle,
+              description: l10n.appTutorialPlannerSetupBody,
+              child: _PlannerTripSetupCard(
+                duration: _duration,
+                placesPerDay: _placesPerDay,
+                selectedDate: _selectedDate,
+                onDurationTap: () => _showDurationPicker(context),
+                onPlacesTap: () => _showPlacesPerDayPicker(context),
+                onDateTap: _pickDate,
+              ),
             ),
           Expanded(
             child: _chatMessages.isEmpty
-                ? _WelcomeHero(
-                    inputController: _inputController,
-                    isGenerating: _isGenerating,
-                    onSend: _sendMessage,
-                    moodCards: _moodCardsFor(context),
-                    onChipTap: (prompt) {
-                      _inputController.text = prompt;
-                      _sendMessage();
-                    },
-                    onPlanFromInterestsAndActivity: _requestPlanFromInterestsAndActivity,
-                    welcomeText: null,
+                ? ThemedShowcase(
+                    showcaseKey: AIPlannerScreen.tutorialWelcomeKey,
+                    title: l10n.appTutorialPlannerWelcomeSpotTitle,
+                    description: l10n.appTutorialPlannerWelcomeSpotBody,
+                    child: _WelcomeHero(
+                      inputController: _inputController,
+                      isGenerating: _isGenerating,
+                      onSend: _sendMessage,
+                      moodCards: _moodCardsFor(context),
+                      onChipTap: (prompt) {
+                        _inputController.text = prompt;
+                        _sendMessage();
+                      },
+                      onPlanFromInterestsAndActivity:
+                          _requestPlanFromInterestsAndActivity,
+                      welcomeText: null,
+                    ),
                   )
                 : ListView.builder(
                     controller: _scrollController,
@@ -1083,7 +1269,12 @@ class _AIPlannerScreenState extends State<AIPlannerScreen> {
           ),
           if (_chatMessages.isNotEmpty)
             Padding(
-              padding: EdgeInsets.fromLTRB(20, 8, 20, 12 + MediaQuery.of(context).padding.bottom),
+              padding: EdgeInsets.fromLTRB(
+                _PlannerLayout.sheetHorizontalPadding,
+                8,
+                _PlannerLayout.sheetHorizontalPadding,
+                12 + MediaQuery.of(context).padding.bottom,
+              ),
               child: SafeArea(
                 top: false,
                 child: _PlannerInputBar(
@@ -1249,7 +1440,7 @@ class _PlannerTripSetupCard extends StatelessWidget {
               offset: const Offset(0, 8),
             ),
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: AppTheme.textPrimary.withValues(alpha: 0.04),
               blurRadius: 12,
               offset: const Offset(0, 2),
             ),
@@ -1468,7 +1659,9 @@ class _ReplacePlaceSheetState extends State<_ReplacePlaceSheet> {
       height: MediaQuery.of(context).size.height * 0.7,
       decoration: const BoxDecoration(
         color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(_PlannerLayout.sheetTopRadius),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1480,12 +1673,18 @@ class _ReplacePlaceSheetState extends State<_ReplacePlaceSheet> {
               height: 4,
               decoration: BoxDecoration(
                 color: AppTheme.borderColor,
-                borderRadius: BorderRadius.circular(2),
+                borderRadius:
+                    BorderRadius.circular(_PlannerLayout.dragHandleRadius),
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            padding: const EdgeInsets.fromLTRB(
+              _PlannerLayout.sheetHorizontalPadding,
+              16,
+              _PlannerLayout.sheetHorizontalPadding,
+              12,
+            ),
             child: Row(
               children: [
                 const Icon(Icons.swap_horiz_rounded, color: AppTheme.primaryColor, size: 24),
@@ -1502,7 +1701,9 @@ class _ReplacePlaceSheetState extends State<_ReplacePlaceSheet> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(
+              horizontal: _PlannerLayout.sheetHorizontalPadding,
+            ),
             child: TextField(
               onChanged: (v) => setState(() => _query = v),
               decoration: InputDecoration(
@@ -1511,7 +1712,8 @@ class _ReplacePlaceSheetState extends State<_ReplacePlaceSheet> {
                 filled: true,
                 fillColor: AppTheme.surfaceVariant,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius:
+                      BorderRadius.circular(_PlannerLayout.inputRadius),
                   borderSide: BorderSide.none,
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1530,7 +1732,12 @@ class _ReplacePlaceSheetState extends State<_ReplacePlaceSheet> {
                     ),
                   )
                 : ListView.builder(
-                    padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + safePadding),
+                    padding: EdgeInsets.fromLTRB(
+                      _PlannerLayout.sheetHorizontalPadding,
+                      8,
+                      _PlannerLayout.sheetHorizontalPadding,
+                      20 + safePadding,
+                    ),
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final place = filtered[index];
@@ -1607,12 +1814,17 @@ class _WelcomeHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      padding: const EdgeInsets.fromLTRB(
+        _PlannerLayout.pageHorizontalPadding,
+        20,
+        _PlannerLayout.pageHorizontalPadding,
+        _PlannerLayout.sheetBottomPadding,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(_PlannerLayout.sheetHorizontalPadding),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -1622,7 +1834,7 @@ class _WelcomeHero extends StatelessWidget {
                   AppTheme.secondaryColor.withValues(alpha: 0.05),
                 ],
               ),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(_PlannerLayout.cardRadius),
               border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.16)),
             ),
             child: Column(
@@ -1634,7 +1846,7 @@ class _WelcomeHero extends StatelessWidget {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: AppTheme.primaryColor.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(_PlannerLayout.controlRadius),
                       ),
                       child: const Icon(Icons.auto_awesome_rounded, color: AppTheme.primaryColor, size: 26),
                     ),
@@ -1853,7 +2065,7 @@ class _PlannerInputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final radius = large ? 28.0 : 24.0;
+    final radius = large ? 28.0 : _PlannerLayout.sheetTopRadius;
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: large ? 20 : 14,
@@ -1870,7 +2082,7 @@ class _PlannerInputBar extends StatelessWidget {
             offset: const Offset(0, 4),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: AppTheme.textPrimary.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
@@ -1907,10 +2119,10 @@ class _PlannerInputBar extends StatelessWidget {
           const SizedBox(width: 10),
           Material(
             color: AppTheme.primaryColor,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(_PlannerLayout.sendButtonRadius),
             child: InkWell(
               onTap: isGenerating ? null : onSend,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(_PlannerLayout.sendButtonRadius),
               child: Container(
                 width: large ? 48 : 44,
                 height: large ? 48 : 44,
@@ -1968,10 +2180,10 @@ class _TypingDotsState extends State<_TypingDots> with SingleTickerProviderState
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: AppTheme.surfaceVariant,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(_PlannerLayout.cardRadius),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
+                color: AppTheme.textPrimary.withValues(alpha: 0.05),
                 blurRadius: 6,
                 offset: const Offset(0, 1),
               ),
@@ -2089,7 +2301,7 @@ class _ChatBubble extends StatelessWidget {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
+                            color: AppTheme.textPrimary.withValues(alpha: 0.06),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -2333,7 +2545,7 @@ class _TripDetailsCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(_PlannerLayout.panelRadius),
         boxShadow: [
           BoxShadow(
             color: AppTheme.primaryColor.withValues(alpha: 0.08),
@@ -2544,10 +2756,10 @@ class _YourVibeCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(_PlannerLayout.panelRadius),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 6),
           ),
@@ -2613,17 +2825,17 @@ class _GenerateButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: (canGenerate && !isGenerating) ? onTap : null,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(_PlannerLayout.panelRadius),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 18),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: canGenerate && !isGenerating
-                  ? [const Color(0xFF0F766E), const Color(0xFF0D9488)]
+                  ? [AppTheme.primaryColor, AppTheme.primaryDark]
                   : [AppTheme.textTertiary.withValues(alpha: 0.4), AppTheme.textTertiary.withValues(alpha: 0.3)],
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(_PlannerLayout.panelRadius),
             boxShadow: [
               BoxShadow(
                 color: (canGenerate && !isGenerating ? AppTheme.primaryColor : Colors.grey).withValues(alpha: 0.35),
@@ -2714,12 +2926,12 @@ class _ActivityContextCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const accent = Color(0xFF0EA5E9);
+    const accent = AppTheme.secondaryColor;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: hasContext ? onTap : null,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(_PlannerLayout.panelRadius),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -2731,7 +2943,7 @@ class _ActivityContextCard extends StatelessWidget {
                 accent.withValues(alpha: 0.06),
               ],
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(_PlannerLayout.panelRadius),
             border: Border.all(color: accent.withValues(alpha: 0.4)),
             boxShadow: [
               BoxShadow(
@@ -2794,7 +3006,7 @@ class _ActivityContextCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.03),
+                    color: AppTheme.textPrimary.withValues(alpha: 0.03),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: SelectableText(
@@ -2834,13 +3046,13 @@ class _MoodCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(_PlannerLayout.panelRadius),
         child: Container(
           width: 140,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: selected ? AppTheme.primaryColor.withValues(alpha: 0.12) : AppTheme.surfaceColor,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(_PlannerLayout.panelRadius),
             border: Border.all(
               color: selected ? AppTheme.primaryColor : AppTheme.borderColor,
               width: selected ? 2 : 1,
@@ -4078,7 +4290,12 @@ class _DurationPicker extends StatelessWidget {
     final days = List.generate(maxDays, (i) => i + 1);
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        padding: const EdgeInsets.fromLTRB(
+          _PlannerLayout.sheetHorizontalPadding,
+          0,
+          _PlannerLayout.sheetHorizontalPadding,
+          _PlannerLayout.sheetBottomPadding,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -4124,7 +4341,12 @@ class _PlacesPerDayPicker extends StatelessWidget {
     const options = [2, 3, 4, 5, 6, 7, 8];
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        padding: const EdgeInsets.fromLTRB(
+          _PlannerLayout.sheetHorizontalPadding,
+          0,
+          _PlannerLayout.sheetHorizontalPadding,
+          _PlannerLayout.sheetBottomPadding,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -4309,7 +4531,7 @@ class _BudgetPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(_PlannerLayout.pageHorizontalPadding),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4359,7 +4581,7 @@ class _InterestsPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(_PlannerLayout.pageHorizontalPadding),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
