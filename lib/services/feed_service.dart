@@ -279,7 +279,7 @@ class FeedService {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  /// GET /api/feed/can-post - Check if user can post (business owner/admin).
+  /// GET /api/feed/can-post - Check if user can post.
   Future<CanPostResponse> canPost(String authToken) async {
     final response = await http.get(
       Uri.parse('$_baseUrl/api/feed/can-post').replace(
@@ -294,12 +294,11 @@ class FeedService {
         jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  /// POST /api/feed - Create post (business owner/admin only). Multipart.
-  /// placeId required for business owners; optional for admins.
+  /// POST /api/feed - Create post/reel. placeId is required.
   /// [imageFiles]: multiple images for carousel (each: bytes + optional filename).
   Future<FeedPost> createPost({
     required String authToken,
-    String? placeId,
+    required String placeId,
     String? caption,
     String? authorName,
     List<int>? imageBytes,
@@ -308,19 +307,41 @@ class FeedService {
     List<({List<int> bytes, String? filename})>? imageFiles,
     List<int>? videoBytes,
     String? videoFilename,
+    String? taggedPeopleCsv,
+    String? customLocation,
+    String? soundName,
+    String? creativeEffect,
+    String? stickerLabel,
+    String? overlayText,
   }) async {
     final request =
         http.MultipartRequest('POST', Uri.parse('$_baseUrl/api/feed'));
     request.headers['Authorization'] = 'Bearer $authToken';
     request.headers['Accept'] = 'application/json';
-    if (placeId != null && placeId.isNotEmpty) {
-      request.fields['placeId'] = placeId;
-    }
+    request.fields['placeId'] = placeId;
     if (caption != null && caption.isNotEmpty) {
       request.fields['caption'] = caption;
     }
     if (authorName != null && authorName.isNotEmpty) {
       request.fields['authorName'] = authorName;
+    }
+    if (taggedPeopleCsv != null && taggedPeopleCsv.trim().isNotEmpty) {
+      request.fields['taggedPeople'] = taggedPeopleCsv.trim();
+    }
+    if (customLocation != null && customLocation.trim().isNotEmpty) {
+      request.fields['customLocation'] = customLocation.trim();
+    }
+    if (soundName != null && soundName.trim().isNotEmpty) {
+      request.fields['soundName'] = soundName.trim();
+    }
+    if (creativeEffect != null && creativeEffect.trim().isNotEmpty) {
+      request.fields['creativeEffect'] = creativeEffect.trim();
+    }
+    if (stickerLabel != null && stickerLabel.trim().isNotEmpty) {
+      request.fields['stickerLabel'] = stickerLabel.trim();
+    }
+    if (overlayText != null && overlayText.trim().isNotEmpty) {
+      request.fields['overlayText'] = overlayText.trim();
     }
 
     if (imageFiles != null && imageFiles.isNotEmpty) {
@@ -367,21 +388,35 @@ class FeedService {
     return FeedPost.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
-  /// PUT /api/feed/:id - Edit post (author only).
+  /// PUT /api/feed/:id - Edit post/reel (admin, author, or linked place owner).
   Future<FeedPost> updatePost({
     required String authToken,
     required String postId,
+    required String placeId,
     String? caption,
     bool removeImage = false,
     List<int>? imageBytes,
     String? imageFilename,
+    String? taggedPeopleCsv,
+    String? customLocation,
+    String? soundName,
+    String? creativeEffect,
+    String? stickerLabel,
+    String? overlayText,
   }) async {
     final request =
         http.MultipartRequest('PUT', Uri.parse('$_baseUrl/api/feed/$postId'));
     request.headers['Authorization'] = 'Bearer $authToken';
     request.headers['Accept'] = 'application/json';
+    request.fields['placeId'] = placeId;
     request.fields['caption'] = caption ?? '';
     request.fields['removeImage'] = removeImage.toString();
+    if (taggedPeopleCsv != null) request.fields['taggedPeople'] = taggedPeopleCsv;
+    if (customLocation != null) request.fields['customLocation'] = customLocation;
+    if (soundName != null) request.fields['soundName'] = soundName;
+    if (creativeEffect != null) request.fields['creativeEffect'] = creativeEffect;
+    if (stickerLabel != null) request.fields['stickerLabel'] = stickerLabel;
+    if (overlayText != null) request.fields['overlayText'] = overlayText;
 
     if (imageBytes != null && imageBytes.isNotEmpty) {
       final fn = _ensureImageFilename(imageFilename);
@@ -447,11 +482,14 @@ class FeedService {
   Future<LikeResponse> toggleLike({
     required String authToken,
     required String postId,
+    bool? liked,
   }) async {
     final response = await http.post(
       Uri.parse('$_baseUrl/api/feed/$postId/like'),
       headers: {..._authHeaders(authToken), 'Content-Type': 'application/json'},
-      body: '{}',
+      body: jsonEncode({
+        if (liked != null) 'liked': liked,
+      }),
     );
     if (response.statusCode != 200) {
       throw FeedException(response.statusCode, _parseError(response.body));
@@ -638,6 +676,12 @@ class FeedPost {
   final bool savedByMe;
   final bool hideLikes;
   final bool commentsDisabled;
+  final List<String> taggedPeople;
+  final String? customLocation;
+  final String? soundName;
+  final String? creativeEffect;
+  final String? stickerLabel;
+  final String? overlayText;
   /// `pending` until admin approves (discoverer posts); `approved` / `rejected` otherwise.
   final String moderationStatus;
 
@@ -661,6 +705,12 @@ class FeedPost {
     this.savedByMe = false,
     this.hideLikes = false,
     this.commentsDisabled = false,
+    this.taggedPeople = const [],
+    this.customLocation,
+    this.soundName,
+    this.creativeEffect,
+    this.stickerLabel,
+    this.overlayText,
     this.moderationStatus = 'approved',
   });
 
@@ -724,6 +774,15 @@ class FeedPost {
       savedByMe: json['savedByMe'] as bool? ?? false,
       hideLikes: json['hideLikes'] as bool? ?? false,
       commentsDisabled: json['commentsDisabled'] as bool? ?? false,
+      taggedPeople: (json['taggedPeople'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList(growable: false) ??
+          const [],
+      customLocation: json['customLocation']?.toString(),
+      soundName: json['soundName']?.toString(),
+      creativeEffect: json['creativeEffect']?.toString(),
+      stickerLabel: json['stickerLabel']?.toString(),
+      overlayText: json['overlayText']?.toString(),
       moderationStatus: json['moderationStatus'] as String? ?? 'approved',
     );
   }
@@ -740,6 +799,12 @@ class FeedPost {
     String? imageUrl,
     List<String>? imageUrls,
     String? videoUrl,
+    List<String>? taggedPeople,
+    String? customLocation,
+    String? soundName,
+    String? creativeEffect,
+    String? stickerLabel,
+    String? overlayText,
   }) {
     return FeedPost(
       id: id,
@@ -761,6 +826,12 @@ class FeedPost {
       savedByMe: savedByMe ?? this.savedByMe,
       hideLikes: hideLikes ?? this.hideLikes,
       commentsDisabled: commentsDisabled ?? this.commentsDisabled,
+      taggedPeople: taggedPeople ?? this.taggedPeople,
+      customLocation: customLocation ?? this.customLocation,
+      soundName: soundName ?? this.soundName,
+      creativeEffect: creativeEffect ?? this.creativeEffect,
+      stickerLabel: stickerLabel ?? this.stickerLabel,
+      overlayText: overlayText ?? this.overlayText,
       moderationStatus: moderationStatus ?? this.moderationStatus,
     );
   }
@@ -935,6 +1006,7 @@ class CanPostResponse {
   /// User has 15+ distinct check-ins; posts go to admin review first.
   final bool isDiscoverableContributor;
   final bool requiresModeration;
+  final bool uploadBlocked;
   final List<OwnedPlace> ownedPlaces;
 
   CanPostResponse({
@@ -943,6 +1015,7 @@ class CanPostResponse {
     this.isBusinessOwner = false,
     this.isDiscoverableContributor = false,
     this.requiresModeration = false,
+    this.uploadBlocked = false,
     this.ownedPlaces = const [],
   });
 
@@ -954,6 +1027,7 @@ class CanPostResponse {
         isDiscoverableContributor:
             json['isDiscoverableContributor'] as bool? ?? false,
         requiresModeration: json['requiresModeration'] as bool? ?? false,
+        uploadBlocked: json['uploadBlocked'] as bool? ?? false,
         ownedPlaces: (json['ownedPlaces'] as List<dynamic>?)
                 ?.map((e) => OwnedPlace.fromJson(e as Map<String, dynamic>))
                 .toList() ??

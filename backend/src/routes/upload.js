@@ -1,23 +1,16 @@
 /**
  * Shared image upload for dashboard (places) and feed.
- * Saves to uploads/images/ and returns URL so places form and feed use the same storage.
+ * Uploads to ImageKit and returns public URL.
  */
 const express = require('express');
 const multer = require('multer');
-const fs = require('fs');
 const { authMiddleware } = require('../middleware/auth');
-const adminAuth = require('../middleware/adminAuth');
-const { getSecureStorage, imageFileFilter, MAX_IMAGE_SIZE, UPLOADS_IMAGES_DIR } = require('../middleware/secureUpload');
+const { imageFileFilter, MAX_IMAGE_SIZE } = require('../middleware/secureUpload');
+const { uploadFeedImage, isConfigured: mediaStorageConfigured } = require('../lib/supabaseStorage');
 
 const router = express.Router();
-
-if (!fs.existsSync(UPLOADS_IMAGES_DIR)) {
-  fs.mkdirSync(UPLOADS_IMAGES_DIR, { recursive: true });
-}
-
-const storage = multer.diskStorage(getSecureStorage(UPLOADS_IMAGES_DIR));
 const uploadImage = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: MAX_IMAGE_SIZE },
   fileFilter: imageFileFilter,
 });
@@ -34,17 +27,25 @@ function adminOrAuth(req, res, next) {
  * POST /api/upload/image
  * Auth: X-Admin-Key (admin) or Bearer JWT (business owner).
  * Body: multipart with field "image" (single file).
- * Returns: { url: "/uploads/images/xxx.jpg" }
+ * Returns: { url: "https://ik.imagekit.io/..." }
  */
-router.post('/image', adminOrAuth, (req, res) => {
-  uploadImage.single('image')(req, res, (err) => {
+router.post('/image', adminOrAuth, async (req, res) => {
+  uploadImage.single('image')(req, res, async (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'File too large. Max 10MB.' });
       return res.status(400).json({ error: err.message || 'Invalid file' });
     }
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'No image file provided' });
-    res.status(201).json({ url: `/uploads/images/${file.filename}` });
+    try {
+      if (!mediaStorageConfigured()) {
+        return res.status(503).json({ error: 'Image upload requires ImageKit configuration' });
+      }
+      const url = await uploadFeedImage(file.buffer, file);
+      return res.status(201).json({ url });
+    } catch (e) {
+      return res.status(500).json({ error: e.message || 'Failed to upload image' });
+    }
   });
 });
 

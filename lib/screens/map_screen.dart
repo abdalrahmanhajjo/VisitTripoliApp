@@ -171,6 +171,9 @@ class _MapScreenState extends State<MapScreen> {
   bool _arrangeNearby = true;
   String _nearbyMode = 'off'; // off | me | place
   String? _nearbyAnchorPlaceId;
+  Map<String, double> _nearMeRoadMetersByPlaceId = const {};
+  String? _nearMeRoadDistancesResolvedKey;
+  String? _nearMeRoadDistancesInFlightKey;
 
   RouteResult? _activeRoute;
   ll.LatLng? _routeOrigin;
@@ -204,6 +207,42 @@ class _MapScreenState extends State<MapScreen> {
     final pos = mapProvider.currentPosition;
     if (pos == null) return null;
     return (lat: pos.latitude, lng: pos.longitude);
+  }
+
+  Future<void> _onNearbyModeChanged(
+    String mode,
+    MapProvider mapProvider,
+    AppLocalizations l10n, {
+    required bool canUsePlaceMode,
+  }) async {
+    if (mode == 'place' && !canUsePlaceMode) return;
+
+    if (mode == 'me') {
+      if (mapProvider.currentPosition == null) {
+        await mapProvider.getCurrentLocation();
+      }
+      if (!mounted) return;
+      if (mapProvider.currentPosition == null) {
+        setState(() {
+          _nearbyMode = 'off';
+          _arrangeNearby = false;
+        });
+        final msg = mapProvider.lastLocationError ?? 'Location is not available.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _nearbyMode = mode;
+      _arrangeNearby = mode != 'off';
+    });
   }
 
   List<(String id, String label, IconData? icon)> _categoryFilterEntries(
@@ -240,40 +279,152 @@ class _MapScreenState extends State<MapScreen> {
     LatLng? anchor,
   }) {
     if (input.length < 2) return input;
-    final remaining = List<Place>.from(input);
-    final ordered = <Place>[];
+    // Keep invalid coordinates unchanged; route optimization requires valid points.
+    if (input.any((p) => p.latitude == null || p.longitude == null)) {
+      return input;
+    }
 
-    var startIndex = 0;
-    if (anchor != null) {
-      var best = double.infinity;
-      for (var i = 0; i < remaining.length; i++) {
-        final p = remaining[i];
-        if (p.latitude == null || p.longitude == null) continue;
+    int nearestToAnchorIndex(List<Place> places) {
+      if (anchor == null) return 0;
+      var bestIdx = 0;
+      var bestMeters = double.infinity;
+      for (var i = 0; i < places.length; i++) {
+        final p = places[i];
         final d = _haversineMeters(anchor, LatLng(p.latitude!, p.longitude!));
-        if (d < best) {
-          best = d;
-          startIndex = i;
+        if (d < bestMeters) {
+          bestMeters = d;
+          bestIdx = i;
         }
+      }
+      return bestIdx;
+    }
+
+    List<Place> buildGreedyRoute(List<Place> source, int startIndex) {
+      final remaining = List<Place>.from(source);
+      final ordered = <Place>[];
+      ordered.add(remaining.removeAt(startIndex));
+      while (remaining.isNotEmpty) {
+        final last = ordered.last;
+        final from = LatLng(last.latitude!, last.longitude!);
+        var nearestIdx = 0;
+        var nearestM = double.infinity;
+        for (var i = 0; i < remaining.length; i++) {
+          final p = remaining[i];
+          final d = _haversineMeters(from, LatLng(p.latitude!, p.longitude!));
+          if (d < nearestM) {
+            nearestM = d;
+            nearestIdx = i;
+          }
+        }
+        ordered.add(remaining.removeAt(nearestIdx));
+      }
+      return ordered;
+    }
+
+    // Multi-start nearest-neighbor: reduces local minima vs single-start approach.
+    final startCandidates = <int>{};
+    if (anchor != null) {
+      startCandidates.add(nearestToAnchorIndex(input));
+    } else {
+      startCandidates.add(0);
+      startCandidates.add(input.length - 1);
+      for (var i = 1; i < input.length - 1; i += (input.length / 5).ceil()) {
+        startCandidates.add(i);
       }
     }
 
-    ordered.add(remaining.removeAt(startIndex));
-    while (remaining.isNotEmpty) {
-      final last = ordered.last;
-      final from = LatLng(last.latitude!, last.longitude!);
-      var nearestIdx = 0;
-      var nearestM = double.infinity;
-      for (var i = 0; i < remaining.length; i++) {
-        final p = remaining[i];
-        final d = _haversineMeters(from, LatLng(p.latitude!, p.longitude!));
-        if (d < nearestM) {
-          nearestM = d;
-          nearestIdx = i;
-        }
+    List<Place>? bestRoute;
+    var bestMeters = double.infinity;
+    for (final start in startCandidates) {
+      final greedy = buildGreedyRoute(input, start);
+      final improved = _improveOrderWithTwoOpt(greedy);
+      final meters = _routeLengthMeters(improved);
+      if (meters < bestMeters) {
+        bestMeters = meters;
+        bestRoute = improved;
       }
-      ordered.add(remaining.removeAt(nearestIdx));
     }
-    return _improveOrderWithTwoOpt(ordered);
+    return bestRoute ?? input;
+  }
+
+  List<Place> _sortPlacesByDistanceFromAnchor(
+    List<Place> input,
+    LatLng anchor,
+  ) {
+    if (input.length < 2) return input;
+    final sorted = List<Place>.from(input);
+    sorted.sort((a, b) {
+      if (a.latitude == null ||
+          a.longitude == null ||
+          b.latitude == null ||
+          b.longitude == null) {
+        return 0;
+      }
+      final da = _haversineMeters(anchor, LatLng(a.latitude!, a.longitude!));
+      final db = _haversineMeters(anchor, LatLng(b.latitude!, b.longitude!));
+      return da.compareTo(db);
+    });
+    return sorted;
+  }
+
+  String _nearMeCacheKey(LatLng anchor, List<Place> places) {
+    final sortedIds = places.map((p) => p.id).toList()..sort();
+    return '${anchor.latitude.toStringAsFixed(4)},${anchor.longitude.toStringAsFixed(4)}'
+        '|${sortedIds.join(",")}';
+  }
+
+  double _nearMeDistanceMetersForPlace(Place place, LatLng anchor) {
+    final roadMeters = _nearMeRoadMetersByPlaceId[place.id];
+    if (roadMeters != null && roadMeters > 0) return roadMeters;
+    if (place.latitude == null || place.longitude == null) {
+      return double.infinity;
+    }
+    return _haversineMeters(anchor, LatLng(place.latitude!, place.longitude!));
+  }
+
+  Future<void> _ensureNearMeRoadDistances({
+    required LatLng anchor,
+    required List<Place> places,
+  }) async {
+    if (places.isEmpty) return;
+    final key = _nearMeCacheKey(anchor, places);
+    if (_nearMeRoadDistancesResolvedKey == key ||
+        _nearMeRoadDistancesInFlightKey == key) {
+      return;
+    }
+    _nearMeRoadDistancesInFlightKey = key;
+
+    final candidates = places
+        .where((p) => p.latitude != null && p.longitude != null)
+        .toList()
+      ..sort((a, b) {
+        final da = _haversineMeters(anchor, LatLng(a.latitude!, a.longitude!));
+        final db = _haversineMeters(anchor, LatLng(b.latitude!, b.longitude!));
+        return da.compareTo(db);
+      });
+
+    final next = <String, double>{};
+    for (final p in candidates) {
+      // If user moved significantly or filters changed, cancel this stale run.
+      if (_nearMeRoadDistancesInFlightKey != key) return;
+      final route = await RouteService.getRoute(
+        originLat: anchor.latitude,
+        originLng: anchor.longitude,
+        destLat: p.latitude!,
+        destLng: p.longitude!,
+        travelMode: MapLauncher.driving,
+      );
+      if (route != null && route.totalDistanceMeters > 0) {
+        next[p.id] = route.totalDistanceMeters;
+      }
+    }
+
+    if (!mounted || _nearMeRoadDistancesInFlightKey != key) return;
+    setState(() {
+      _nearMeRoadMetersByPlaceId = next;
+      _nearMeRoadDistancesResolvedKey = key;
+      _nearMeRoadDistancesInFlightKey = null;
+    });
   }
 
   List<Place> _improveOrderWithTwoOpt(List<Place> route) {
@@ -960,18 +1111,42 @@ class _MapScreenState extends State<MapScreen> {
     final nearbyAnchor = _nearbyMode == 'me'
         ? meAnchor
         : (_nearbyMode == 'place' ? placeAnchor : null);
+    final shouldSortNearMe = !tourOnly &&
+        !tripOnly &&
+        _nearbyMode == 'me' &&
+        meAnchor != null &&
+        places.length > 1;
     final shouldArrangeNearby = !tourOnly &&
         !tripOnly &&
         _arrangeNearby &&
-        _nearbyMode != 'off' &&
-        nearbyAnchor != null &&
+        _nearbyMode == 'place' &&
+        placeAnchor != null &&
         places.length > 1;
-    final placesForMap = shouldArrangeNearby
-        ? _arrangePlacesByProximity(
-            places,
-            anchor: nearbyAnchor,
-          )
-        : places;
+    if (shouldSortNearMe) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _ensureNearMeRoadDistances(anchor: meAnchor, places: places);
+      });
+    }
+    final placesForMap = () {
+      if (shouldSortNearMe) {
+        final anchor = meAnchor;
+        final sorted = _sortPlacesByDistanceFromAnchor(places, anchor);
+        sorted.sort((a, b) {
+          final da = _nearMeDistanceMetersForPlace(a, anchor);
+          final db = _nearMeDistanceMetersForPlace(b, anchor);
+          return da.compareTo(db);
+        });
+        return sorted;
+      }
+      if (shouldArrangeNearby) {
+        return _arrangePlacesByProximity(
+          places,
+          anchor: nearbyAnchor,
+        );
+      }
+      return places;
+    }();
 
     LatLng defaultCenter = kTripoliCenter;
     double zoom = kExploreMapDefaultZoom;
@@ -990,17 +1165,25 @@ class _MapScreenState extends State<MapScreen> {
     final coordinates =
         placesForMap.map((p) => LatLng(p.latitude!, p.longitude!)).toList();
     final nearbyLegMeters = _routeLegDistancesMeters(placesForMap);
-    final nearbyTotalMeters = _routeLengthMeters(placesForMap);
-    final nearbyFromAnchorMeters = shouldArrangeNearby
-        ? placesForMap
+    final nearbyFromAnchorMeters = () {
+      if (shouldSortNearMe) {
+        final anchor = meAnchor;
+        return placesForMap
+            .map((p) => _nearMeDistanceMetersForPlace(p, anchor))
+            .toList();
+      }
+      if (shouldArrangeNearby) {
+        return placesForMap
             .map(
               (p) => _haversineMeters(
-                nearbyAnchor,
+                nearbyAnchor!,
                 LatLng(p.latitude!, p.longitude!),
               ),
             )
-            .toList()
-        : const <double>[];
+            .toList();
+      }
+      return const <double>[];
+    }();
 
     final initialPosition = CameraPosition(
       target: defaultCenter,
@@ -1014,7 +1197,7 @@ class _MapScreenState extends State<MapScreen> {
       if (tourOnly || tripOnly) return 8.0;
       if (_activeRoute != null && !_isNavigating) return 196.0;
       if (_activeRoute != null && _isNavigating) return 52.0;
-      if (showSearchAndFilters) return 148.0;
+      if (showSearchAndFilters) return 124.0;
       return 56.0;
     }();
     final mapBottomPadding = () {
@@ -1025,6 +1208,7 @@ class _MapScreenState extends State<MapScreen> {
       if (!tourOnly &&
           !tripOnly &&
           placesForMap.length > 1 &&
+          _nearbyMode != 'off' &&
           _activeRoute == null) {
         return 268.0;
       }
@@ -1033,10 +1217,10 @@ class _MapScreenState extends State<MapScreen> {
     final mapControlsTop = () {
       if (_activeRoute != null && !_isNavigating) return 112.0;
       if (tourOnly || tripOnly) return 108.0;
-      if (showSearchAndFilters) return 212.0;
+      if (showSearchAndFilters) return 188.0;
       return 100.0;
     }();
-    final locationBannerTop = showSearchAndFilters ? 182.0 : 88.0;
+    final locationBannerTop = showSearchAndFilters ? 160.0 : 88.0;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -1380,59 +1564,47 @@ class _MapScreenState extends State<MapScreen> {
                         showcaseKey: MapScreen.tutorialMapFilterKey,
                         title: l10n.appTutorialMapFiltersSpotTitle,
                         description: l10n.appTutorialMapFiltersSpotBody,
-                        child: Material(
-                          color: Colors.white,
-                          elevation: 2,
-                          borderRadius: BorderRadius.circular(12),
-                          shadowColor: Colors.black.withValues(alpha: 0.1),
-                          child: InkWell(
-                            onTap: () =>
-                                _openMapCategoryFilterSheet(context, l10n),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 11),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.tune_rounded,
-                                    size: 20,
-                                    color: AppTheme.primaryColor,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          l10n.mapFilterSectionTitle,
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTheme.textTertiary,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          _mapActiveCategoryLabel(l10n),
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppTheme.textPrimary,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Material(
+                            color: Colors.white.withValues(alpha: 0.96),
+                            elevation: 2,
+                            borderRadius: BorderRadius.circular(999),
+                            shadowColor: Colors.black.withValues(alpha: 0.08),
+                            child: InkWell(
+                              onTap: () =>
+                                  _openMapCategoryFilterSheet(context, l10n),
+                              borderRadius: BorderRadius.circular(999),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 9),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.tune_rounded,
+                                      size: 18,
+                                      color: AppTheme.primaryColor,
                                     ),
-                                  ),
-                                  const Icon(
-                                    Icons.keyboard_arrow_down_rounded,
-                                    color: AppTheme.textTertiary,
-                                  ),
-                                ],
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _mapActiveCategoryLabel(l10n),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      size: 18,
+                                      color: AppTheme.textTertiary,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -1543,17 +1715,26 @@ class _MapScreenState extends State<MapScreen> {
               l10n: l10n,
               places: placesForMap,
               legMeters: nearbyLegMeters,
-              totalMeters: nearbyTotalMeters,
               mode: _nearbyMode,
               distancesFromAnchor: nearbyFromAnchorMeters,
               onModeChanged: (mode) {
+                _onNearbyModeChanged(
+                  mode,
+                  mapProvider,
+                  l10n,
+                  canUsePlaceMode: placeAnchor != null,
+                );
+              },
+              onCloseSection: () {
                 setState(() {
-                  if (mode == 'place' && placeAnchor == null) return;
-                  _nearbyMode = mode;
-                  _arrangeNearby = mode != 'off';
+                  _nearbyMode = 'off';
+                  _arrangeNearby = false;
                 });
               },
               canUsePlaceMode: placeAnchor != null,
+              onActivePlaceChanged: (p) {
+                setState(() => _nearbyAnchorPlaceId = p.id);
+              },
               onPlaceTap: (p) async {
                 setState(() {
                   _nearbyAnchorPlaceId = p.id;
@@ -1845,6 +2026,13 @@ class _MapScreenState extends State<MapScreen> {
     PlacesProvider placesProvider,
   ) {
     final markers = <Marker>{};
+    final singleNearbyPinId = (!tourOnly &&
+            !tripOnly &&
+            _activeRoute == null &&
+            (_nearbyMode == 'place' || _nearbyMode == 'me') &&
+            _nearbyAnchorPlaceId != null)
+        ? _nearbyAnchorPlaceId
+        : null;
     if (_routeOrigin != null) {
       markers.add(
         Marker(
@@ -1860,6 +2048,9 @@ class _MapScreenState extends State<MapScreen> {
     }
     for (var i = 0; i < places.length; i++) {
       final place = places[i];
+      if (singleNearbyPinId != null && place.id != singleNearbyPinId) {
+        continue;
+      }
 
       if (_isNavigating && !tourOnly && !tripOnly) {
         if (_routeDestination != null && _routeDestination!.id != place.id && _routeDestination!.id != 'tour_route') {
@@ -2059,9 +2250,13 @@ class _MapScreenState extends State<MapScreen> {
         mapProvider: mapProvider,
         placesProvider: placesProvider,
         parentContext: context,
-        onViewOnMap: () {
+        onNearPlaces: () {
           Navigator.pop(ctx);
-          context.push('/map?placeId=${place.id}');
+          setState(() {
+            _nearbyAnchorPlaceId = place.id;
+            _nearbyMode = 'place';
+            _arrangeNearby = true;
+          });
         },
         onDetails: () {
           Navigator.pop(ctx);
@@ -2178,23 +2373,25 @@ class _NearbyPlacesBar extends StatefulWidget {
   final AppLocalizations l10n;
   final List<Place> places;
   final List<double> legMeters;
-  final double totalMeters;
   final String mode;
   final bool canUsePlaceMode;
   final List<double> distancesFromAnchor;
   final ValueChanged<String> onModeChanged;
   final ValueChanged<Place> onPlaceTap;
+  final ValueChanged<Place> onActivePlaceChanged;
+  final VoidCallback onCloseSection;
 
   const _NearbyPlacesBar({
     required this.l10n,
     required this.places,
     required this.legMeters,
-    required this.totalMeters,
     required this.mode,
     required this.canUsePlaceMode,
     required this.distancesFromAnchor,
     required this.onModeChanged,
     required this.onPlaceTap,
+    required this.onActivePlaceChanged,
+    required this.onCloseSection,
   });
 
   @override
@@ -2209,6 +2406,10 @@ class _NearbyPlacesBarState extends State<_NearbyPlacesBar> {
   void initState() {
     super.initState();
     _controller = PageController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.places.isEmpty) return;
+      widget.onActivePlaceChanged(widget.places[_index]);
+    });
   }
 
   @override
@@ -2223,6 +2424,7 @@ class _NearbyPlacesBarState extends State<_NearbyPlacesBar> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || !_controller.hasClients) return;
         _controller.jumpToPage(_index);
+        widget.onActivePlaceChanged(widget.places[_index]);
       });
     }
   }
@@ -2241,6 +2443,10 @@ class _NearbyPlacesBarState extends State<_NearbyPlacesBar> {
   @override
   Widget build(BuildContext context) {
     if (widget.places.isEmpty) return const SizedBox.shrink();
+    final showNearbySection = widget.mode != 'off';
+    final activeDistance = (_index >= 0 && _index < widget.distancesFromAnchor.length)
+        ? _fmtDistance(widget.distancesFromAnchor[_index])
+        : null;
     return Positioned(
       left: 8,
       right: 8,
@@ -2264,176 +2470,251 @@ class _NearbyPlacesBarState extends State<_NearbyPlacesBar> {
                   ),
                 ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _NearbyModeChip(
-                    icon: Icons.list_rounded,
-                    label: widget.l10n.mapFilterAll,
-                    active: widget.mode == 'off',
-                    onTap: () => widget.onModeChanged('off'),
-                  ),
-                  const SizedBox(width: 6),
-                  _NearbyModeChip(
-                    icon: Icons.my_location_rounded,
-                    label: widget.l10n.nearMe,
-                    active: widget.mode == 'me',
-                    onTap: () => widget.onModeChanged('me'),
-                  ),
-                  const SizedBox(width: 6),
-                  _NearbyModeChip(
-                    icon: Icons.place_rounded,
-                    label: 'From place',
-                    active: widget.mode == 'place',
-                    enabled: widget.canUsePlaceMode,
-                    onTap: () => widget.onModeChanged('place'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Material(
-              elevation: 10,
-              borderRadius: BorderRadius.circular(16),
-              color: AppTheme.surfaceColor,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.8)),
-                ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _DeckArrow(
-                      icon: Icons.chevron_left_rounded,
-                      tooltip: widget.l10n.mapDeckPreviousPlace,
-                      enabled: _index > 0,
-                      onTap: () async {
-                        final next = _index - 1;
-                        if (next < 0) return;
-                        setState(() => _index = next);
-                        await _controller.animateToPage(
-                          next,
-                          duration: const Duration(milliseconds: 240),
-                          curve: Curves.easeOutCubic,
-                        );
-                      },
+                    _NearbyModeChip(
+                      icon: Icons.list_rounded,
+                      label: widget.l10n.mapFilterAll,
+                      active: widget.mode == 'off',
+                      onTap: () => widget.onModeChanged('off'),
                     ),
-                    Expanded(
-                      child: SizedBox(
-                        height: 120,
-                        child: PageView.builder(
-                          controller: _controller,
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: widget.places.length,
-                          onPageChanged: (i) => setState(() => _index = i),
-                          itemBuilder: (context, i) {
-                            final p = widget.places[i];
-                            final fromYou = i < widget.distancesFromAnchor.length
-                                ? _fmtDistance(widget.distancesFromAnchor[i])
-                                : null;
-                            final fromPrev = (i > 0 && i - 1 < widget.legMeters.length)
-                                ? _fmtDistance(widget.legMeters[i - 1])
-                                : null;
-                            return Semantics(
-                              button: true,
-                              label: p.name,
-                              hint: widget.l10n.mapSemanticsPlaceCardHint,
-                              child: InkWell(
-                              onTap: () {
-                                HapticFeedback.lightImpact();
-                                widget.onPlaceTap(p);
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Row(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: SizedBox(
-                                      width: 112,
-                                      height: 104,
-                                      child: p.images.isNotEmpty
-                                          ? AppImage(src: p.images.first, fit: BoxFit.cover)
-                                          : Container(
-                                              color: AppTheme.surfaceVariant,
-                                              alignment: Alignment.center,
-                                              child: const Icon(Icons.place_rounded, color: AppTheme.textTertiary),
-                                            ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          p.name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        if ((widget.mode == 'me' ||
-                                                widget.mode == 'place') &&
-                                            fromYou != null)
-                                          Text(
-                                            widget.l10n.mapDeckDistanceFromYou(fromYou),
-                                            style: const TextStyle(
-                                                fontSize: 12,
-                                                color: AppTheme.textSecondary),
-                                          ),
-                                        if (widget.mode == 'off' && fromPrev != null)
-                                          Text(
-                                            widget.l10n.mapDeckFromPrevious(fromPrev),
-                                            style: const TextStyle(
-                                                fontSize: 12,
-                                                color: AppTheme.textSecondary),
-                                          ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          widget.l10n.mapOpenPlaceDetails,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppTheme.primaryColor.withValues(alpha: 0.95),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            );
-                          },
-                        ),
-                      ),
+                    const SizedBox(width: 6),
+                    _NearbyModeChip(
+                      icon: Icons.my_location_rounded,
+                      label: widget.l10n.nearMe,
+                      active: widget.mode == 'me',
+                      onTap: () => widget.onModeChanged('me'),
                     ),
-                    _DeckArrow(
-                      icon: Icons.chevron_right_rounded,
-                      tooltip: widget.l10n.mapDeckNextPlace,
-                      enabled: _index < widget.places.length - 1,
-                      onTap: () async {
-                        final next = _index + 1;
-                        if (next >= widget.places.length) return;
-                        setState(() => _index = next);
-                        await _controller.animateToPage(
-                          next,
-                          duration: const Duration(milliseconds: 240),
-                          curve: Curves.easeOutCubic,
-                        );
-                      },
+                    const SizedBox(width: 6),
+                    _NearbyModeChip(
+                      icon: Icons.place_rounded,
+                      label: 'From place',
+                      active: widget.mode == 'place',
+                      enabled: widget.canUsePlaceMode,
+                      onTap: () => widget.onModeChanged('place'),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              '${_index + 1} / ${widget.places.length} · ${widget.mode == 'me' ? widget.l10n.mapDeckRouteApprox(_fmtDistance(widget.totalMeters)) : widget.l10n.mapDeckNearbyPlaces}',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
-            ),
+            if (showNearbySection) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.38),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      widget.mode == 'me'
+                          ? (activeDistance != null
+                              ? widget.l10n.mapDeckDistanceFromYou(activeDistance)
+                              : widget.l10n.mapDeckNearbyPlaces)
+                          : widget.l10n.mapDeckNearbyPlaces,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Material(
+                    color: Colors.black.withValues(alpha: 0.38),
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        widget.onCloseSection();
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Material(
+                elevation: 10,
+                borderRadius: BorderRadius.circular(16),
+                color: AppTheme.surfaceColor,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.8)),
+                  ),
+                  child: Row(
+                    children: [
+                      _DeckArrow(
+                        icon: Icons.chevron_left_rounded,
+                        tooltip: widget.l10n.mapDeckPreviousPlace,
+                        enabled: _index > 0,
+                        onTap: () async {
+                          final next = _index - 1;
+                          if (next < 0) return;
+                          setState(() => _index = next);
+                          await _controller.animateToPage(
+                            next,
+                            duration: const Duration(milliseconds: 240),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
+                      ),
+                      Expanded(
+                        child: SizedBox(
+                          height: 126,
+                          child: PageView.builder(
+                            controller: _controller,
+                            physics: const BouncingScrollPhysics(),
+                            itemCount: widget.places.length,
+                            onPageChanged: (i) {
+                              setState(() => _index = i);
+                              widget.onActivePlaceChanged(widget.places[i]);
+                            },
+                            itemBuilder: (context, i) {
+                              final p = widget.places[i];
+                              final fromYou = i < widget.distancesFromAnchor.length
+                                  ? _fmtDistance(widget.distancesFromAnchor[i])
+                                  : null;
+                              final fromPrev = (i > 0 && i - 1 < widget.legMeters.length)
+                                  ? _fmtDistance(widget.legMeters[i - 1])
+                                  : null;
+                              return Semantics(
+                                button: true,
+                                label: p.name,
+                                hint: widget.l10n.mapSemanticsPlaceCardHint,
+                                child: InkWell(
+                                onTap: () {
+                                  HapticFeedback.lightImpact();
+                                  widget.onPlaceTap(p);
+                                },
+                                borderRadius: BorderRadius.circular(12),
+                                child: Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: SizedBox(
+                                        width: 112,
+                                        height: 104,
+                                        child: p.images.isNotEmpty
+                                            ? AppImage(src: p.images.first, fit: BoxFit.cover)
+                                            : Container(
+                                                color: AppTheme.surfaceVariant,
+                                                alignment: Alignment.center,
+                                                child: const Icon(Icons.place_rounded, color: AppTheme.textTertiary),
+                                              ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            p.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            p.category,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppTheme.textTertiary,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          if ((widget.mode == 'me' ||
+                                                  widget.mode == 'place') &&
+                                              fromYou != null)
+                                            Text(
+                                              widget.l10n.mapDeckDistanceFromYou(fromYou),
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppTheme.textSecondary),
+                                            ),
+                                          if (widget.mode == 'off' && fromPrev != null)
+                                            Text(
+                                              widget.l10n.mapDeckFromPrevious(fromPrev),
+                                              style: const TextStyle(
+                                                  fontSize: 12,
+                                                  color: AppTheme.textSecondary),
+                                            ),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                widget.l10n.mapOpenPlaceDetails,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: AppTheme.primaryColor.withValues(alpha: 0.95),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Icon(
+                                                Icons.arrow_forward_rounded,
+                                                size: 14,
+                                                color: AppTheme.primaryColor.withValues(alpha: 0.95),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      _DeckArrow(
+                        icon: Icons.chevron_right_rounded,
+                        tooltip: widget.l10n.mapDeckNextPlace,
+                        enabled: _index < widget.places.length - 1,
+                        onTap: () async {
+                          final next = _index + 1;
+                          if (next >= widget.places.length) return;
+                          setState(() => _index = next);
+                          await _controller.animateToPage(
+                            next,
+                            duration: const Duration(milliseconds: 240),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${_index + 1} / ${widget.places.length}',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+              ),
+            ],
           ],
         ),
       ),
@@ -2469,16 +2750,16 @@ class _NearbyModeChip extends StatelessWidget {
             : null,
         borderRadius: BorderRadius.circular(999),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
             color: active
-                ? AppTheme.primaryColor.withValues(alpha: 0.14)
-                : AppTheme.surfaceVariant,
+                ? AppTheme.primaryColor.withValues(alpha: 0.18)
+                : AppTheme.surfaceVariant.withValues(alpha: 0.85),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: active
-                  ? AppTheme.primaryColor.withValues(alpha: 0.35)
-                  : AppTheme.borderColor,
+                  ? AppTheme.primaryColor.withValues(alpha: 0.45)
+                  : AppTheme.borderColor.withValues(alpha: 0.85),
             ),
           ),
           child: Row(
@@ -3330,7 +3611,7 @@ class _PlaceInfoSheet extends StatelessWidget {
   final MapProvider mapProvider;
   final PlacesProvider placesProvider;
   final BuildContext parentContext;
-  final VoidCallback onViewOnMap;
+  final VoidCallback onNearPlaces;
   final VoidCallback onDetails;
   final VoidCallback onClose;
   final void Function(
@@ -3346,7 +3627,7 @@ class _PlaceInfoSheet extends StatelessWidget {
     required this.mapProvider,
     required this.placesProvider,
     required this.parentContext,
-    required this.onViewOnMap,
+    required this.onNearPlaces,
     required this.onDetails,
     required this.onClose,
     required this.onDirectionsRequested,
@@ -3606,9 +3887,9 @@ class _PlaceInfoSheet extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: onViewOnMap,
+                          onPressed: onNearPlaces,
                           icon: const Icon(Icons.near_me_rounded, size: 20),
-                          label: Text(l10n.mapViewOnMapLowercase),
+                          label: const Text('Near places to this place'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppTheme.textSecondary,
                             side: const BorderSide(color: AppTheme.borderColor),

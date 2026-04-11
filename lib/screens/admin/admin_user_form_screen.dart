@@ -23,6 +23,7 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isAdmin = false;
+  bool _feedUploadBlocked = false;
   bool _isLoading = false;
 
   @override
@@ -32,6 +33,7 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
       _nameController.text = widget.user!['name'] ?? '';
       _emailController.text = widget.user!['email'] ?? '';
       _isAdmin = widget.user!['is_admin'] == true;
+      _feedUploadBlocked = widget.user!['feed_upload_blocked'] == true;
     }
   }
 
@@ -61,6 +63,7 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
         // Update existing user
         final userData = {
           'isAdmin': _isAdmin,
+          'feedUploadBlocked': _feedUploadBlocked,
         };
         await ApiService.instance.adminUpdateUser(
           widget.user!['id'],
@@ -152,6 +155,16 @@ class _AdminUserFormScreenState extends State<AdminUserFormScreen> {
                 onChanged: (value) {
                   setState(() {
                     _isAdmin = value ?? false;
+                  });
+                },
+              ),
+              CheckboxListTile(
+                title: Text('Block feed uploads', style: AdminTheme.bodyMedium),
+                value: _feedUploadBlocked,
+                activeColor: AdminTheme.primary,
+                onChanged: (value) {
+                  setState(() {
+                    _feedUploadBlocked = value ?? false;
                   });
                 },
               ),

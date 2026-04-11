@@ -63,6 +63,8 @@ class _TripsScreenState extends State<TripsScreen> {
   bool _showPastTrips = false;
   List<Map<String, dynamic>> _incomingShareRequests = const [];
   final Set<String> _respondingShareRequestIds = <String>{};
+  final Set<String> _previewingShareRequestIds = <String>{};
+  final Map<String, List<Map<String, dynamic>>> _tripMembersCache = {};
 
   @override
   void initState() {
@@ -134,6 +136,10 @@ class _TripsScreenState extends State<TripsScreen> {
     final trips = tripsProvider.trips;
     final filteredForStats = _filteredTripsForList(tripsProvider);
     final visibleTrips = _getVisibleTrips(tripsProvider);
+    final showCollaborationRequestsCard = _incomingShareRequests.any((r) {
+      final status = (r['status'] ?? '').toString().toLowerCase();
+      return status == 'pending';
+    });
     final summaryPlaces = filteredForStats.fold<int>(
         0, (s, t) => s + tripsProvider.getPlaceIdsForTrip(t).length);
     final hp = _TripsResponsive.horizontalPadding(context);
@@ -245,12 +251,17 @@ class _TripsScreenState extends State<TripsScreen> {
                       totalPlaces: summaryPlaces,
                     ),
                     const SizedBox(height: 12),
-                    if (auth.isLoggedIn && !auth.isGuest)
+                    if (auth.isLoggedIn &&
+                        !auth.isGuest &&
+                        showCollaborationRequestsCard)
                       _TripShareRequestsCard(
                         requests: _incomingShareRequests,
                         respondingIds: _respondingShareRequestIds,
+                        previewingIds: _previewingShareRequestIds,
+                        onViewTrip: _openRequestTripPreview,
                         onRespond: (id, action) async {
                           final token = context.read<AuthProvider>().authToken;
+                          final tripsProvider = context.read<TripsProvider>();
                           if (token == null || token.isEmpty) return;
                           if (_respondingShareRequestIds.contains(id)) return;
                           setState(() => _respondingShareRequestIds.add(id));
@@ -258,6 +269,9 @@ class _TripsScreenState extends State<TripsScreen> {
                             await ApiService.instance
                                 .respondTripShareRequest(token, id, action);
                             await _loadShareRequests();
+                            if (action.toLowerCase() == 'accept' && mounted) {
+                              await tripsProvider.loadTrips(forceRefresh: true);
+                            }
                           } catch (e) {
                             if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -273,7 +287,9 @@ class _TripsScreenState extends State<TripsScreen> {
                           }
                         },
                       ),
-                    if (auth.isLoggedIn && !auth.isGuest)
+                    if (auth.isLoggedIn &&
+                        !auth.isGuest &&
+                        showCollaborationRequestsCard)
                       const SizedBox(height: 12),
                     if (trips.isEmpty)
                       _TripsEmptyState(
@@ -293,6 +309,8 @@ class _TripsScreenState extends State<TripsScreen> {
                             child: _TripCard(
                               trip: t,
                               placeIds: tripsProvider.getPlaceIdsForTrip(t),
+                              canManageTrip:
+                                  t.isHost || (t.hostUserId == auth.userId),
                               onTap: () => _openTripDetails(context, t),
                               onEdit: () => _openEditTripModal(context, t),
                               onDelete: () => _confirmDelete(context, t),
@@ -352,25 +370,45 @@ class _TripsScreenState extends State<TripsScreen> {
     _showTripModal(context, trip: trip);
   }
 
-  void _openTripDetails(BuildContext context, Trip trip) {
+  Future<void> _openTripDetails(BuildContext context, Trip trip) async {
+    final auth = context.read<AuthProvider>();
+    final tripsProvider = context.read<TripsProvider>();
+    final canManageTrip = trip.isHost || (trip.hostUserId == auth.userId);
+    List<Map<String, dynamic>> tripMembers =
+        _tripMembersCache[trip.id] ?? const <Map<String, dynamic>>[];
+    final token = auth.authToken;
+    if (token != null && token.isNotEmpty) {
+      try {
+        final fetched = await ApiService.instance.getTripMembers(token, trip.id);
+        if (mounted) {
+          _tripMembersCache[trip.id] = fetched;
+          tripMembers = fetched;
+        }
+      } catch (_) {
+        // Keep opening details even if members endpoint fails.
+      }
+    }
+    if (!mounted || !context.mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => TripDetailsModal(
         trip: trip,
-        placeIds: Provider.of<TripsProvider>(context).getPlaceIdsForTrip(trip),
+        placeIds: tripsProvider.getPlaceIdsForTrip(trip),
+        tripMembers: tripMembers,
+        canManageTrip: canManageTrip,
         onEdit: () {
+          if (!canManageTrip) return;
           Navigator.pop(ctx);
           _openEditTripModal(context, trip);
         },
+        onInvite: canManageTrip ? () => _inviteToTrip(ctx, trip) : null,
         onShare: () => _shareTrip(ctx, trip),
         onOpenMap: () {
           Navigator.pop(ctx);
-          Future.microtask(() {
-            if (!context.mounted) return;
-            openTripRouteOnMap(context, trip);
-          });
+          if (!context.mounted) return;
+          openTripRouteOnMap(context, trip);
         },
         onOpenPlace: (placeId) => context.push('/place/$placeId'),
       ),
@@ -405,6 +443,203 @@ class _TripsScreenState extends State<TripsScreen> {
               content: Text('Failed to share: ${e.toString()}'),
               behavior: SnackBarBehavior.floating),
         );
+      }
+    }
+  }
+
+  Future<void> _inviteToTrip(BuildContext context, Trip trip) async {
+    final auth = context.read<AuthProvider>();
+    final token = auth.authToken;
+    if (token == null || token.isEmpty || auth.isGuest) {
+      context.go('/login?redirect=${Uri.encodeComponent('/trips')}');
+      return;
+    }
+    final canManageTrip = trip.isHost || (trip.hostUserId == auth.userId);
+    if (!canManageTrip) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Only trip host can invite collaborators.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    try {
+      final users = await ApiService.instance.getTripShareUsers(token);
+      if (!context.mounted) return;
+      final candidates = users
+          .where((u) => (u['id']?.toString() ?? '') != (auth.userId ?? ''))
+          .toList(growable: false);
+      if (candidates.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No users available to invite.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      String query = '';
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetCtx) {
+          return StatefulBuilder(
+            builder: (ctx, setModalState) {
+              final filtered = candidates.where((u) {
+                final name = (u['name'] ?? '').toString().toLowerCase();
+                final email = (u['email'] ?? '').toString().toLowerCase();
+                final q = query.toLowerCase().trim();
+                if (q.isEmpty) return true;
+                return name.contains(q) || email.contains(q);
+              }).toList(growable: false);
+              return SafeArea(
+                top: false,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: AppTheme.backgroundColor,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 10),
+                      Container(
+                        width: 44,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppTheme.borderColor,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                        child: TextField(
+                          decoration: const InputDecoration(
+                            hintText: 'Search user by name or email',
+                            prefixIcon: Icon(Icons.search_rounded),
+                          ),
+                          onChanged: (v) => setModalState(() => query = v),
+                        ),
+                      ),
+                      Flexible(
+                        child: ListView.separated(
+                          shrinkWrap: true,
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) =>
+                              Divider(height: 1, color: AppTheme.borderColor.withValues(alpha: 0.5)),
+                          itemBuilder: (_, i) {
+                            final u = filtered[i];
+                            final id = (u['id'] ?? '').toString();
+                            final name = (u['name'] ?? 'Traveler').toString();
+                            final email = (u['email'] ?? '').toString();
+                            return ListTile(
+                              leading: const Icon(Icons.person_outline_rounded),
+                              title: Text(name),
+                              subtitle: email.isEmpty ? null : Text(email),
+                              trailing: FilledButton(
+                                onPressed: () async {
+                                  try {
+                                    await ApiService.instance.createTripShareRequest(
+                                      token,
+                                      tripId: trip.id,
+                                      toUserId: id,
+                                    );
+                                    if (!ctx.mounted) return;
+                                    Navigator.pop(ctx);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Invite sent to $name'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    if (!ctx.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Failed to invite: ${e.toString()}'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: const Text('Invite'),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load users: ${e.toString()}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _openRequestTripPreview(String requestId) async {
+    final auth = context.read<AuthProvider>();
+    final token = auth.authToken;
+    if (token == null || token.isEmpty || auth.isGuest) return;
+    if (_previewingShareRequestIds.contains(requestId)) return;
+    setState(() => _previewingShareRequestIds.add(requestId));
+    try {
+      final data =
+          await ApiService.instance.getTripShareRequestTrip(token, requestId);
+      if (!mounted) return;
+      final trip = Trip.fromJson(data);
+      final placeIds = context.read<TripsProvider>().getPlaceIdsForTrip(trip);
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => TripDetailsModal(
+          trip: trip,
+          placeIds: placeIds,
+          tripMembers: const <Map<String, dynamic>>[],
+          canManageTrip: false,
+          onInvite: null,
+          onEdit: () {},
+          onShare: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Accept request first to collaborate on this trip.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
+          onOpenMap: () {
+            Navigator.pop(ctx);
+            if (!context.mounted) return;
+            openTripRouteOnMap(context, trip);
+          },
+          onOpenPlace: (placeId) => context.push('/place/$placeId'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load trip details: ${e.toString()}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _previewingShareRequestIds.remove(requestId));
       }
     }
   }
@@ -957,11 +1192,15 @@ class _TripsSummary extends StatelessWidget {
 class _TripShareRequestsCard extends StatelessWidget {
   final List<Map<String, dynamic>> requests;
   final Set<String> respondingIds;
+  final Set<String> previewingIds;
+  final Future<void> Function(String id) onViewTrip;
   final Future<void> Function(String id, String action) onRespond;
 
   const _TripShareRequestsCard({
     required this.requests,
     required this.respondingIds,
+    required this.previewingIds,
+    required this.onViewTrip,
     required this.onRespond,
   });
 
@@ -999,6 +1238,7 @@ class _TripShareRequestsCard extends StatelessWidget {
             final from = (r['from_name'] ?? r['from_user_name'] ?? 'Traveler').toString();
             final tripName = (r['trip_name'] ?? 'Trip').toString();
             final isBusy = respondingIds.contains(id);
+            final isPreviewing = previewingIds.contains(id);
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
@@ -1011,6 +1251,18 @@ class _TripShareRequestsCard extends StatelessWidget {
                         fontSize: 13,
                       ),
                     ),
+                  ),
+                  TextButton(
+                    onPressed: (isBusy || isPreviewing)
+                        ? null
+                        : () => onViewTrip(id),
+                    child: isPreviewing
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('View trip'),
                   ),
                   TextButton(
                     onPressed: isBusy ? null : () => onRespond(id, 'reject'),
@@ -1511,6 +1763,7 @@ class _TripCardActionButton extends StatelessWidget {
 class _TripCard extends StatelessWidget {
   final Trip trip;
   final List<String> placeIds;
+  final bool canManageTrip;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -1518,6 +1771,7 @@ class _TripCard extends StatelessWidget {
   const _TripCard({
     required this.trip,
     required this.placeIds,
+    required this.canManageTrip,
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
@@ -1569,6 +1823,49 @@ class _TripCard extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 1),
                           child: _TripPhaseChip(phase: phase),
                         ),
+                        const SizedBox(width: 8),
+                        if (trip.isHost)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.workspace_premium_rounded,
+                                    size: 12, color: AppTheme.primaryColor),
+                                SizedBox(width: 4),
+                                Text(
+                                  'HOST',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceVariant,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              'Shared${(trip.hostName != null && trip.hostName!.trim().isNotEmpty) ? " by ${trip.hostName}" : ""}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ),
                         const SizedBox(width: 8),
                         Flexible(
                           flex: 2,
@@ -1646,23 +1943,25 @@ class _TripCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _TripCardActionButton(
-                    icon: FontAwesomeIcons.pen,
-                    foreground: AppTheme.textPrimary,
-                    onPressed: onEdit,
-                  ),
-                  const SizedBox(height: 8),
-                  _TripCardActionButton(
-                    icon: FontAwesomeIcons.trash,
-                    foreground: AppTheme.textSecondary,
-                    onPressed: onDelete,
-                  ),
-                ],
-              ),
+              if (canManageTrip) ...[
+                const SizedBox(width: 12),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _TripCardActionButton(
+                      icon: FontAwesomeIcons.pen,
+                      foreground: AppTheme.textPrimary,
+                      onPressed: onEdit,
+                    ),
+                    const SizedBox(height: 8),
+                    _TripCardActionButton(
+                      icon: FontAwesomeIcons.trash,
+                      foreground: AppTheme.textSecondary,
+                      onPressed: onDelete,
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

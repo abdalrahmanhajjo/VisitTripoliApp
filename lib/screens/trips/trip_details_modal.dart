@@ -118,7 +118,10 @@ class _TripPhaseBadge extends StatelessWidget {
 class TripDetailsModal extends StatelessWidget {
   final Trip trip;
   final List<String> placeIds;
+  final List<Map<String, dynamic>> tripMembers;
+  final bool canManageTrip;
   final VoidCallback onEdit;
+  final VoidCallback? onInvite;
   final VoidCallback onShare;
   final VoidCallback onOpenMap;
   /// Opens place details (e.g. `/place/:id`).
@@ -128,7 +131,10 @@ class TripDetailsModal extends StatelessWidget {
     super.key,
     required this.trip,
     required this.placeIds,
+    required this.tripMembers,
+    required this.canManageTrip,
     required this.onEdit,
+    required this.onInvite,
     required this.onShare,
     required this.onOpenMap,
     required this.onOpenPlace,
@@ -204,17 +210,33 @@ class TripDetailsModal extends StatelessWidget {
                           foregroundColor: AppTheme.textPrimary,
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      IconButton.filledTonal(
-                        onPressed: onEdit,
-                        icon: const Icon(FontAwesomeIcons.pen, size: 15),
-                        tooltip: l10n.editTrip,
-                        style: IconButton.styleFrom(
-                          minimumSize: const Size(42, 42),
-                          padding: EdgeInsets.zero,
-                          foregroundColor: AppTheme.textPrimary,
+                      if (onInvite != null) ...[
+                        const SizedBox(width: 4),
+                        IconButton.filledTonal(
+                          onPressed: onInvite,
+                          icon:
+                              const Icon(Icons.person_add_alt_1_rounded, size: 20),
+                          tooltip: 'Invite collaborator',
+                          style: IconButton.styleFrom(
+                            minimumSize: const Size(42, 42),
+                            padding: EdgeInsets.zero,
+                            foregroundColor: AppTheme.textPrimary,
+                          ),
                         ),
-                      ),
+                      ],
+                      if (canManageTrip) ...[
+                        const SizedBox(width: 4),
+                        IconButton.filledTonal(
+                          onPressed: onEdit,
+                          icon: const Icon(FontAwesomeIcons.pen, size: 15),
+                          tooltip: l10n.editTrip,
+                          style: IconButton.styleFrom(
+                            minimumSize: const Size(42, 42),
+                            padding: EdgeInsets.zero,
+                            foregroundColor: AppTheme.textPrimary,
+                          ),
+                        ),
+                      ],
                       const SizedBox(width: 4),
                       IconButton.filledTonal(
                         onPressed: () => Navigator.pop(context),
@@ -247,6 +269,109 @@ class TripDetailsModal extends StatelessWidget {
                         label: placesCountLabel,
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: _detailSectionDecoration(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.groups_rounded,
+                              size: 16,
+                              color: AppTheme.textSecondary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Trip members',
+                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        if (tripMembers.isEmpty)
+                          Text(
+                            'Only host in this trip for now.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.textSecondary,
+                                ),
+                          )
+                        else
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: tripMembers.map((m) {
+                              final name = (m['name'] ?? 'Traveler').toString();
+                              final isHost = m['isHost'] == true;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: isHost
+                                      ? AppTheme.primaryColor
+                                          .withValues(alpha: 0.13)
+                                      : AppTheme.surfaceVariant,
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: isHost
+                                        ? AppTheme.primaryColor
+                                            .withValues(alpha: 0.5)
+                                        : AppTheme.borderColor
+                                            .withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 10,
+                                      backgroundColor: isHost
+                                          ? AppTheme.primaryColor
+                                          : AppTheme.textSecondary
+                                              .withValues(alpha: 0.3),
+                                      child: Text(
+                                        name.isNotEmpty
+                                            ? name[0].toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Text(
+                                      name,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: isHost
+                                            ? FontWeight.w800
+                                            : FontWeight.w600,
+                                        color: AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                    if (isHost) ...[
+                                      const SizedBox(width: 6),
+                                      const Icon(
+                                        Icons.workspace_premium_rounded,
+                                        size: 14,
+                                        color: AppTheme.primaryColor,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                      ],
+                    ),
                   ),
                   if (trip.description != null &&
                       trip.description!.trim().isNotEmpty) ...[

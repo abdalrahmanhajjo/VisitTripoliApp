@@ -35,6 +35,7 @@ import '../social/community_tokens.dart';
 import '../social/feed_ranking.dart';
 import '../social/feed_image_utils.dart';
 import '../social/widgets/community_banners.dart';
+import '../social/widgets/community_feed_header.dart';
 import '../social/widgets/community_feed_states.dart';
 import '../social/widgets/feed_post_card.dart';
 import '../social/widgets/comments_sheet.dart';
@@ -682,7 +683,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
       showcaseKey: CommunityScreen.tutorialFeedTabsKey,
       title: l10n.appTutorialCommunityTabsTitle,
       description: l10n.appTutorialCommunityTabsBody,
-      child: _feedHeaderWidget(
+      child: CommunityFeedHeader(
         selectedMode: selectedMode,
         matchCount: matchCount,
         isSavedAvailable: isSavedAvailable,
@@ -902,7 +903,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 post: post,
                 feedVideoAutoplay: _feedVideoAutoplay,
                 authToken: auth.authToken,
-                isOwner: _isPostOwner(post, auth),
+                isOwner: _canManagePost(post, auth, feed),
                 canPost: feed.canPost?.canPost ?? false,
                 onLike: () => feed.toggleLike(auth.authToken!, post.id),
                 onSave: () => feed.toggleSave(auth.authToken!, post.id),
@@ -928,6 +929,14 @@ class _CommunityScreenState extends State<CommunityScreen> {
     if (!auth.isLoggedIn || auth.isGuest) return false;
     final uid = auth.userId;
     return uid != null && post.authorId == uid;
+  }
+
+  bool _canManagePost(FeedPost post, AuthProvider auth, FeedProvider feed) {
+    return canManageFeedPost(
+      post: post,
+      canPost: feed.canPost,
+      isAuthor: _isPostOwner(post, auth),
+    );
   }
 
   Future<void> _sharePost(FeedPost post) async {
@@ -1023,32 +1032,9 @@ class _CommunityScreenState extends State<CommunityScreen> {
     if (canPost == null || !canPost.canPost) return;
 
     final placesProvider = Provider.of<PlacesProvider>(context, listen: false);
-    final List<OwnedPlace> placeOptions;
-    if (canPost.isDiscoverableContributor) {
-      placeOptions = placesProvider.places
-          .map((p) => OwnedPlace(id: p.id, name: p.name))
-          .toList();
-      if (placeOptions.isEmpty) {
-        if (mounted) {
-          AppSnackBars.showError(
-            context,
-            'Places are still loading. Open Explore briefly, then try again.',
-          );
-        }
-        return;
-      }
-    } else {
-      placeOptions = canPost.ownedPlaces;
-      if (placeOptions.isEmpty && !canPost.isAdmin) {
-        if (mounted) {
-          AppSnackBars.showError(
-            context,
-            AppLocalizations.of(context)!.selectPlaceToPost,
-          );
-        }
-        return;
-      }
-    }
+    final placeOptions = placesProvider.places
+        .map((p) => OwnedPlace(id: p.id, name: p.name))
+        .toList(growable: false);
 
     final result = await Navigator.push<FeedPost?>(
       context,
@@ -1064,24 +1050,22 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
     if (result == null) return;
     if (!context.mounted) return;
-    if (result.moderationStatus == 'pending') {
-      AppSnackBars.showSuccess(
-        context,
-        'Your post was submitted for review. It will appear in Discover after an admin approves it.',
-      );
-    } else {
-      feed.prependPost(result);
-    }
+    feed.prependPost(result);
   }
 
   void _openEditPost(
       BuildContext context, FeedPost post, FeedProvider feed, AuthProvider auth) {
+    final placesProvider = Provider.of<PlacesProvider>(context, listen: false);
+    final placeOptions = placesProvider.places
+        .map((p) => OwnedPlace(id: p.id, name: p.name))
+        .toList(growable: false);
     Navigator.push<FeedPost?>(
       context,
       MaterialPageRoute(
         builder: (ctx) => EditPostSheet(
           post: post,
           authToken: auth.authToken!,
+          placeOptions: placeOptions,
         ),
       ),
     ).then((updated) {
@@ -1133,6 +1117,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
     AuthProvider auth,
   ) {
     final isOwner = _isPostOwner(post, auth);
+    final canManage = _canManagePost(post, auth, feed);
     final canDelete = canDeleteFeedPost(
       post: post,
       canPost: feed.canPost,
@@ -1188,7 +1173,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     _confirmDelete(context, post, feed, auth);
                   },
                 ),
-              if (isOwner) ...[
+              if (canManage) ...[
                 PostOptionTile(
                   label: AppLocalizations.of(context)!.edit,
                   icon: Icons.edit_outlined,

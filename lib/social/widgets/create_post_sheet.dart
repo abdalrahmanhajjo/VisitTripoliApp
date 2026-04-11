@@ -1,7 +1,9 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img;
 import '../community_tokens.dart';
+import '../../services/api_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/feed_service.dart';
 import '../../theme/app_theme.dart';
@@ -40,6 +42,17 @@ class CreatePostSheetState extends State<CreatePostSheet> {
   Uint8List? _coverBytes;
   String? _coverFilename;
   bool _posting = false;
+  String _placeQuery = '';
+  final _overlayTextController = TextEditingController();
+  final _tagSearchController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _soundNameController = TextEditingController();
+  String _creativeEffect = 'none';
+  String _stickerLabel = 'none';
+  List<Map<String, dynamic>> _peopleCatalog = const [];
+  List<Map<String, dynamic>> _peopleResults = const [];
+  final List<Map<String, dynamic>> _selectedPeople = [];
+  bool _loadingPeople = false;
 
   // Instagram-like "Advanced" controls.
   bool _hideLikes = false;
@@ -58,12 +71,71 @@ class CreatePostSheetState extends State<CreatePostSheet> {
     if (widget.ownedPlaces.isNotEmpty) {
       _selectedPlaceId = widget.ownedPlaces.first.id;
     }
+    _tagSearchController.addListener(_refreshTagSearchResults);
+    _loadPeopleCatalog();
   }
 
   @override
   void dispose() {
     _captionController.dispose();
+    _overlayTextController.dispose();
+    _tagSearchController.dispose();
+    _locationController.dispose();
+    _soundNameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadPeopleCatalog() async {
+    setState(() => _loadingPeople = true);
+    try {
+      final users =
+          await ApiService.instance.getTripShareUsers(widget.authToken);
+      if (!mounted) return;
+      setState(() {
+        _peopleCatalog = users;
+        _loadingPeople = false;
+      });
+      _refreshTagSearchResults();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingPeople = false);
+    }
+  }
+
+  void _refreshTagSearchResults() {
+    final q = _tagSearchController.text.trim().toLowerCase();
+    if (q.isEmpty) {
+      setState(() => _peopleResults = const []);
+      return;
+    }
+    final selectedIds = _selectedPeople
+        .map((p) => p['id']?.toString() ?? '')
+        .toSet();
+    final matches = _peopleCatalog.where((u) {
+      final id = (u['id'] ?? '').toString();
+      if (selectedIds.contains(id)) return false;
+      final name = (u['name'] ?? '').toString().toLowerCase();
+      final email = (u['email'] ?? '').toString().toLowerCase();
+      return name.contains(q) || email.contains(q);
+    }).take(8).toList(growable: false);
+    setState(() => _peopleResults = matches);
+  }
+
+  void _addTaggedPerson(Map<String, dynamic> person) {
+    final id = (person['id'] ?? '').toString();
+    if (id.isEmpty) return;
+    if (_selectedPeople.any((p) => (p['id'] ?? '').toString() == id)) return;
+    setState(() {
+      _selectedPeople.add(person);
+      _tagSearchController.clear();
+      _peopleResults = const [];
+    });
+  }
+
+  void _removeTaggedPerson(String id) {
+    setState(() {
+      _selectedPeople.removeWhere((p) => (p['id'] ?? '').toString() == id);
+    });
   }
 
   Future<void> _pickImages() async {
@@ -177,12 +249,6 @@ class CreatePostSheetState extends State<CreatePostSheet> {
   }
 
   Future<void> _submit() async {
-    if (_selectedPlaceId == null && !widget.isAdmin) {
-      AppSnackBars.showError(context, AppLocalizations.of(context)!.selectPlaceToPost);
-      return;
-    }
-    if (!widget.isAdmin && _selectedPlaceId == null) return;
-
     final isVideoMode = _isReel;
     if (isVideoMode) {
       if (_videoBytes == null || _videoBytes!.isEmpty) {
@@ -199,17 +265,21 @@ class CreatePostSheetState extends State<CreatePostSheet> {
       AppSnackBars.showError(context, AppLocalizations.of(context)!.postCaptionRequired);
       return;
     }
+    if (_selectedPlaceId == null || _selectedPlaceId!.isEmpty) {
+      AppSnackBars.showError(context, 'Please link this post to a place');
+      return;
+    }
 
     setState(() => _posting = true);
     try {
-      final placeId = _selectedPlaceId ?? (widget.ownedPlaces.isNotEmpty ? widget.ownedPlaces.first.id : null);
+      final placeId = _selectedPlaceId;
       List<({List<int> bytes, String? filename})>? imageFiles;
 
       if (!isVideoMode) {
         imageFiles = [
           for (var i = 0; i < _imageBytesList.length; i++)
             (
-              bytes: _imageBytesList[i].toList(),
+              bytes: _applyCreativeEdits(_imageBytesList[i]).toList(),
               filename: _imageFilenames[i],
             ),
         ];
@@ -217,12 +287,26 @@ class CreatePostSheetState extends State<CreatePostSheet> {
 
       final post = await FeedService.instance.createPost(
         authToken: widget.authToken,
-        placeId: placeId,
+        placeId: placeId!,
         caption: _captionController.text.trim(),
         authorName: widget.userName,
         imageFiles: imageFiles ?? (_coverBytes != null ? [(bytes: _coverBytes!.toList(), filename: _coverFilename)] : null),
         videoBytes: isVideoMode ? _videoBytes!.toList() : null,
         videoFilename: isVideoMode ? _videoFilename : null,
+        taggedPeopleCsv: _selectedPeople
+            .map((p) {
+              final raw = ((p['name'] ?? p['email'] ?? p['id']) ?? '')
+                  .toString()
+                  .trim();
+              return raw.replaceAll(',', ' ');
+            })
+            .where((s) => s.isNotEmpty)
+            .join(','),
+        customLocation: _locationController.text.trim(),
+        soundName: _soundNameController.text.trim(),
+        creativeEffect: _creativeEffect,
+        stickerLabel: _stickerLabel,
+        overlayText: _overlayTextController.text.trim(),
       );
 
       // Apply advanced options after creation (Instagram-like).
@@ -243,6 +327,224 @@ class CreatePostSheetState extends State<CreatePostSheet> {
         AppSnackBars.showError(context, e.toString());
       }
     }
+  }
+
+  Uint8List? _transformImage(
+    Uint8List source,
+    img.Image Function(img.Image image) op,
+  ) {
+    try {
+      final decoded = img.decodeImage(source);
+      if (decoded == null) return null;
+      final out = op(decoded);
+      return Uint8List.fromList(
+        img.encodeJpg(out, quality: _instagramQuality),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Uint8List _applyCreativeEdits(Uint8List source) {
+    final decoded = img.decodeImage(source);
+    if (decoded == null) return source;
+    var out = decoded;
+    switch (_creativeEffect) {
+      case 'bw':
+        out = img.grayscale(out);
+        break;
+      case 'sepia':
+        out = img.sepia(out);
+        break;
+      case 'vivid':
+        for (var y = 0; y < out.height; y++) {
+          for (var x = 0; x < out.width; x++) {
+            final p = out.getPixel(x, y);
+            final r = (p.r * 1.08).clamp(0, 255).toInt();
+            final g = (p.g * 1.05).clamp(0, 255).toInt();
+            final b = (p.b * 1.08).clamp(0, 255).toInt();
+            out.setPixelRgba(x, y, r, g, b, p.a);
+          }
+        }
+        break;
+      case 'cool':
+        for (var y = 0; y < out.height; y++) {
+          for (var x = 0; x < out.width; x++) {
+            final p = out.getPixel(x, y);
+            final r = (p.r * 0.95).clamp(0, 255).toInt();
+            final g = p.g.clamp(0, 255).toInt();
+            final b = (p.b * 1.12).clamp(0, 255).toInt();
+            out.setPixelRgba(x, y, r, g, b, p.a);
+          }
+        }
+        break;
+    }
+
+    final overlay = _overlayTextController.text.trim();
+    if (overlay.isNotEmpty) {
+      final y = (out.height - 56).clamp(4, out.height - 24).toInt();
+      img.fillRect(
+        out,
+        x1: 0,
+        y1: y - 6,
+        x2: out.width,
+        y2: out.height,
+        color: img.ColorRgba8(0, 0, 0, 110),
+      );
+      img.drawString(
+        out,
+        overlay,
+        font: img.arial24,
+        x: 14,
+        y: y,
+        color: img.ColorRgb8(255, 255, 255),
+      );
+    }
+
+    if (_stickerLabel != 'none') {
+      final stickerText = _stickerLabel == 'travel'
+          ? '[TRAVEL]'
+          : _stickerLabel == 'wow'
+              ? '[WOW]'
+              : '[FUN]';
+      img.drawString(
+        out,
+        stickerText,
+        font: img.arial24,
+        x: 14,
+        y: 14,
+        color: img.ColorRgb8(255, 255, 255),
+      );
+    }
+    return Uint8List.fromList(img.encodeJpg(out, quality: _instagramQuality));
+  }
+
+  ColorFilter? _previewFilter() {
+    switch (_creativeEffect) {
+      case 'bw':
+        return const ColorFilter.matrix(<double>[
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0.2126, 0.7152, 0.0722, 0, 0,
+          0, 0, 0, 1, 0,
+        ]);
+      case 'sepia':
+        return const ColorFilter.matrix(<double>[
+          0.393, 0.769, 0.189, 0, 0,
+          0.349, 0.686, 0.168, 0, 0,
+          0.272, 0.534, 0.131, 0, 0,
+          0, 0, 0, 1, 0,
+        ]);
+      case 'vivid':
+        return const ColorFilter.matrix(<double>[
+          1.1, 0, 0, 0, 0,
+          0, 1.1, 0, 0, 0,
+          0, 0, 1.1, 0, 0,
+          0, 0, 0, 1, 0,
+        ]);
+      case 'cool':
+        return const ColorFilter.matrix(<double>[
+          0.95, 0, 0, 0, 0,
+          0, 1.0, 0, 0, 0,
+          0, 0, 1.12, 0, 0,
+          0, 0, 0, 1, 0,
+        ]);
+      default:
+        return null;
+    }
+  }
+
+  String _stickerText() {
+    switch (_stickerLabel) {
+      case 'travel':
+        return 'TRAVEL';
+      case 'wow':
+        return 'WOW';
+      case 'fun':
+        return 'FUN';
+      default:
+        return '';
+    }
+  }
+
+  Future<void> _editImageAt(int index) async {
+    if (index < 0 || index >= _imageBytesList.length) return;
+    final pickedAction = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SafeArea(
+        child: Container(
+          margin: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.rotate_right_rounded),
+                title: const Text('Rotate right'),
+                onTap: () => Navigator.pop(ctx, 'rotate_right'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.rotate_left_rounded),
+                title: const Text('Rotate left'),
+                onTap: () => Navigator.pop(ctx, 'rotate_left'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.flip_rounded),
+                title: const Text('Flip horizontal'),
+                onTap: () => Navigator.pop(ctx, 'flip_h'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.crop_square_rounded),
+                title: const Text('Crop square'),
+                onTap: () => Navigator.pop(ctx, 'crop_square'),
+              ),
+              const SizedBox(height: 6),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || pickedAction == null) return;
+
+    final original = _imageBytesList[index];
+    Uint8List? transformed;
+    switch (pickedAction) {
+      case 'rotate_right':
+        transformed = _transformImage(
+          original,
+          (image) => img.copyRotate(image, angle: 90),
+        );
+        break;
+      case 'rotate_left':
+        transformed = _transformImage(
+          original,
+          (image) => img.copyRotate(image, angle: -90),
+        );
+        break;
+      case 'flip_h':
+        transformed = _transformImage(
+          original,
+          (image) => img.flipHorizontal(image),
+        );
+        break;
+      case 'crop_square':
+        transformed = _transformImage(original, (image) {
+          final side = image.width < image.height ? image.width : image.height;
+          final x = (image.width - side) ~/ 2;
+          final y = (image.height - side) ~/ 2;
+          return img.copyCrop(image, x: x, y: y, width: side, height: side);
+        });
+        break;
+    }
+    if (transformed == null) {
+      if (mounted) AppSnackBars.showError(context, 'Could not edit image');
+      return;
+    }
+    setState(() => _imageBytesList[index] = transformed!);
   }
 
   @override
@@ -295,20 +597,18 @@ class CreatePostSheetState extends State<CreatePostSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Place selector for business owners; all places for discoverable contributors (15+ check-ins).
-            if (!widget.isAdmin) ...[
+            // Required place link for all posts/reels.
+            if (widget.ownedPlaces.isNotEmpty) ...[
               Row(
                 children: [
-                  Icon(
-                    widget.isDiscoverableContributor
-                        ? Icons.place_rounded
-                        : Icons.store_rounded,
+                  const Icon(
+                    Icons.place_rounded,
                     size: 20,
                     color: AppTheme.primaryColor,
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    widget.isDiscoverableContributor ? 'Place' : 'Business',
+                    'Link post to place (required)',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                           color: AppTheme.textSecondary,
@@ -317,68 +617,51 @@ class CreatePostSheetState extends State<CreatePostSheet> {
                 ],
               ),
               const SizedBox(height: 8),
-
-              if (widget.ownedPlaces.isEmpty) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: CommunityTokens.surfaceSectionDecoration,
-                  child: Text(
-                    'No business available for this account',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textSecondary,
-                          fontWeight: FontWeight.w600,
-                        ),
+              TextField(
+                onChanged: (v) => setState(() => _placeQuery = v.trim().toLowerCase()),
+                decoration: InputDecoration(
+                  hintText: 'Search place',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppTheme.borderColor),
                   ),
                 ),
-              ] else if (widget.ownedPlaces.length == 1) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: CommunityTokens.surfaceSectionDecoration,
-                  child: Row(
-                    children: [
-                      const Icon(Icons.check_circle_rounded, size: 20, color: AppTheme.primaryColor),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          widget.ownedPlaces.first.name,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ),
-                    ],
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String?>(
+                initialValue: _selectedPlaceId,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppTheme.borderColor),
                   ),
                 ),
-              ] else ...[
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedPlaceId,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: const BorderSide(color: AppTheme.borderColor),
-                    ),
-                  ),
-                  items: widget.ownedPlaces
-                      .map((p) => DropdownMenuItem(
+                items: [
+                  ...widget.ownedPlaces
+                      .where((p) => _placeQuery.isEmpty ||
+                          p.name.toLowerCase().contains(_placeQuery))
+                      .map((p) => DropdownMenuItem<String?>(
                             value: p.id,
                             child: Text(p.name),
-                          ))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v == null) return;
-                    setState(() => _selectedPlaceId = v);
-                  },
-                ),
-              ],
+                          )),
+                ],
+                onChanged: (v) => setState(() => _selectedPlaceId = v),
+              ),
               const SizedBox(height: 20),
+            ] else ...[
+              const Text(
+                'No places available to link. Contact admin.',
+                style: TextStyle(color: AppTheme.errorColor, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 14),
             ],
             // Instagram-like: choose between Post (images) and Reel (video).
             Padding(
@@ -491,6 +774,159 @@ class CreatePostSheetState extends State<CreatePostSheet> {
                   borderSide: const BorderSide(color: AppTheme.borderColor),
                 ),
                 contentPadding: const EdgeInsets.all(16),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: CommunityTokens.surfaceSectionDecoration,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Creative tools',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textSecondary,
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _overlayTextController,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                      labelText: 'Text on image',
+                      hintText: 'Add a short overlay text',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _creativeEffect,
+                          decoration: const InputDecoration(labelText: 'Effect'),
+                          items: const [
+                            DropdownMenuItem(value: 'none', child: Text('None')),
+                            DropdownMenuItem(value: 'bw', child: Text('B&W')),
+                            DropdownMenuItem(value: 'sepia', child: Text('Sepia')),
+                            DropdownMenuItem(value: 'vivid', child: Text('Vivid')),
+                            DropdownMenuItem(value: 'cool', child: Text('Cool')),
+                          ],
+                          onChanged: (v) =>
+                              setState(() => _creativeEffect = v ?? 'none'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _stickerLabel,
+                          decoration: const InputDecoration(labelText: 'Sticker'),
+                          items: const [
+                            DropdownMenuItem(value: 'none', child: Text('None')),
+                            DropdownMenuItem(value: 'travel', child: Text('Travel')),
+                            DropdownMenuItem(value: 'wow', child: Text('Wow')),
+                            DropdownMenuItem(value: 'fun', child: Text('Fun')),
+                          ],
+                          onChanged: (v) =>
+                              setState(() => _stickerLabel = v ?? 'none'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (_selectedPeople.isNotEmpty)
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _selectedPeople.map((p) {
+                        final id = (p['id'] ?? '').toString();
+                        final name = (p['name'] ?? p['email'] ?? 'User').toString();
+                        return Chip(
+                          label: Text('@$name'),
+                          onDeleted: () => _removeTaggedPerson(id),
+                        );
+                      }).toList(),
+                    ),
+                  if (_selectedPeople.isNotEmpty) const SizedBox(height: 8),
+                  TextField(
+                    controller: _tagSearchController,
+                    decoration: InputDecoration(
+                      labelText: 'Tag people',
+                      hintText: 'Search people by name',
+                      prefixIcon: const Icon(Icons.alternate_email_rounded),
+                      suffixIcon: _loadingPeople
+                          ? const Padding(
+                              padding: EdgeInsets.all(10),
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                  if (_peopleResults.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 180),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: AppTheme.borderColor),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _peopleResults.length,
+                        itemBuilder: (context, i) {
+                          final u = _peopleResults[i];
+                          final name = (u['name'] ?? 'User').toString();
+                          final email = (u['email'] ?? '').toString();
+                          return ListTile(
+                            dense: true,
+                            leading: CircleAvatar(
+                              radius: 14,
+                              backgroundColor:
+                                  AppTheme.primaryColor.withValues(alpha: 0.15),
+                              child: Text(
+                                name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ),
+                            title: Text(name),
+                            subtitle: email.isEmpty ? null : Text(email),
+                            onTap: () => _addTaggedPerson(u),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _locationController,
+                    decoration: const InputDecoration(
+                      labelText: 'Location label',
+                      hintText: 'Old City, Tripoli',
+                      prefixIcon: Icon(Icons.location_on_outlined),
+                    ),
+                  ),
+                  if (_isReel) ...[
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _soundNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Sound',
+                        hintText: 'Add reel sound title',
+                        prefixIcon: Icon(Icons.music_note_rounded),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(height: 14),
@@ -745,9 +1181,82 @@ class CreatePostSheetState extends State<CreatePostSheet> {
                                       child: SizedBox(
                                         width: 220,
                                         height: 220,
-                                        child: Image.memory(
-                                          _imageBytesList[i],
-                                          fit: BoxFit.cover,
+                                        child: InkWell(
+                                          onTap: () => _editImageAt(i),
+                                          child: Stack(
+                                            fit: StackFit.expand,
+                                            children: [
+                                              ColorFiltered(
+                                                colorFilter: _previewFilter() ??
+                                                    const ColorFilter.mode(
+                                                        Colors.transparent,
+                                                        BlendMode.srcOver),
+                                                child: Image.memory(
+                                                  _imageBytesList[i],
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                              if (_stickerText().isNotEmpty)
+                                                Positioned(
+                                                  top: 10,
+                                                  left: 10,
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.black
+                                                          .withValues(
+                                                              alpha: 0.45),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              999),
+                                                    ),
+                                                    child: Text(
+                                                      _stickerText(),
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              if (_overlayTextController.text
+                                                  .trim()
+                                                  .isNotEmpty)
+                                                Positioned(
+                                                  left: 0,
+                                                  right: 0,
+                                                  bottom: 0,
+                                                  child: Container(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 7),
+                                                    color: Colors.black
+                                                        .withValues(
+                                                            alpha: 0.4),
+                                                    child: Text(
+                                                      _overlayTextController
+                                                          .text
+                                                          .trim(),
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow
+                                                          .ellipsis,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),

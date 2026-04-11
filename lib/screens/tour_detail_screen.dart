@@ -136,13 +136,19 @@ class _TourDetailScreenState extends State<TourDetailScreen>
           SliverAppBar(
             pinned: true,
             expandedHeight: ResponsiveUtils.detailSliverHeroHeight(context),
+            backgroundColor: Colors.black.withValues(alpha: 0.28),
+            foregroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new, size: 20),
               onPressed: () => context.pop(),
             ),
             title: Text(
               'Tour Details',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
             ),
             centerTitle: true,
             actions: [
