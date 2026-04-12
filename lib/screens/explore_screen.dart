@@ -193,9 +193,9 @@ class _ExploreLayout {
   static const double sheetBottomPadding = 24;
 
   static double sectionTitleSize(BuildContext context) {
-    if (_Responsive.isSmallPhone(context)) return 16;
-    if (_Responsive.isCompact(context)) return 17;
-    return 19;
+    if (_Responsive.isSmallPhone(context)) return 17;
+    if (_Responsive.isCompact(context)) return 18;
+    return 20;
   }
 
   static double horizontalListHeight(BuildContext context) {
@@ -265,7 +265,8 @@ class _ExploreStyles {
             label,
             style:
                 TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: c),
-            maxLines: 1,
+            maxLines: 2,
+            softWrap: true,
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -627,7 +628,8 @@ class _FilterChipPill extends StatelessWidget {
                           ? Colors.white
                           : AppTheme.textPrimary.withValues(alpha: 0.9),
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
+                    softWrap: true,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -694,7 +696,8 @@ class _SectionHeader extends StatelessWidget {
                     letterSpacing: -0.15,
                     height: 1.18,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
+                  softWrap: true,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -1464,7 +1467,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                     color: AppTheme.textPrimary,
                                     height: 1.25,
                                   ),
-                                  maxLines: 1,
+                                  maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 2),
@@ -1604,7 +1607,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                                   ? AppTheme.primaryColor
                                                   : AppTheme.textPrimary,
                                             ),
-                                            maxLines: 1,
+                                            maxLines: 3,
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           if (f.$4.isNotEmpty) ...[
@@ -1692,7 +1695,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                                     ? AppTheme.primaryColor
                                                     : AppTheme.textPrimary,
                                               ),
-                                              maxLines: 1,
+                                              maxLines: 3,
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                             Text(
@@ -1796,7 +1799,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                                 ? AppTheme.successColor
                                                 : AppTheme.textPrimary,
                                           ),
-                                          maxLines: 1,
+                                          maxLines: 3,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                         Text(
@@ -1935,7 +1938,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                 letterSpacing: -0.7,
                                 height: 1.0,
                               ),
-                              maxLines: 1,
+                              maxLines: 3,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -2153,7 +2156,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                           subtitle: p.location.isNotEmpty
                               ? Text(
                                   p.location,
-                                  maxLines: 1,
+                                  maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(fontSize: 12),
                                 )
@@ -2272,7 +2275,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                               Text(
                                 selectedPreviewEvent?.name ??
                                     l10n.whatsHappening,
-                                maxLines: 1,
+                                maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontSize: 20,
@@ -2284,7 +2287,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                               const SizedBox(height: 2),
                               Text(
                                 selectedPreviewSubtitle,
-                                maxLines: 1,
+                                maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   fontSize: 13,
@@ -2505,7 +2508,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                             : selectedEvents.isEmpty
                                 ? 'No events on ${DateFormat('EEEE', locale).format(selected)}'
                                 : '${selectedEvents.length} event${selectedEvents.length == 1 ? '' : 's'} on ${DateFormat('EEEE', locale).format(selected)}',
-                        maxLines: 1,
+                        maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 13,
@@ -2600,7 +2603,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                   fontWeight: FontWeight.w800,
                                   color: AppTheme.textPrimary,
                                 ),
-                                maxLines: 1,
+                                maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
@@ -2609,7 +2612,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                   fontSize: 13,
                                   color: AppTheme.textSecondary,
                                 ),
-                                maxLines: 1,
+                                maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ],
@@ -2782,7 +2785,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                   fontWeight: FontWeight.w800,
                                   color: AppTheme.textPrimary,
                                 ),
-                                maxLines: 1,
+                                maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
@@ -2791,7 +2794,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                                   fontSize: 13,
                                   color: AppTheme.textSecondary,
                                 ),
-                                maxLines: 1,
+                                maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ],
@@ -2975,7 +2978,7 @@ class _ExploreScreenState extends State<ExploreScreen>
                       fontWeight: FontWeight.w700,
                       color: AppTheme.textSecondary,
                     ),
-                    maxLines: 1,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 10),
@@ -4046,7 +4049,7 @@ class _EventCard extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                                 color: AppTheme.textPrimary,
                               ),
-                              maxLines: 1,
+                              maxLines: 3,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -4069,7 +4072,7 @@ class _EventCard extends StatelessWidget {
                                 color: AppTheme.textSecondary,
                                 height: 1.2,
                               ),
-                              maxLines: 1,
+                              maxLines: 3,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -4100,7 +4103,7 @@ class _EventCard extends StatelessWidget {
                                   fontWeight: FontWeight.w700,
                                   color: AppTheme.textSecondary,
                                 ),
-                                maxLines: 1,
+                                maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -4134,7 +4137,7 @@ class _EventCard extends StatelessWidget {
                                     ? AppTheme.successColor
                                     : categoryColor,
                               ),
-                              maxLines: 1,
+                              maxLines: 3,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -5010,7 +5013,7 @@ class _TourCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 color: Colors.white.withValues(alpha: 0.95),
               ),
-              maxLines: 1,
+              maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -5053,7 +5056,7 @@ class _TourCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
-                  maxLines: 1,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -5463,7 +5466,7 @@ class _ExplorePlaceCard extends StatelessWidget {
                                 letterSpacing: -0.2,
                                 height: 1.25,
                               ),
-                              maxLines: 1,
+                              maxLines: 3,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
@@ -5483,7 +5486,7 @@ class _ExplorePlaceCard extends StatelessWidget {
                                       color:
                                           Colors.white.withValues(alpha: 0.9),
                                     ),
-                                    maxLines: 1,
+                                    maxLines: 3,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -5896,7 +5899,7 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
                                                 fontWeight: FontWeight.w600,
                                                 color: AppTheme.textPrimary,
                                               ),
-                                              maxLines: 1,
+                                              maxLines: 3,
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                             const SizedBox(height: 2),
@@ -5906,7 +5909,7 @@ class _AddToTripPickerSheetState extends State<_AddToTripPickerSheet> {
                                                 fontSize: 13,
                                                 color: AppTheme.textSecondary,
                                               ),
-                                              maxLines: 1,
+                                              maxLines: 3,
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           ],

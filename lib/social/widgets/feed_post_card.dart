@@ -44,7 +44,8 @@ class _PlaceAvatarFallback extends StatelessWidget {
   final String initial;
   final bool usePlaceIcon;
 
-  const _PlaceAvatarFallback({required this.initial, this.usePlaceIcon = false});
+  const _PlaceAvatarFallback(
+      {required this.initial, this.usePlaceIcon = false});
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +65,8 @@ class _PlaceAvatarFallback extends StatelessWidget {
       ),
       child: Center(
         child: usePlaceIcon
-            ? const Icon(Icons.store_rounded, size: 24, color: AppTheme.primaryColor)
+            ? const Icon(Icons.store_rounded,
+                size: 24, color: AppTheme.primaryColor)
             : Text(
                 initial,
                 style: const TextStyle(
@@ -77,7 +79,6 @@ class _PlaceAvatarFallback extends StatelessWidget {
     );
   }
 }
-
 
 class FeedPostCard extends StatelessWidget {
   final FeedPost post;
@@ -95,7 +96,8 @@ class FeedPostCard extends StatelessWidget {
   final void Function(String url) onImageTap;
   final VoidCallback onShowOptions;
 
-  const FeedPostCard({super.key, 
+  const FeedPostCard({
+    super.key,
     required this.post,
     required this.feedVideoAutoplay,
     required this.authToken,
@@ -154,11 +156,13 @@ class FeedPostCard extends StatelessWidget {
                               maxWidthDiskCache: 88,
                               maxHeightDiskCache: 88,
                               fadeInDuration: const Duration(milliseconds: 120),
-                              placeholder: (_, __) => _PlaceAvatarFallback(initial: _placeInitial(post)),
-                              errorWidget: (_, __, ___) =>
-                                  _PlaceAvatarFallback(initial: _placeInitial(post)),
+                              placeholder: (_, __) => _PlaceAvatarFallback(
+                                  initial: _placeInitial(post)),
+                              errorWidget: (_, __, ___) => _PlaceAvatarFallback(
+                                  initial: _placeInitial(post)),
                             )
-                          : _PlaceAvatarFallback(initial: _placeInitial(post), usePlaceIcon: true),
+                          : _PlaceAvatarFallback(
+                              initial: _placeInitial(post), usePlaceIcon: true),
                     ),
                   ),
                 ),
@@ -171,7 +175,8 @@ class FeedPostCard extends StatelessWidget {
                         onTap: post.authorPlaceId != null
                             ? () {
                                 AppFeedback.tap();
-                                context.push('/place/${post.authorPlaceId}/posts');
+                                context
+                                    .push('/place/${post.authorPlaceId}/posts');
                               }
                             : null,
                         child: Row(
@@ -179,13 +184,16 @@ class FeedPostCard extends StatelessWidget {
                           children: [
                             Flexible(
                               child: Text(
-                                post.authorPlaceName ?? post.authorName ?? 'Place',
+                                post.authorPlaceName ??
+                                    post.authorName ??
+                                    'Place',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 16,
                                   letterSpacing: -0.2,
                                 ),
-                                maxLines: 1,
+                                maxLines: 2,
+                                softWrap: true,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -213,13 +221,15 @@ class FeedPostCard extends StatelessWidget {
                 ),
                 if (isOwner || (authToken != null && !isOwner))
                   IconButton(
-                    icon: const Icon(Icons.more_horiz_rounded, color: AppTheme.textSecondary, size: 24),
+                    icon: const Icon(Icons.more_horiz_rounded,
+                        color: AppTheme.textSecondary, size: 24),
                     onPressed: () {
                       AppFeedback.tap();
                       onShowOptions();
                     },
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                    constraints:
+                        const BoxConstraints(minWidth: 40, minHeight: 40),
                   ),
               ],
             ),
@@ -228,13 +238,17 @@ class FeedPostCard extends StatelessWidget {
             post: post,
             feedVideoAutoplay: feedVideoAutoplay,
             width: mediaWidth,
-            onDoubleTap: authToken != null ? () {
-              AppFeedback.selection();
-              onLike();
-            } : null,
+            onDoubleTap: authToken != null
+                ? () {
+                    AppFeedback.selection();
+                    onLike();
+                  }
+                : null,
             onTap: () {
               AppFeedback.tap();
-              onImageTap(post.displayImageUrls.isNotEmpty ? post.displayImageUrls.first : (post.videoUrl ?? ''));
+              onImageTap(post.displayImageUrls.isNotEmpty
+                  ? post.displayImageUrls.first
+                  : (post.videoUrl ?? ''));
             },
             onVideoTap: () {
               AppFeedback.tap();
@@ -249,77 +263,80 @@ class FeedPostCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
             child: Row(
-                  children: [
-                    _PillActionButton(
-                      label: l10n.like,
-                      icon: post.likedByMe
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      iconColor: post.likedByMe
-                          ? const Color(0xFFE11D48)
-                          : AppTheme.textSecondary,
-                      count: (!post.hideLikes || isOwner) ? post.likeCount : null,
-                      onTap: authToken == null
-                          ? () => context.go(
-                                '/login?redirect=${Uri.encodeComponent('/community')}',
-                              )
-                          : () {
-                              AppFeedback.selection();
-                              unawaited(onLike());
-                            },
-                    ),
-                    const SizedBox(width: 18),
-                    _PillActionButton(
-                      label: l10n.comment,
-                      icon: Icons.chat_bubble_outline_rounded,
-                      iconColor: AppTheme.textSecondary,
-                      count: post.commentCount,
-                      onTap: post.commentsDisabled
-                          ? () {
-                              AppFeedback.selection();
-                              if (authToken != null) {
-                                AppSnackBars.showSuccess(
-                                  context,
-                                  l10n.commentsDisabledForPost,
-                                );
-                              } else {
-                                context.go(
-                                  '/login?redirect=${Uri.encodeComponent('/community')}',
-                                );
-                              }
-                            }
-                          : () {
-                              AppFeedback.selection();
-                              onComment();
-                            },
-                    ),
-                    const SizedBox(width: 18),
-                    _PillActionButton(
-                      label: l10n.share,
-                      icon: Icons.share_rounded,
-                      iconColor: AppTheme.textSecondary,
-                      onTap: () {
-                        AppFeedback.selection();
-                        onShare();
-                      },
-                    ),
-                    const Spacer(),
-                    if (authToken != null)
-                      _PillActionButton(
-                        label: l10n.save,
-                        icon: post.savedByMe
-                            ? Icons.bookmark_rounded
-                            : Icons.bookmark_border_rounded,
-                        iconColor: post.savedByMe ? AppTheme.primaryColor : AppTheme.textSecondary,
-                        onTap: () {
+              children: [
+                _PillActionButton(
+                  label: l10n.like,
+                  icon: post.likedByMe
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  iconColor: post.likedByMe
+                      ? const Color(0xFFE11D48)
+                      : AppTheme.textSecondary,
+                  count: (!post.hideLikes || isOwner) ? post.likeCount : null,
+                  onTap: authToken == null
+                      ? () => context.go(
+                            '/login?redirect=${Uri.encodeComponent('/community')}',
+                          )
+                      : () {
                           AppFeedback.selection();
-                          unawaited(onSave());
+                          unawaited(onLike());
                         },
-                      ),
-                  ],
                 ),
+                const SizedBox(width: 18),
+                _PillActionButton(
+                  label: l10n.comment,
+                  icon: Icons.chat_bubble_outline_rounded,
+                  iconColor: AppTheme.textSecondary,
+                  count: post.commentCount,
+                  onTap: post.commentsDisabled
+                      ? () {
+                          AppFeedback.selection();
+                          if (authToken != null) {
+                            AppSnackBars.showSuccess(
+                              context,
+                              l10n.commentsDisabledForPost,
+                            );
+                          } else {
+                            context.go(
+                              '/login?redirect=${Uri.encodeComponent('/community')}',
+                            );
+                          }
+                        }
+                      : () {
+                          AppFeedback.selection();
+                          onComment();
+                        },
+                ),
+                const SizedBox(width: 18),
+                _PillActionButton(
+                  label: l10n.share,
+                  icon: Icons.share_rounded,
+                  iconColor: AppTheme.textSecondary,
+                  onTap: () {
+                    AppFeedback.selection();
+                    onShare();
+                  },
+                ),
+                const Spacer(),
+                if (authToken != null)
+                  _PillActionButton(
+                    label: l10n.save,
+                    icon: post.savedByMe
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
+                    iconColor: post.savedByMe
+                        ? AppTheme.primaryColor
+                        : AppTheme.textSecondary,
+                    onTap: () {
+                      AppFeedback.selection();
+                      unawaited(onSave());
+                    },
+                  ),
+              ],
+            ),
           ),
-          if ((post.caption != null && post.caption!.isNotEmpty) || hasCreativeMeta)
+          if ((post.caption != null && post.caption!.isNotEmpty) ||
+              hasCreativeMeta)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
               child: Container(
@@ -327,7 +344,8 @@ class FeedPostCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppTheme.surfaceVariant,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.7)),
+                  border: Border.all(
+                      color: AppTheme.borderColor.withValues(alpha: 0.7)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -340,7 +358,8 @@ class FeedPostCard extends StatelessWidget {
                         onTap: post.authorPlaceId != null
                             ? () {
                                 AppFeedback.tap();
-                                context.push('/place/${post.authorPlaceId}/posts');
+                                context
+                                    .push('/place/${post.authorPlaceId}/posts');
                               }
                             : null,
                         child: Text(
@@ -376,8 +395,7 @@ class FeedPostCard extends StatelessWidget {
                             if (post.taggedPeople.isNotEmpty)
                               _MetaPill(
                                 icon: Icons.alternate_email_rounded,
-                                label:
-                                    post.taggedPeople.take(3).join(', '),
+                                label: post.taggedPeople.take(3).join(', '),
                               ),
                           ],
                         ),
@@ -400,6 +418,7 @@ class _MediaSection extends StatefulWidget {
   final double width;
   final VoidCallback? onDoubleTap;
   final VoidCallback? onTap;
+
   /// Opens full-screen Reels on this post (For You video tap).
   final VoidCallback? onVideoTap;
 
@@ -527,7 +546,8 @@ class _MediaSectionState extends State<_MediaSection> {
                 top: 10,
                 right: 10,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.45),
                     borderRadius: BorderRadius.circular(999),
@@ -622,7 +642,8 @@ class _FeedDeferredInlineVideo extends StatefulWidget {
   });
 
   @override
-  State<_FeedDeferredInlineVideo> createState() => _FeedDeferredInlineVideoState();
+  State<_FeedDeferredInlineVideo> createState() =>
+      _FeedDeferredInlineVideoState();
 }
 
 class _FeedDeferredInlineVideoState extends State<_FeedDeferredInlineVideo> {
@@ -675,7 +696,8 @@ class _FeedDeferredInlineVideoState extends State<_FeedDeferredInlineVideo> {
       return Container(
         color: const Color(0xFF0D0D0D),
         alignment: Alignment.center,
-        child: const Icon(Icons.videocam_off_outlined, color: Colors.white38, size: 40),
+        child: const Icon(Icons.videocam_off_outlined,
+            color: Colors.white38, size: 40),
       );
     }
     if (!_playerMounted) {
@@ -900,7 +922,8 @@ class _AnimatedPop extends StatefulWidget {
   State<_AnimatedPop> createState() => _AnimatedPopState();
 }
 
-class _AnimatedPopState extends State<_AnimatedPop> with SingleTickerProviderStateMixin {
+class _AnimatedPopState extends State<_AnimatedPop>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 

@@ -97,12 +97,10 @@ class _TikTokFeedTab extends StatelessWidget {
     const inactiveColor = AppTheme.textTertiary;
     const activeColor = AppTheme.textPrimary;
     final disabledColor = inactiveColor.withValues(alpha: 0.55);
-    final textColor = isDisabled
-        ? disabledColor
-        : (isSelected ? activeColor : inactiveColor);
+    final textColor =
+        isDisabled ? disabledColor : (isSelected ? activeColor : inactiveColor);
 
-    final fontWeight =
-        isSelected ? FontWeight.w700 : FontWeight.w500;
+    final fontWeight = isSelected ? FontWeight.w700 : FontWeight.w500;
 
     return Material(
       color: Colors.transparent,
@@ -130,7 +128,8 @@ class _TikTokFeedTab extends StatelessWidget {
                   Flexible(
                     child: Text(
                       label,
-                      maxLines: 1,
+                      maxLines: 2,
+                      softWrap: true,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
                       style: TextStyle(

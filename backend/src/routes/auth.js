@@ -246,7 +246,11 @@ router.post('/login', sanitizeAuthInput, async (req, res) => {
       });
     }
     const user = await userWithProfileByEmail(email);
-    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+    if (
+      !user ||
+      !user.password_hash ||
+      !(await bcrypt.compare(password, user.password_hash))
+    ) {
       recordFailedAttempt(ip);
       return res.status(401).json({ error: 'Wrong email or password. Please try again.' });
     }
@@ -300,33 +304,48 @@ router.post('/google', async (req, res) => {
     );
 
     if (!user) {
-      const existingEmail = await collection('users').findOne({ email_lower: email.toLowerCase() }, { projection: { _id: 1 } });
-      if (existingEmail) {
-        return res.status(400).json({
-          error: 'An account with this email already exists. Sign in with email/password.',
+      const existingByEmail = await collection('users').findOne(
+        { email_lower: email.toLowerCase() },
+        { projection: { _id: 0 } },
+      );
+      if (existingByEmail) {
+        // Same email as an existing app account (e.g. registered with password): link Google sign-in.
+        const set = {
+          auth_provider: 'google',
+          auth_provider_id: sub,
+          updated_at: new Date(),
+        };
+        if ((!existingByEmail.name || !String(existingByEmail.name).trim()) && name) {
+          set.name = name;
+        }
+        if (existingByEmail.email_verified !== true) {
+          set.email_verified = true;
+        }
+        await collection('users').updateOne({ id: existingByEmail.id }, { $set: set });
+        user = { ...existingByEmail, ...set };
+      } else {
+        user = {
+          id: crypto.randomUUID(),
+          email,
+          email_lower: email.toLowerCase(),
+          name,
+          auth_provider: 'google',
+          auth_provider_id: sub,
+          email_verified: true,
+          is_business_owner: false,
+          is_admin: false,
+          created_at: new Date(),
+          updated_at: new Date(),
+        };
+        await collection('users').insertOne(user);
+        await collection('profiles').insertOne({
+          user_id: user.id,
+          onboarding_completed: false,
+          created_at: new Date(),
+          updated_at: new Date(),
         });
+        user.onboarding_completed = false;
       }
-      user = {
-        id: crypto.randomUUID(),
-        email,
-        email_lower: email.toLowerCase(),
-        name,
-        auth_provider: 'google',
-        auth_provider_id: sub,
-        email_verified: true,
-        is_business_owner: false,
-        is_admin: false,
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
-      await collection('users').insertOne(user);
-      await collection('profiles').insertOne({
-        user_id: user.id,
-        onboarding_completed: false,
-        created_at: new Date(),
-        updated_at: new Date(),
-      });
-      user.onboarding_completed = false;
     }
 
     const profile = await getProfile(user.id);

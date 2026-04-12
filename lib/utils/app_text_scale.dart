@@ -8,17 +8,17 @@ import 'responsive_utils.dart';
 Widget applyAppTextScale(BuildContext context, Widget child) {
   final mq = MediaQuery.of(context);
   final w = ResponsiveUtils.width(context);
+  // Slightly gentler downscaling on narrow phones so body copy stays readable;
+  // still respect system accessibility scaling within a safe clamp.
   final widthFactor = w < 280
-      ? 0.86
+      ? 0.92
       : w < 320
-          ? 0.90
+          ? 0.95
           : w < 360
-              ? 0.94
-              : w < 400
-                  ? 0.97
-                  : 1.0;
+              ? 0.98
+              : 1.0;
   final raw = mq.textScaler.scale(14.0) / 14.0;
-  final combined = (raw * widthFactor).clamp(0.78, 1.38);
+  final combined = (raw * widthFactor).clamp(0.82, 1.42);
   return MediaQuery(
     data: mq.copyWith(
       textScaler: TextScaler.linear(combined),
