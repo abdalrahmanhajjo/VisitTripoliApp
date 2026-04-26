@@ -82,7 +82,7 @@ router.get('/:id', async (req, res) => {
       'organizer',
       'price_display',
       'status',
-    ]);
+    ], lang);
     res.json(rowToEvent(row));
   } catch (err) {
     console.error(err);

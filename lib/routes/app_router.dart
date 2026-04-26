@@ -27,6 +27,7 @@ import '../screens/settings_screen.dart';
 import '../screens/tour_detail_screen.dart';
 import '../screens/trips_screen.dart';
 import '../screens/verify_email_screen.dart';
+import '../screens/place_scan_screen.dart';
 
 class AppRouter {
   static const _publicPaths = [
@@ -45,6 +46,7 @@ class AppRouter {
     '/community',
     '/deals',
     '/messages',
+    '/scan-place',
   ];
   static const _guestRestrictedPaths = ['/trips', '/profile', '/ai-planner'];
 
@@ -76,6 +78,7 @@ class AppRouter {
       '/place/',
       '/tour/',
       '/event/',
+      '/scan-place',
     ];
     return validPrefixes
         .any((p) => path == p || (p.endsWith('/') && path.startsWith(p)));
@@ -178,6 +181,10 @@ class AppRouter {
         GoRoute(
           path: '/interests',
           builder: (context, state) => const InterestsScreen(),
+        ),
+        GoRoute(
+          path: '/scan-place',
+          builder: (context, state) => const PlaceScanScreen(),
         ),
         GoRoute(
           path: '/explore',

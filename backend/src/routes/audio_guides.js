@@ -56,7 +56,7 @@ router.get('/:id', async (req, res) => {
           { projection: { _id: 0 } }
         )
       : null;
-    const row = rowBase ? withTranslation(rowBase, tr, ['title']) : null;
+    const row = rowBase ? withTranslation(rowBase, tr, ['title'], lang) : null;
     if (!row) return res.status(404).json({ error: 'Not found' });
     res.json(row);
   } catch (err) {

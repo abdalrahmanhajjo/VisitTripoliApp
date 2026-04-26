@@ -1270,6 +1270,39 @@ class ApiService {
   }
 
   // --- Places Admin ---
+  Future<List<dynamic>> adminGetPlacesQrCodes({required String adminKey}) async {
+    final response = await _requestWithRetry(() => _client.get(
+          Uri.parse('$_baseUrl/api/admin/places-qr-codes'),
+          headers: {..._headers(), 'X-Admin-Key': adminKey},
+        ));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final decoded = json.decode(response.body);
+    return decoded is List ? decoded : [];
+  }
+
+  Future<void> adminGenerateAllPlacesQrCodes({required String adminKey}) async {
+    final response = await _requestWithRetry(() => _client.post(
+          Uri.parse('$_baseUrl/api/admin/places-generate-all-qrs'),
+          headers: {..._headers(), 'X-Admin-Key': adminKey},
+        ));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+  }
+
+  Future<Map<String, dynamic>> adminRegeneratePlaceQrCode(String id, {required String adminKey}) async {
+    final response = await _requestWithRetry(() => _client.post(
+          Uri.parse('$_baseUrl/api/admin/places/$id/regenerate-checkin-token'),
+          headers: {..._headers(), 'X-Admin-Key': adminKey},
+        ));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, _parseError(response.body));
+    }
+    return json.decode(response.body) as Map<String, dynamic>;
+  }
+
   Future<List<dynamic>> adminGetPlaces({required String adminKey}) async {
     final response = await _requestWithRetry(() => _client.get(
           Uri.parse('$_baseUrl/api/admin/places'),

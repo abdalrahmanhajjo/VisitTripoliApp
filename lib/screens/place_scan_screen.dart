@@ -1,23 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../theme/app_theme.dart';
 import '../utils/checkin_qr.dart';
 
-/// Full-screen QR scanner for place check-in (official door QR with secure token).
-class CheckInScanScreen extends StatefulWidget {
-  final String placeName;
-
-  const CheckInScanScreen({
-    super.key,
-    required this.placeName,
-  });
+class PlaceScanScreen extends StatefulWidget {
+  const PlaceScanScreen({super.key});
 
   @override
-  State<CheckInScanScreen> createState() => _CheckInScanScreenState();
+  State<PlaceScanScreen> createState() => _PlaceScanScreenState();
 }
 
-class _CheckInScanScreenState extends State<CheckInScanScreen> {
+class _PlaceScanScreenState extends State<PlaceScanScreen> {
   bool _hasScanned = false;
 
   void _onDetect(BarcodeCapture capture) {
@@ -25,11 +20,29 @@ class _CheckInScanScreenState extends State<CheckInScanScreen> {
     final barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
     final raw = barcodes.first.rawValue;
+    if (raw == null) return;
+    
+    // First try the checkin QR format
     final data = parseCheckInQr(raw);
-    if (data == null) return;
-    _hasScanned = true;
-    HapticFeedback.mediumImpact();
-    Navigator.of(context).pop<CheckInQrData>(data);
+    if (data != null) {
+      _hasScanned = true;
+      HapticFeedback.mediumImpact();
+      context.replace('/place/${data.placeId}');
+      return;
+    }
+    
+    // Fallback: If it's a URL ending with place/id, parse it
+    final uri = Uri.tryParse(raw);
+    if (uri != null && uri.pathSegments.contains('place')) {
+      final index = uri.pathSegments.indexOf('place');
+      if (index + 1 < uri.pathSegments.length) {
+        final placeId = uri.pathSegments[index + 1];
+        _hasScanned = true;
+        HapticFeedback.mediumImpact();
+        context.replace('/place/$placeId');
+        return;
+      }
+    }
   }
 
   @override
@@ -40,7 +53,7 @@ class _CheckInScanScreenState extends State<CheckInScanScreen> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         elevation: 0,
-        title: const Text('Scan QR to check in', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
+        title: const Text('Scan QR Code', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
@@ -64,10 +77,9 @@ class _CheckInScanScreenState extends State<CheckInScanScreen> {
                       color: Colors.black54,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      'Scan the official QR printed at the entrance of ${widget.placeName}. '
-                      'The app needs the full secure code from that sign.',
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    child: const Text(
+                      'Scan a place QR code to view its details.',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
                       textAlign: TextAlign.center,
                     ),
                   ),

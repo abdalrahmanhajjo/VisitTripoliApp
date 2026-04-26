@@ -1198,21 +1198,6 @@ class _TourMapTab extends StatelessWidget {
                   ),
                 ],
               ),
-              SizedBox(height: gap * 0.83),
-              Text('Tour Stops', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              ...placesWithCoords.asMap().entries.map((e) {
-                final idx = e.key + 1;
-                final p = e.value;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _TourStopCard(
-                    icon: FontAwesomeIcons.locationDot,
-                    title: '$idx. ${p.name}',
-                    description: p.location,
-                  ),
-                );
-              }),
             ],
           ),
         ),
@@ -1228,22 +1213,52 @@ class _TourItineraryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final placesProvider = Provider.of<PlacesProvider>(context);
+    final placesWithCoords = placesWithCoordinates(
+      tour.placeIds.map((id) => placesProvider.getPlaceById(id)).whereType<Place>(),
+    );
     final pad = ResponsiveUtils.contentPadding(context);
     final vertPad = ResponsiveUtils.detailVerticalPadding(context);
-    return ListView.builder(
+    return SingleChildScrollView(
       padding: EdgeInsetsDirectional.fromSTEB(
           pad, vertPad, pad, 32 + MediaQuery.of(context).padding.bottom),
-      itemCount: tour.itinerary.length,
-      itemBuilder: (context, index) {
-        final item = tour.itinerary[index];
-        final isLast = index == tour.itinerary.length - 1;
-        return _ItineraryItemCard(
-          time: item.time,
-          activity: item.activity,
-          description: item.description,
-          isLast: isLast,
-        );
-      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (tour.itinerary.isNotEmpty) ...[
+            Text('Schedule', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 16),
+            ...tour.itinerary.asMap().entries.map((e) {
+              final index = e.key;
+              final item = e.value;
+              final isLast = index == tour.itinerary.length - 1;
+              return _ItineraryItemCard(
+                time: item.time,
+                activity: item.activity,
+                description: item.description,
+                isLast: isLast,
+              );
+            }),
+            const SizedBox(height: 32),
+          ],
+          if (placesWithCoords.isNotEmpty) ...[
+            Text('Tour Stops', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            ...placesWithCoords.asMap().entries.map((e) {
+              final idx = e.key + 1;
+              final p = e.value;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _TourStopCard(
+                  icon: FontAwesomeIcons.locationDot,
+                  title: '$idx. ${p.name}',
+                  description: p.location,
+                ),
+              );
+            }),
+          ]
+        ],
+      ),
     );
   }
 }

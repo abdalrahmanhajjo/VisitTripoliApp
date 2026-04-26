@@ -128,6 +128,7 @@ class AdminPageScaffold extends StatelessWidget {
   final Widget body;
   final VoidCallback? onAdd;
   final String addLabel;
+  final List<Widget>? actions;
   final bool isLoading;
   final String? error;
   final VoidCallback? onRetry;
@@ -140,6 +141,7 @@ class AdminPageScaffold extends StatelessWidget {
     required this.body,
     this.onAdd,
     this.addLabel = 'Add',
+    this.actions,
     this.isLoading = false,
     this.error,
     this.onRetry,
@@ -230,6 +232,7 @@ class AdminPageScaffold extends StatelessWidget {
                   ],
                 ),
               ),
+              if (actions != null) ...actions!,
               if (onAdd != null)
                 FilledButton.icon(
                   onPressed: onAdd,

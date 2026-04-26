@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../../services/api_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../widgets/admin/admin_page_scaffold.dart';
@@ -98,6 +103,146 @@ class _AdminPlacesScreenState extends State<AdminPlacesScreen> {
     }
   }
 
+  Future<void> _generateQrForPlace(Map<String, dynamic> place) async {
+    try {
+      setState(() => _isLoading = true);
+      final res = await ApiService.instance.adminRegeneratePlaceQrCode(place['id'], adminKey: widget.adminKey);
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      
+      final qrPayload = res['qrPayload'] as String;
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('QR Code for ${place['name']}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 200,
+                height: 200,
+                child: QrImageView(
+                  data: qrPayload,
+                  version: QrVersions.auto,
+                  size: 200.0,
+                  backgroundColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('Payload: $qrPayload', style: const TextStyle(fontSize: 12), textAlign: TextAlign.center),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: qrPayload));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied to clipboard')));
+              },
+              child: const Text('Copy Data'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
+  Future<void> _generateAndExportAllQRs() async {
+    try {
+      setState(() => _isLoading = true);
+      // Generate all QRs first
+      await ApiService.instance.adminGenerateAllPlacesQrCodes(adminKey: widget.adminKey);
+      
+      // Fetch them
+      final qrs = await ApiService.instance.adminGetPlacesQrCodes(adminKey: widget.adminKey);
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+
+      final pdf = pw.Document();
+      
+      final chunked = <List<dynamic>>[];
+      for (var i = 0; i < qrs.length; i += 6) {
+        chunked.add(qrs.sublist(i, i + 6 > qrs.length ? qrs.length : i + 6));
+      }
+
+      for (final chunk in chunked) {
+        pdf.addPage(
+          pw.Page(
+            margin: const pw.EdgeInsets.all(32),
+            build: (pw.Context context) {
+              final rows = <pw.Widget>[];
+              for (var i = 0; i < chunk.length; i += 2) {
+                final rowItems = <pw.Widget>[];
+                for (var j = 0; j < 2; j++) {
+                  if (i + j < chunk.length) {
+                    final q = chunk[i + j];
+                    final payload = q['qrPayload'] as String?;
+                    if (payload != null && payload.isNotEmpty) {
+                      rowItems.add(
+                        pw.Expanded(
+                          child: pw.Container(
+                            padding: const pw.EdgeInsets.all(16),
+                            margin: const pw.EdgeInsets.all(8),
+                            decoration: pw.BoxDecoration(
+                              border: pw.Border.all(color: PdfColors.grey300),
+                            ),
+                            child: pw.Column(
+                              mainAxisAlignment: pw.MainAxisAlignment.center,
+                              children: [
+                                pw.Text(
+                                  q['name'],
+                                  style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+                                  textAlign: pw.TextAlign.center,
+                                ),
+                                pw.SizedBox(height: 16),
+                                pw.BarcodeWidget(
+                                  barcode: pw.Barcode.qrCode(),
+                                  data: payload,
+                                  width: 150,
+                                  height: 150,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    } else {
+                      rowItems.add(pw.Expanded(child: pw.SizedBox()));
+                    }
+                  } else {
+                    rowItems.add(pw.Expanded(child: pw.SizedBox()));
+                  }
+                }
+                rows.add(pw.Row(children: rowItems));
+                rows.add(pw.SizedBox(height: 16));
+              }
+              return pw.Column(children: rows);
+            },
+          ),
+        );
+      }
+
+      await Printing.layoutPdf(
+        onLayout: (PdfPageFormat format) async => pdf.save(),
+        name: 'tripoli_places_qrs.pdf',
+      );
+
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
   Future<void> _editPlace(Map<String, dynamic> place) async {
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
@@ -186,6 +331,7 @@ class _AdminPlacesScreenState extends State<AdminPlacesScreen> {
               location: place['location'] ?? '',
               onTap: () => _editPlace(place),
               onEdit: () => _editPlace(place),
+              onGenerateQr: () => _generateQrForPlace(place),
               onDelete: () => _deletePlace(place['id']),
             );
           },
@@ -200,6 +346,14 @@ class _AdminPlacesScreenState extends State<AdminPlacesScreen> {
       body: body,
       onAdd: _addPlace,
       addLabel: 'Add place',
+      actions: [
+        OutlinedButton.icon(
+          onPressed: _generateAndExportAllQRs,
+          icon: const FaIcon(FontAwesomeIcons.download, size: 14),
+          label: const Text('Generate & Export QRs'),
+        ),
+        const SizedBox(width: 12),
+      ],
       isLoading: _isLoading,
       error: _error,
       onRetry: _loadPlaces,
@@ -213,6 +367,7 @@ class _PlaceCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onGenerateQr;
 
   const _PlaceCard({
     required this.name,
@@ -220,6 +375,7 @@ class _PlaceCard extends StatelessWidget {
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
+    required this.onGenerateQr,
   });
 
   @override
@@ -269,6 +425,12 @@ class _PlaceCard extends StatelessWidget {
                       ],
                     ],
                   ),
+                ),
+                IconButton(
+                  onPressed: onGenerateQr,
+                  icon: const FaIcon(FontAwesomeIcons.qrcode, size: 18),
+                  color: AdminTheme.primary,
+                  tooltip: 'Generate QR',
                 ),
                 IconButton(
                   onPressed: onEdit,

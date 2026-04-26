@@ -1704,6 +1704,7 @@ class _TripDatePill extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(
             FontAwesomeIcons.calendar,
@@ -1711,16 +1712,12 @@ class _TripDatePill extends StatelessWidget {
             color: AppTheme.textSecondary,
           ),
           const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              _formatTripDateRange(trip),
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: AppTheme.textSecondary,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+          Text(
+            _formatTripDateRange(trip),
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: AppTheme.textSecondary,
             ),
           ),
         ],
@@ -1801,29 +1798,23 @@ class _TripCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Text(
+                      trip.name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                        color: AppTheme.textPrimary,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Expanded(
-                          child: Text(
-                            trip.name,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.2,
-                              color: AppTheme.textPrimary,
-                              height: 1.25,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 1),
-                          child: _TripPhaseChip(phase: phase),
-                        ),
-                        const SizedBox(width: 8),
+                        _TripPhaseChip(phase: phase),
                         if (trip.isHost)
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -1866,14 +1857,7 @@ class _TripCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          flex: 2,
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 1),
-                            child: _TripDatePill(trip: trip),
-                          ),
-                        ),
+                        _TripDatePill(trip: trip),
                       ],
                     ),
                     if (!narrowCard &&

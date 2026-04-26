@@ -99,7 +99,7 @@ router.get('/:id', async (req, res) => {
       'excludes',
       'highlights',
       'itinerary',
-    ]);
+    ], lang);
     res.json(rowToTour(row));
   } catch (err) {
     console.error(err);

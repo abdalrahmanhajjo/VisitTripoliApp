@@ -7,6 +7,15 @@ const { invalidateByPrefix } = require('../middleware/responseCache');
 const { withTranslation } = require('../utils/mongoTranslations');
 
 const router = express.Router();
+
+router.post('/login', (req, res) => {
+  const secret = process.env.ADMIN_SECRET;
+  const { key } = req.body || {};
+  if (!secret) return res.json({ success: true, message: 'No admin secret set (dev mode)' });
+  if (key === secret) return res.json({ success: true });
+  return res.status(401).json({ success: false, error: 'Invalid admin key' });
+});
+
 router.use(adminAuth);
 
 function newCheckinToken() {
@@ -102,18 +111,55 @@ router.post('/places/:id/regenerate-checkin-token', async (req, res) => {
   res.json({ id, checkinToken: token, qrPayload: buildCheckinQrPayload(id, token) });
 });
 
+router.get('/places-qr-codes', async (req, res) => {
+  try {
+    const places = await collection('places').find({}, { projection: { _id: 0, id: 1, name: 1, checkin_token: 1 } }).sort({ name: 1 }).toArray();
+    const qrs = places.map(p => ({
+      id: p.id,
+      name: p.name,
+      checkinToken: p.checkin_token,
+      qrPayload: p.checkin_token ? buildCheckinQrPayload(p.id, p.checkin_token) : null
+    }));
+    res.json(qrs);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch QR codes' });
+  }
+});
+
 for (const name of ['tours', 'events', 'interests']) {
   router.get(`/${name}`, async (_req, res) => {
     const rows = await collection(name).find({}, { projection: { _id: 0 } }).toArray();
     res.json(rows);
   });
+  
+  async function injectTourItineraryIfNeeded(doc) {
+    if (name === 'tours' && (!doc.itinerary || !doc.itinerary.length) && Array.isArray(doc.place_ids) && doc.place_ids.length > 0) {
+      const places = await collection('places').find({ id: { $in: doc.place_ids } }).toArray();
+      const placeMap = new Map(places.map(p => [p.id, p]));
+      doc.itinerary = doc.place_ids.map((pId, idx) => {
+        const place = placeMap.get(pId);
+        return {
+          day: `Day ${idx + 1}`,
+          title: `Visit ${place?.name || 'Destination'}`,
+          description: place?.short_description || place?.description || `Explore ${place?.name || 'this location'}.`,
+          time: 'Flexible'
+        };
+      });
+    }
+    return doc;
+  }
+
   router.post(`/${name}`, async (req, res) => {
-    const doc = req.body || {};
+    let doc = req.body || {};
+    doc = await injectTourItineraryIfNeeded(doc);
     await collection(name).insertOne({ ...doc, created_at: new Date(), updated_at: new Date() });
     res.status(201).json({ id: doc.id });
   });
   router.put(`/${name}/:id`, async (req, res) => {
-    await collection(name).updateOne({ id: req.params.id }, { $set: { ...(req.body || {}), updated_at: new Date() } });
+    let doc = req.body || {};
+    doc = await injectTourItineraryIfNeeded(doc);
+    await collection(name).updateOne({ id: req.params.id }, { $set: { ...doc, updated_at: new Date() } });
     res.json({ ok: true });
   });
   router.delete(`/${name}/:id`, async (req, res) => {
@@ -274,14 +320,6 @@ router.get('/stats', async (_req, res) => {
     collection('interests').countDocuments({}),
   ]);
   res.json({ places, categories, tours, events, interests });
-});
-
-router.post('/login', (req, res) => {
-  const secret = process.env.ADMIN_SECRET;
-  const { key } = req.body || {};
-  if (!secret) return res.json({ success: true, message: 'No admin secret set (dev mode)' });
-  if (key === secret) return res.json({ success: true });
-  return res.status(401).json({ success: false, error: 'Invalid admin key' });
 });
 
 module.exports = router;

@@ -1943,6 +1943,30 @@ class _ExploreScreenState extends State<ExploreScreen>
                             ),
                           ),
                         ),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(18),
+                            onTap: () => context.push('/scan-place'),
+                            child: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: AppTheme.surfaceVariant,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppTheme.borderColor
+                                      .withValues(alpha: 0.9),
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.qr_code_scanner_rounded,
+                                size: 22,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         ThemedShowcase(
                           showcaseKey: ExploreScreen.tutorialProfileKey,

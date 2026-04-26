@@ -131,8 +131,8 @@ class AppBottomNav extends StatelessWidget {
                 title: l10n.navExplore,
                 description: l10n.appTutorialNavExploreDesc,
                 child: NavigationDestination(
-                  icon: const Icon(Icons.explore_outlined),
-                  selectedIcon: const Icon(Icons.explore),
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home_rounded),
                   label: l10n.navExplore,
                 ),
               ),
@@ -141,8 +141,8 @@ class AppBottomNav extends StatelessWidget {
                 title: l10n.navCommunity,
                 description: l10n.appTutorialNavCommunityDesc,
                 child: NavigationDestination(
-                  icon: const Icon(Icons.dynamic_feed_outlined),
-                  selectedIcon: const Icon(Icons.dynamic_feed_rounded),
+                  icon: const Icon(Icons.smart_display_outlined),
+                  selectedIcon: const Icon(Icons.smart_display_rounded),
                   label: l10n.navCommunity,
                 ),
               ),

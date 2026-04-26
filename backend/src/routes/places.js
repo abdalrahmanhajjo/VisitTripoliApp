@@ -84,7 +84,7 @@ router.get('/:id', async (req, res) => {
       'price',
       'best_time',
       'tags',
-    ]);
+    ], lang);
     res.json(rowToPlace(row, baseUrl));
   } catch (err) {
     console.error(err);
